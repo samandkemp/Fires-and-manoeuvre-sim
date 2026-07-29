@@ -1,0 +1,16 @@
+[package]
+name = "experiments"
+version = "0.1.0"
+edition = "2021"
+description = "Headless batch runs against sim_core: sweeps, Monte Carlo, validation"
+publish = false
+
+# Headless batch runs against sim_core: sweeps, Monte Carlo, validation. Depends on
+# sim_core ONLY — never Bevy — so these never pay the engine's compile cost and can't
+# breach the headless boundary. One binary per experiment in src/bin/.
+
+[dependencies]
+sim_core = { path = "../sim_core" }
+glam = "0.32"     # sim_core's public APIs take glam::Vec2
+ndarray = { version = "0.16", features = ["rayon"] }  # risk rasters + parallel fill
+rand = "0.9"      # seeded Monte Carlo draws (same version as sim_core)

@@ -1,0 +1,24 @@
+# Weapon type stat blocks. Abstract placeholder dials — see docs/DESIGN.md §2.1.
+# class = "direct" (LOS-gated, hit vs silhouette) | "indirect" (ballistic, CEP + area).
+
+[afv_cannon]
+class = "direct"
+rof_rounds_per_min = 6.0
+max_range_m = 2500.0
+dispersion_mrad = 0.5
+p_kill_given_hit = 0.7
+
+[small_arms]
+class = "direct"
+rof_rounds_per_min = 40.0
+max_range_m = 600.0
+dispersion_mrad = 1.2
+p_kill_given_hit = 0.15
+
+[howitzer_155]
+class = "indirect"
+rof_rounds_per_min = 3.0
+max_range_m = 24000.0
+min_range_m = 2000.0
+cep_m = 90.0
+lethal_radius_m = 40.0

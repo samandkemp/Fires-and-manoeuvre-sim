@@ -1,0 +1,13 @@
+# Fixture scenario: a featureless 2 x 2 km flat range at 100 m elevation. Useful as a
+# clean stage for eyeballing LOS/viewshed behaviour and as the loader's fixture test.
+
+name = "flat-range"
+default_seed = 1
+
+[terrain]
+cell_size_m = 10.0
+width_cells = 200
+height_cells = 200
+
+[terrain.source.flat]
+elevation_m = 100.0

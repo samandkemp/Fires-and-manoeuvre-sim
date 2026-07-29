@@ -1,0 +1,21 @@
+[workspace]
+resolver = "2"
+members = ["crates/sim_core", "crates/app", "crates/experiments"]
+
+# Fast iterative builds (SETUP.md step 4): our code compiles unoptimised (fast),
+# dependencies compile optimised (so the sim runs at usable speed while iterating).
+# Dependencies also skip debug symbols — we debug our own code, not Bevy's, and the
+# symbols roughly double the size of target/ (which filled the disk once already).
+[profile.dev]
+opt-level = 1
+
+[profile.dev.package."*"]
+opt-level = 3
+debug = false
+
+# The OR maths in sim_core runs unoptimised at the workspace opt-level (1), which makes
+# interactive computations (viewshed, belief) sluggish in dev builds. Optimise sim_core
+# itself (it changes less often than the app; app/experiments stay at opt-level 1 for
+# fast compiles). Decision 2026-07-29.
+[profile.dev.package.sim_core]
+opt-level = 2

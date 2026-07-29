@@ -1,0 +1,29 @@
+# Per-terrain-type dials. Abstract placeholder values — the models are the product,
+# these are the knobs. See docs/DESIGN.md §1.3.
+#
+#   feature_height_m : canopy / building height above ground (blocking surface z + f)
+#   extinction_per_m : kappa; sight attenuation per metre of canopy (tau = exp(-kappa*L))
+#   cover            : [0,1] protection against fires
+#   concealment      : [0,1] reduction in detectability at the cell
+#   mobility_cost    : >= 1 movement-cost multiplier (inf = impassable)
+
+[open]
+feature_height_m = 0.0
+extinction_per_m = 0.0
+cover = 0.0
+concealment = 0.0
+mobility_cost = 1.0
+
+[trees]
+feature_height_m = 12.0
+extinction_per_m = 0.08
+cover = 0.3
+concealment = 0.6
+mobility_cost = 1.8
+
+[urban]
+feature_height_m = 8.0
+extinction_per_m = 0.0   # urban hard-blocks sightlines; no soft attenuation term
+cover = 0.7
+concealment = 0.5
+mobility_cost = 1.5

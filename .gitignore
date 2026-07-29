@@ -1,0 +1,25 @@
+# Rust build artifacts
+/target
+**/*.rs.bk
+
+# Working notes — kept locally, not part of the public repo
+/docs/PLAN.md
+/docs/PROGRESS.md
+/docs/QUESTIONS.md
+
+# Experiment outputs (headless runs regenerate these; don't commit them)
+/out/
+*.csv
+*.log
+
+# Ad-hoc screenshots from the app's FIRES_SIM_SCREENSHOT rig
+*.png
+# ...but images deliberately committed for the docs/README are kept
+!docs/images/*.png
+
+# Editor / OS noise
+.idea/
+*.swp
+*~
+.DS_Store
+Thumbs.db

@@ -1,0 +1,74 @@
+# The default scenario: a 10 x 10 km battlegroup map (10 m cells) of seeded rolling
+# relief. Terrain-type painting and force composition arrive in later phases; for now the
+# elevation is the star (Phase 1 renders and runs LOS over it).
+
+name = "default"
+default_seed = 42
+
+[sim]
+dt_s = 1.0
+epoch_s = 10.0
+
+# Starting assets — more can be placed live in the app (right-click, per UI mode).
+# The mast is sited (via the sensor_siting experiment) to overwatch the Red cluster;
+# the forward ground sensor is deliberately masked by terrain to show siting matters.
+[[blue.sensors]]
+id = "mast-1"
+type = "mast_optical"
+pos = [6250.0, 7750.0]
+
+[[blue.sensors]]
+id = "obs-1"
+type = "gen_optical"
+pos = [4200.0, 5200.0]
+
+[[red.units]]
+id = "afv-1"
+type = "afv"
+pos = [7400.0, 7100.0]
+route = [[5600.0, 6400.0], [4300.0, 5200.0]]   # advances SW toward the Blue gun line
+
+[[red.units]]
+id = "guns-1"
+type = "sp_gun"
+pos = [8300.0, 6200.0]
+
+[[red.units]]
+id = "inf-1"
+type = "inf_section"
+pos = [6100.0, 7900.0]
+
+[[red.sensors]]
+id = "red-obs-1"
+type = "gen_optical"
+pos = [6800.0, 6500.0]
+
+# Blue AFV pushed forward near the mast's overwatch. (On this seed its low ground-level
+# sightlines are largely masked by a rise — the mast on its 12 m mast sees what the AFV
+# cannot: elevation matters.)
+[[blue.units]]
+id = "recce-1"
+type = "afv"
+pos = [6000.0, 7600.0]
+
+# Blue self-propelled gun in depth: indirect fire needs no LOS, only range, so once the
+# mast detects a Red unit the gun can bombard it over the hills.
+[[blue.units]]
+id = "arty-1"
+type = "sp_gun"
+pos = [4500.0, 5000.0]
+
+[terrain]
+cell_size_m = 10.0
+width_cells = 1000
+height_cells = 1000
+
+# Seeded procedural terrain: Gaussian-hill relief, woodland painted by quantile of a
+# second seeded field, rectangular urban blocks. Deterministic given the seed.
+# (Other sources: { flat = { elevation_m = .. } }; fixtures live in code.)
+[terrain.source.hills]
+count = 24
+max_height_m = 120.0
+base_radius_m = 600.0
+woods_fraction = 0.28
+urban_blocks = 4

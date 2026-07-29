@@ -1,0 +1,31 @@
+# Unit type stat blocks. Abstract placeholder dials — see docs/DESIGN.md §3.1.
+# `signature` is a per-modality table: acoustic / eo_ir sensing later adds keys here
+# (e.g. `acoustic = 0.8` for a generator-running vehicle), not schema changes.
+# `weapon` (optional) references a weapon type in weapons.toml.
+
+[inf_section]
+height_m = 1.8
+silhouette_width_m = 2.0
+element_count = 8       # a section of 8 dismounts
+speed_m_s = 1.4        # dismounted pace
+weapon = "small_arms"
+[inf_section.signature]
+optical = 0.35
+
+[afv]
+height_m = 2.8
+silhouette_width_m = 3.2
+element_count = 3       # a troop of 3 vehicles
+speed_m_s = 6.0        # cross-country
+weapon = "afv_cannon"
+[afv.signature]
+optical = 0.75
+
+[sp_gun]
+height_m = 3.2
+silhouette_width_m = 6.0
+element_count = 2       # a pair of guns
+speed_m_s = 0.0        # emplaced
+weapon = "howitzer_155"
+[sp_gun.signature]
+optical = 0.85

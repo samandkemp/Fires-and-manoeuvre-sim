@@ -1,0 +1,20 @@
+# Sensor type stat blocks. Abstract placeholder dials — see docs/DESIGN.md §3.1.
+# `modality` selects the propagation channel: `optical` is implemented (LOS + canopy
+# transmittance); `acoustic` and `eo_ir` are planned and will add their own terms.
+
+[gen_optical]
+modality = "optical"
+mount_height_m = 2.0
+max_range_m = 4000.0
+lambda0_per_s = 0.5
+range_half_m = 1200.0
+range_exponent = 2.0
+# for_width_deg = 360.0   # omit for all-round; instances may set `facing_deg`
+
+[mast_optical]
+modality = "optical"
+mount_height_m = 12.0
+max_range_m = 6000.0
+lambda0_per_s = 0.35
+range_half_m = 1800.0
+range_exponent = 2.0
