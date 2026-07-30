@@ -5698,6 +5698,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "validation"
+version = "0.1.0"
+dependencies = [
+ "glam",
+ "ndarray",
+ "rand 0.9.5",
+ "sim_core",
+]
+
+[[package]]
 name = "valuable"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"

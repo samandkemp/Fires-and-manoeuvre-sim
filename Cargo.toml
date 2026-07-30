@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/sim_core", "crates/app", "crates/experiments"]
+members = ["crates/sim_core", "crates/app", "crates/experiments", "crates/validation"]
 
 # Fast iterative builds (SETUP.md step 4): our code compiles unoptimised (fast),
 # dependencies compile optimised (so the sim runs at usable speed while iterating).
@@ -18,4 +18,10 @@ debug = false
 # itself (it changes less often than the app; app/experiments stay at opt-level 1 for
 # fast compiles). Decision 2026-07-29.
 [profile.dev.package.sim_core]
+opt-level = 2
+
+# The validation gates are Monte Carlo over thousands of trials (V14/V15, V30, V48-V50).
+# The sim_core code they call is already optimised by the entry above, but the harness
+# around it — the trial loops and accumulators — would run at the workspace opt-level 1.
+[profile.dev.package.validation]
 opt-level = 2

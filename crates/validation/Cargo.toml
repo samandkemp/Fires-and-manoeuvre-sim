@@ -1,0 +1,21 @@
+[package]
+name = "validation"
+version = "0.1.0"
+edition = "2021"
+description = "The V1-V52 validation gates: every sim_core model checked against a closed form or a documented invariant"
+publish = false
+
+# The project's contract, gathered in one place. Each gate in docs/DESIGN.md's validation
+# tables lives here, named for its V-number, and checks a model against a *stated*
+# analytical reference rather than against remembered output.
+#
+# Depends on sim_core ONLY — never Bevy. Because this crate is outside sim_core, the gates
+# can only reach the public API, which is deliberate: a model that cannot be validated
+# from outside is a model whose interface is wrong. The handful of tests that check
+# genuinely internal properties (the RNG draw stream) stay as unit tests inside sim_core.
+
+[dependencies]
+sim_core = { path = "../sim_core" }
+glam = "0.32"     # sim_core's public APIs take glam::Vec2
+ndarray = { version = "0.16" }  # payoff matrices and raster gates
+rand = "0.9"      # seeded Monte Carlo draws (same version as sim_core)
