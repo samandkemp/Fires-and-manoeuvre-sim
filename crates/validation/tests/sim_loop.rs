@@ -1076,3 +1076,66 @@ fn v31_suppression_gates_fire() {
         "suppressed output ratio {ratio:.3} should be ~0.4"
     );
 }
+
+// ---- V54: removing an asset must not corrupt the recorded history -------------------
+// Every event log holds *indices* into the unit and air lists, as does a carried sensor's
+// `carrier`. Removal is therefore a tombstone rather than a `Vec::remove`: this gate is
+// what stops a future "tidy up the vectors" change from silently repointing every logged
+// event at the wrong asset.
+#[test]
+fn v54_removal_tombstones_keep_logged_indices_valid() {
+    let libs = air_libs();
+    let scn = raid_scenario(true);
+    let mut sim = Sim::new(&scn, &libs, 3).unwrap();
+    sim.run_until(120.0);
+
+    let units_before = sim.units().len();
+    let air_before = sim.air().len();
+    // Record what every logged index resolved to, so we can prove it still does.
+    let detections: Vec<(usize, String)> = sim
+        .events()
+        .iter()
+        .map(|e| (e.unit, sim.units()[e.unit].id.clone()))
+        .collect();
+    let air_events: Vec<(usize, String)> = sim
+        .air_events()
+        .iter()
+        .map(|e| (e.air, sim.air()[e.air].id.clone()))
+        .collect();
+    assert!(
+        !air_events.is_empty(),
+        "sanity: the raid should have been detected"
+    );
+
+    sim.remove_unit(0);
+    sim.remove_air(0);
+
+    // The lists keep their shape, so every index still points where it did.
+    assert_eq!(
+        sim.units().len(),
+        units_before,
+        "removal must not shift units"
+    );
+    assert_eq!(sim.air().len(), air_before, "removal must not shift air");
+    for (idx, id) in detections {
+        assert_eq!(
+            sim.units()[idx].id,
+            id,
+            "a logged detection changed meaning"
+        );
+    }
+    for (idx, id) in air_events {
+        assert_eq!(sim.air()[idx].id, id, "a logged air track changed meaning");
+    }
+
+    // And the removed assets really are out of the fight.
+    assert!(!sim.units()[0].alive(), "a removed unit is not alive");
+    assert!(!sim.air()[0].alive, "a removed airframe is not alive");
+    assert!(
+        !sim.sensor_active(0) || sim.sensors()[0].carrier != Some(0),
+        "a carried sensor must die with its airframe"
+    );
+
+    // The sim keeps running without them.
+    sim.run_until(200.0);
+}

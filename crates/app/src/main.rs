@@ -23,13 +23,25 @@ struct SimRes {
     placed: u32,
 }
 
+/// One selected asset. Selection spans both lists, so a box-select can pick up a mixed
+/// group and the same commands apply to all of it.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+enum Selected {
+    /// Index into [`Sim::units`].
+    Unit(usize),
+    /// Index into [`Sim::air`].
+    Air(usize),
+}
+
 /// What a right-click on the map does.
+///
+/// Only *placement* is modal now. Selecting, moving, routing and deleting are driven by
+/// left-click, modifiers and keys, so the common loop — pick a unit, give it a route —
+/// no longer means toggling a radio button between every step.
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum ClickMode {
     /// Set the LOS-probe observer.
     Probe,
-    /// Select the nearest unit or air asset (to move, route, or inspect it).
-    Select,
     /// Place a Blue sensor of the selected type.
     PlaceBlueSensor,
     /// Place a Red unit of the selected type.
@@ -40,14 +52,8 @@ enum ClickMode {
     PlaceRedAir,
     /// Place a Blue air-defence battery of the selected type.
     PlaceBlueAirDefence,
-    /// Append a flight-plan waypoint to the selected drone.
-    AirWaypoint,
-    /// Send the selected drone to orbit the click at the panel's radius.
+    /// Send the selected drone(s) to orbit the click at the panel's radius.
     AirOrbit,
-    /// Append route waypoints to the currently selected unit.
-    RouteSelected,
-    /// Move the currently selected unit to the click (clearing its route).
-    MoveSelected,
 }
 
 /// A reset requested from the panel, applied after the egui closure releases the sim.
@@ -72,10 +78,10 @@ struct UiState {
     air_defence_type_id: String,
     running: bool,
     ticks_per_frame: u32,
-    /// The currently selected unit (for move/route/inspect), if any.
-    selected: Option<usize>,
-    /// The currently selected air asset (for altitude/heading/plan edits), if any.
-    selected_air: Option<usize>,
+    /// Everything currently selected — units and air together.
+    selected: Vec<Selected>,
+    /// Where a left-drag box-select started, in world metres.
+    drag_start: Option<Vec2>,
     /// Exposure window (s) for the Pd coverage overlay — live-tweakable.
     coverage_exposure_s: f32,
     /// Dials applied to the next placed drone, and to the selected one live.
@@ -190,8 +196,9 @@ fn setup(mut commands: Commands, mut images: ResMut<Assets<Image>>) {
         MapSprite,
     ));
 
-    // Whole map in frame at startup; pancam takes over (left/middle drag — right-click
-    // is the action button).
+    // Whole map in frame at startup. Pan is **middle-drag only**: left-drag is what
+    // box-selects, and giving it to the camera is what forced selection into a mode in
+    // the first place. Right-click commands the selection or places.
     commands.spawn((
         Camera2d,
         Projection::Orthographic(OrthographicProjection {
@@ -200,7 +207,7 @@ fn setup(mut commands: Commands, mut images: ResMut<Assets<Image>>) {
         }),
         Transform::from_translation(center),
         PanCam {
-            grab_buttons: vec![MouseButton::Left, MouseButton::Middle],
+            grab_buttons: vec![MouseButton::Middle],
             ..default()
         },
     ));
@@ -231,8 +238,8 @@ fn setup(mut commands: Commands, mut images: ResMut<Assets<Image>>) {
         // In screenshot mode, one tick/frame so the capture lands mid-bombardment
         // (suppression visible on the target) rather than in the aftermath.
         ticks_per_frame: 1,
-        selected: None,
-        selected_air: None,
+        selected: Vec::new(),
+        drag_start: None,
         coverage_exposure_s: COVERAGE_EXPOSURE_S,
         air_altitude_m: 400.0,
         air_altitude_amsl: false,
@@ -284,8 +291,7 @@ fn apply_scenario_load(
     sim.sim = fresh;
     sim.data = data;
     sim.placed = 0;
-    ui_state.selected = None;
-    ui_state.selected_air = None;
+    ui_state.selected.clear();
     ui_state.running = false;
     probe.observer = None;
 
@@ -310,6 +316,112 @@ fn apply_scenario_load(
         }
     }
     info!("loaded scenario '{}'", sim.data.scenario_name);
+}
+
+/// Click-pick radius, metres: how near a click must land to grab a marker.
+const PICK_RADIUS_M: f32 = 400.0;
+/// A left-drag shorter than this is a click, not a box-select.
+const BOX_SELECT_MIN_M: f32 = 60.0;
+
+/// The nearest live asset to `pos` within `max_dist_m`, ground or air.
+fn nearest_asset(sim: &Sim, pos: Vec2, max_dist_m: f32) -> Option<Selected> {
+    let unit = sim
+        .nearest_unit(pos, max_dist_m)
+        .map(|i| (Selected::Unit(i), sim.units()[i].pos.distance(pos)));
+    let air = sim
+        .nearest_air(pos, max_dist_m)
+        .map(|i| (Selected::Air(i), sim.air()[i].pos.distance(pos)));
+    match (unit, air) {
+        (Some(u), Some(a)) => Some(if a.1 < u.1 { a.0 } else { u.0 }),
+        (Some(u), None) => Some(u.0),
+        (None, Some(a)) => Some(a.0),
+        (None, None) => None,
+    }
+}
+
+/// Every live asset inside the rectangle spanned by two world corners.
+fn assets_in_box(sim: &Sim, a: Vec2, b: Vec2) -> Vec<Selected> {
+    let (lo, hi) = (a.min(b), a.max(b));
+    let inside = |p: Vec2| p.x >= lo.x && p.x <= hi.x && p.y >= lo.y && p.y <= hi.y;
+    let mut out: Vec<Selected> = sim
+        .units()
+        .iter()
+        .enumerate()
+        .filter(|(_, u)| u.alive() && inside(u.pos))
+        .map(|(i, _)| Selected::Unit(i))
+        .collect();
+    out.extend(
+        sim.air()
+            .iter()
+            .enumerate()
+            .filter(|(_, a)| a.alive && inside(a.pos))
+            .map(|(i, _)| Selected::Air(i)),
+    );
+    out
+}
+
+/// The centroid of a selection, for formation-preserving moves.
+fn selection_centroid(sim: &Sim, selected: &[Selected]) -> Option<Vec2> {
+    let mut sum = Vec2::ZERO;
+    let mut n = 0.0f32;
+    for sel in selected {
+        let p = match sel {
+            Selected::Unit(i) => sim.units().get(*i).map(|u| u.pos),
+            Selected::Air(i) => sim.air().get(*i).map(|a| a.pos),
+        };
+        if let Some(p) = p {
+            sum += p;
+            n += 1.0;
+        }
+    }
+    (n > 0.0).then(|| sum / n)
+}
+
+/// Move a whole selection to `target`, **preserving formation**: each asset keeps its
+/// offset from the group centroid rather than every marker stacking on the click point.
+fn move_selection(sim: &mut Sim, selected: &[Selected], target: Vec2) {
+    let Some(centroid) = selection_centroid(sim, selected) else {
+        return;
+    };
+    for sel in selected {
+        match sel {
+            Selected::Unit(i) => {
+                let offset = sim.units()[*i].pos - centroid;
+                sim.set_unit_pos(*i, target + offset);
+            }
+            Selected::Air(i) => {
+                let offset = sim.air()[*i].pos - centroid;
+                let air = sim.air_mut(*i);
+                air.pos = target + offset;
+                air.set_plan(FlightPlan::default());
+            }
+        }
+    }
+}
+
+/// Append a waypoint to every selected asset, offset to preserve formation. A ground unit
+/// gains a route waypoint; a drone gains a flight-plan leg.
+fn append_waypoint(sim: &mut Sim, selected: &[Selected], target: Vec2) {
+    let Some(centroid) = selection_centroid(sim, selected) else {
+        return;
+    };
+    for sel in selected {
+        match sel {
+            Selected::Unit(i) => {
+                let offset = sim.units()[*i].pos - centroid;
+                sim.push_waypoint(*i, target + offset);
+            }
+            Selected::Air(i) => {
+                let offset = sim.air()[*i].pos - centroid;
+                let air = sim.air_mut(*i);
+                if air.plan_complete() {
+                    air.set_plan(FlightPlan::route(vec![target + offset]));
+                } else {
+                    air.plan.waypoints.push(target + offset);
+                }
+            }
+        }
+    }
 }
 
 /// Advance the sim clock: `ticks_per_frame` ticks of `dt_s` per rendered frame while
@@ -339,6 +451,7 @@ fn ui_panel(
     mut commands: Commands,
     mut images: ResMut<Assets<Image>>,
     buttons: Res<ButtonInput<MouseButton>>,
+    keys: Res<ButtonInput<KeyCode>>,
     window: Query<&Window, With<PrimaryWindow>>,
     camera: Query<(&Camera, &GlobalTransform), With<Camera2d>>,
 ) -> Result {
@@ -388,19 +501,12 @@ fn ui_panel(
                 });
 
             ui.separator();
-            ui.label("Right-click on map:");
-            ui.radio_value(&mut ui_state.mode, ClickMode::Select, "Select unit");
-            ui.radio_value(
-                &mut ui_state.mode,
-                ClickMode::MoveSelected,
-                "Move selected unit",
-            );
-            ui.radio_value(
-                &mut ui_state.mode,
-                ClickMode::RouteSelected,
-                "Route selected (click waypoints)",
-            );
-            ui.radio_value(&mut ui_state.mode, ClickMode::Probe, "LOS probe observer");
+            ui.label("Left-click select | shift add | drag box-select");
+            ui.label("Right-click move here | shift append waypoint");
+            ui.label("Del remove | Esc clear | middle-drag pan");
+            ui.separator();
+            ui.label("Right-click places:");
+            ui.radio_value(&mut ui_state.mode, ClickMode::Probe, "nothing (move/route)");
             ui.radio_value(
                 &mut ui_state.mode,
                 ClickMode::PlaceBlueSensor,
@@ -428,24 +534,46 @@ fn ui_panel(
             );
             ui.radio_value(
                 &mut ui_state.mode,
-                ClickMode::AirWaypoint,
-                "Drone waypoint (click to add)",
-            );
-            ui.radio_value(
-                &mut ui_state.mode,
                 ClickMode::AirOrbit,
                 "Drone orbit here (radius below)",
             );
 
-            // Selected-unit readout.
-            if let Some(idx) = ui_state.selected {
-                if let Some(u) = sim.sim.units().get(idx).filter(|u| u.alive()) {
+            // Selection readout. Drop anything that died or was cleared under us first,
+            // so a stale index can never be commanded.
+            {
+                let sim_ref = &sim.sim;
+                ui_state.selected.retain(|sel| match sel {
+                    Selected::Unit(i) => sim_ref.units().get(*i).is_some_and(|u| u.alive()),
+                    Selected::Air(i) => sim_ref.air().get(*i).is_some_and(|a| a.alive),
+                });
+            }
+            match ui_state.selected.len() {
+                0 => {
+                    ui.label("Nothing selected");
+                }
+                1 => match ui_state.selected[0] {
+                    Selected::Unit(i) => {
+                        let u = &sim.sim.units()[i];
+                        ui.label(format!(
+                            "Selected: {} ({:?})  {}/{} elem  {:?}",
+                            u.id, u.side, u.elements, u.initial_elements, u.suppression
+                        ));
+                    }
+                    Selected::Air(i) => {
+                        let a = &sim.sim.air()[i];
+                        ui.label(format!("Selected: {} (drone, {:?})", a.id, a.side));
+                    }
+                },
+                n => {
+                    let air = ui_state
+                        .selected
+                        .iter()
+                        .filter(|s| matches!(s, Selected::Air(_)))
+                        .count();
                     ui.label(format!(
-                        "Selected: {} ({:?})  {}/{} elem  {:?}",
-                        u.id, u.side, u.elements, u.initial_elements, u.suppression
+                        "Selected: {n} assets ({} ground, {air} air)",
+                        n - air
                     ));
-                } else {
-                    ui_state.selected = None; // stale (cleared/killed)
                 }
             }
 
@@ -497,34 +625,44 @@ fn ui_panel(
 
             // Selected drone: the dials above are applied live, so altitude and speed can
             // be flown by hand while the clock runs.
-            if let Some(idx) = ui_state.selected_air {
-                match sim.sim.air().get(idx).filter(|a| a.alive) {
-                    Some(a) => {
-                        let (id, alt, spd, hdg) =
-                            (a.id.clone(), a.altitude_m, a.speed_m_s, a.heading_deg);
-                        let agl = a.actor_height(sim.sim.terrain());
-                        let munitions = a.munitions_left;
-                        let detected = a.detected;
-                        ui.label(format!(
-                            "Drone {id}: {alt:.0} m ({agl:.0} AGL), {spd:.0} m/s, hdg {hdg:.0}°"
-                        ));
-                        ui.small(format!(
-                            "munitions {munitions}  {}",
-                            if detected { "DETECTED" } else { "undetected" }
-                        ));
-                        if ui.button("Apply dials to selected drone").clicked() {
-                            let a = sim.sim.air_mut(idx);
-                            a.altitude_m = ui_state.air_altitude_m;
-                            a.altitude_ref = if ui_state.air_altitude_amsl {
-                                AltitudeRef::Amsl
-                            } else {
-                                AltitudeRef::Agl
-                            };
-                            a.heading_deg = ui_state.air_heading_deg;
-                            a.speed_m_s = ui_state.air_speed_m_s;
-                        }
-                    }
-                    None => ui_state.selected_air = None, // stale (cleared or shot down)
+            let selected_air: Vec<usize> = ui_state
+                .selected
+                .iter()
+                .filter_map(|s| match s {
+                    Selected::Air(i) => Some(*i),
+                    Selected::Unit(_) => None,
+                })
+                .collect();
+            if let [only] = selected_air[..] {
+                let a = &sim.sim.air()[only];
+                let agl = a.actor_height(sim.sim.terrain());
+                ui.label(format!(
+                    "Drone {}: {:.0} m ({agl:.0} AGL), {:.0} m/s, hdg {:.0}°",
+                    a.id, a.altitude_m, a.speed_m_s, a.heading_deg
+                ));
+                ui.small(format!(
+                    "munitions {}  {}",
+                    a.munitions_left,
+                    if a.detected { "DETECTED" } else { "undetected" }
+                ));
+            }
+            // The dials apply to the whole air selection, so a formation can be re-tasked
+            // in one go rather than drone by drone.
+            if !selected_air.is_empty()
+                && ui
+                    .button(format!("Apply dials to {} drone(s)", selected_air.len()))
+                    .clicked()
+            {
+                for i in selected_air {
+                    let a = sim.sim.air_mut(i);
+                    a.altitude_m = ui_state.air_altitude_m;
+                    a.altitude_ref = if ui_state.air_altitude_amsl {
+                        AltitudeRef::Amsl
+                    } else {
+                        AltitudeRef::Agl
+                    };
+                    a.heading_deg = ui_state.air_heading_deg;
+                    a.speed_m_s = ui_state.air_speed_m_s;
                 }
             }
 
@@ -674,7 +812,7 @@ fn ui_panel(
                 ui.small("amber ring = suppressed, red ring = pinned");
                 ui.small("green bar = remaining strength");
                 ui.small("faint line = movement route / flight plan");
-                ui.small("yellow ring = selected unit or drone");
+                ui.small("yellow ring = selected (left-click, shift adds, drag boxes)");
                 ui.small("magenta bubble = EW jammer");
                 ui.small("teal ring = air-defence envelope");
                 ui.small("yellow line = air-defence engagement");
@@ -690,8 +828,7 @@ fn ui_panel(
                 .expect("default scenario resolves");
             sim.sim = fresh;
             sim.placed = 0;
-            ui_state.selected = None;
-            ui_state.selected_air = None;
+            ui_state.selected.clear();
             ui_state.running = false;
             probe.observer = None;
             if let Some(e) = overlay.0.take() {
@@ -701,8 +838,7 @@ fn ui_panel(
         ResetKind::Clear => {
             sim.sim.reset(0);
             sim.placed = 0;
-            ui_state.selected = None;
-            ui_state.selected_air = None;
+            ui_state.selected.clear();
             if let Some(e) = overlay.0.take() {
                 commands.entity(e).despawn();
             }
@@ -716,36 +852,84 @@ fn ui_panel(
         ResetKind::None => {}
     }
 
-    // Map actions: right-click, unless egui wants the pointer.
-    if buttons.just_pressed(MouseButton::Right) && !ctx.wants_pointer_input() {
-        let window = window.single()?;
-        let (cam, cam_tf) = camera.single()?;
-        if let Some(world) = window
+    // ---- Map interaction -------------------------------------------------------
+    // Left-click selects (shift adds, drag box-selects); right-click commands whatever is
+    // selected. Placement is the only thing still modal, which is what removes the old
+    // Select/Move/Route toggling from the common loop.
+    let world_cursor = || -> Option<Vec2> {
+        let window = window.single().ok()?;
+        let (cam, cam_tf) = camera.single().ok()?;
+        window
             .cursor_position()
             .and_then(|c| cam.viewport_to_world_2d(cam_tf, c).ok())
-        {
+    };
+    let wants_pointer = ctx.wants_pointer_input();
+    let shift = keys.pressed(KeyCode::ShiftLeft) || keys.pressed(KeyCode::ShiftRight);
+
+    if keys.just_pressed(KeyCode::Escape) {
+        ui_state.selected.clear();
+    }
+    if keys.just_pressed(KeyCode::Delete) {
+        for sel in std::mem::take(&mut ui_state.selected) {
+            match sel {
+                Selected::Unit(i) => sim.sim.remove_unit(i),
+                Selected::Air(i) => sim.sim.remove_air(i),
+            }
+        }
+    }
+
+    // A left press starts a possible box-select; the release decides click vs box.
+    if buttons.just_pressed(MouseButton::Left) && !wants_pointer {
+        ui_state.drag_start = world_cursor();
+    }
+    if buttons.just_released(MouseButton::Left) {
+        if let (Some(start), Some(end)) = (ui_state.drag_start.take(), world_cursor()) {
+            if !wants_pointer {
+                let picked = if start.distance(end) > BOX_SELECT_MIN_M {
+                    assets_in_box(&sim.sim, start, end)
+                } else {
+                    nearest_asset(&sim.sim, end, PICK_RADIUS_M)
+                        .into_iter()
+                        .collect()
+                };
+                if shift {
+                    // Toggle, so shift-clicking something already selected removes it.
+                    for a in picked {
+                        if let Some(at) = ui_state.selected.iter().position(|s| *s == a) {
+                            ui_state.selected.remove(at);
+                        } else {
+                            ui_state.selected.push(a);
+                        }
+                    }
+                } else {
+                    ui_state.selected = picked;
+                }
+            }
+        }
+    }
+
+    if buttons.just_pressed(MouseButton::Right) && !wants_pointer {
+        if let Some(world) = world_cursor() {
             match ui_state.mode {
-                ClickMode::Probe => probe.observer = Some(world),
-                ClickMode::Select => {
-                    // Pick whichever marker is nearer — ground or air.
-                    let unit = sim.sim.nearest_unit(world, 400.0);
-                    let air = sim.sim.nearest_air(world, 400.0);
-                    let unit_d = unit.map(|i| sim.sim.units()[i].pos.distance(world));
-                    let air_d = air.map(|i| sim.sim.air()[i].pos.distance(world));
-                    match (unit_d, air_d) {
-                        (Some(u), Some(a)) if a < u => {
-                            ui_state.selected_air = air;
-                            ui_state.selected = None;
+                ClickMode::Probe => {
+                    // No placement mode set: right-click commands the selection. With
+                    // nothing selected it falls back to placing the LOS probe.
+                    if ui_state.selected.is_empty() {
+                        probe.observer = Some(world);
+                    } else if shift {
+                        append_waypoint(&mut sim.sim, &ui_state.selected, world);
+                    } else {
+                        move_selection(&mut sim.sim, &ui_state.selected, world);
+                    }
+                }
+                ClickMode::AirOrbit => {
+                    let radius = ui_state.air_orbit_radius_m;
+                    for sel in &ui_state.selected {
+                        if let Selected::Air(i) = sel {
+                            sim.sim
+                                .air_mut(*i)
+                                .set_plan(FlightPlan::orbit(world, radius, false));
                         }
-                        (Some(_), _) => {
-                            ui_state.selected = unit;
-                            ui_state.selected_air = None;
-                        }
-                        (None, Some(_)) => {
-                            ui_state.selected_air = air;
-                            ui_state.selected = None;
-                        }
-                        (None, None) => {}
                     }
                 }
                 ClickMode::PlaceRedAir => {
@@ -776,9 +960,7 @@ fn ui_panel(
                             payload,
                         );
                         sim.sim.air_mut(idx).speed_m_s = ui_state.air_speed_m_s;
-                        // Auto-select so waypoints/orbit can be given immediately.
-                        ui_state.selected_air = Some(idx);
-                        ui_state.selected = None;
+                        ui_state.selected = vec![Selected::Air(idx)];
                     }
                 }
                 ClickMode::PlaceBlueAirDefence => {
@@ -799,35 +981,6 @@ fn ui_panel(
                             .add_air_defence(&id, Side::Blue, world, stats, true, sensor);
                     }
                 }
-                ClickMode::AirWaypoint => {
-                    if let Some(idx) = ui_state.selected_air {
-                        let a = sim.sim.air_mut(idx);
-                        // Appending to a completed plan restarts it from the new leg.
-                        if a.plan_complete() {
-                            a.set_plan(FlightPlan::route(vec![world]));
-                        } else {
-                            a.plan.waypoints.push(world);
-                        }
-                    }
-                }
-                ClickMode::AirOrbit => {
-                    if let Some(idx) = ui_state.selected_air {
-                        let radius = ui_state.air_orbit_radius_m;
-                        sim.sim
-                            .air_mut(idx)
-                            .set_plan(FlightPlan::orbit(world, radius, false));
-                    }
-                }
-                ClickMode::MoveSelected => {
-                    if let Some(idx) = ui_state.selected {
-                        sim.sim.set_unit_pos(idx, world);
-                    }
-                }
-                ClickMode::RouteSelected => {
-                    if let Some(idx) = ui_state.selected {
-                        sim.sim.push_waypoint(idx, world);
-                    }
-                }
                 ClickMode::PlaceBlueSensor => {
                     sim.placed += 1;
                     let id = format!("obs-p{}", sim.placed);
@@ -843,8 +996,7 @@ fn ui_panel(
                         .as_ref()
                         .and_then(|w| sim.data.libs.weapons.get(w).cloned());
                     sim.sim.add_unit(&id, Side::Red, world, stats, weapon);
-                    // Auto-select the new unit so it can be routed/moved immediately.
-                    ui_state.selected = Some(sim.sim.units().len() - 1);
+                    ui_state.selected = vec![Selected::Unit(sim.sim.units().len() - 1)];
                 }
                 ClickMode::PlaceRedJammer => {
                     sim.sim.add_jammer(Side::Red, world, 0.9, 900.0);
@@ -1049,14 +1201,16 @@ fn draw_markers(
         _ => 1.0,
     };
 
-    // Selection highlight: a yellow ring around the selected unit.
-    if let Some(idx) = ui_state.selected {
-        if let Some(u) = sim.sim.units().get(idx).filter(|u| u.alive()) {
-            gizmos.circle_2d(
-                Isometry2d::from_translation(u.pos),
-                18.0 * px,
-                Color::srgb(1.0, 0.9, 0.2),
-            );
+    // Selection highlight: a yellow ring around every selected ground asset.
+    for sel in &ui_state.selected {
+        if let Selected::Unit(idx) = sel {
+            if let Some(u) = sim.sim.units().get(*idx).filter(|u| u.alive()) {
+                gizmos.circle_2d(
+                    Isometry2d::from_translation(u.pos),
+                    18.0 * px,
+                    Color::srgb(1.0, 0.9, 0.2),
+                );
+            }
         }
     }
     let side_color = |side: Side| match side {
@@ -1157,7 +1311,7 @@ fn draw_markers(
         if a.detected {
             gizmos.circle_2d(Isometry2d::from_translation(a.pos), 15.0 * px, Color::WHITE);
         }
-        if ui_state.selected_air == Some(i) {
+        if ui_state.selected.contains(&Selected::Air(i)) {
             gizmos.circle_2d(
                 Isometry2d::from_translation(a.pos),
                 20.0 * px,

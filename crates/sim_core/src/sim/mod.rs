@@ -691,6 +691,25 @@ impl Sim {
         &mut self.air[air_idx]
     }
 
+    /// Remove a unit from the fight.
+    ///
+    /// A **tombstone**, not a `Vec::remove`: every entry in the detection, fire, strike
+    /// and air-defence logs holds an index into these lists, as does
+    /// `SensorState.carrier`, so shifting the vectors would silently repoint the whole
+    /// recorded history at the wrong assets. Setting `elements = 0` is exactly the state
+    /// a killed unit already reaches, so nothing downstream needs a new case.
+    pub fn remove_unit(&mut self, unit_idx: usize) {
+        self.units[unit_idx].elements = 0;
+        self.units[unit_idx].route.clear();
+    }
+
+    /// Remove an air asset, tombstoning it exactly as a shot-down airframe (see
+    /// [`Sim::remove_unit`] for why indices are never shifted). Its carried sensor stops
+    /// sensing with it, via [`Sim::sensor_active`].
+    pub fn remove_air(&mut self, air_idx: usize) {
+        self.air[air_idx].alive = false;
+    }
+
     /// Index of the nearest unit to `pos` within `max_dist_m`, or `None`.
     #[must_use]
     pub fn nearest_unit(&self, pos: Vec2, max_dist_m: f32) -> Option<usize> {

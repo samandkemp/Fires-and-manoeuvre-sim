@@ -78,4 +78,5 @@ pub const GATES: &[Gate] = &[
     Gate { id: "V51", property: "envelope and magazine gating", reference: "exactly zero engagements outside band/LOS/cue/magazine; channels capped", tests: &["v51_envelope_and_magazine_gating"] },
     Gate { id: "V52", property: "air-off identity and determinism", reference: "empty air phases draw no randomness (log bit-identical); same seed reproduces", tests: &["v52_air_off_is_a_zero_draw_identity", "v52_air_determinism"] },
     Gate { id: "V53", property: "terrain recipes and presets", reference: "recipe+seed reproduces bit-identically; each layer meets its own invariant (woodland fraction, ridge crest lift); layer order is significant; presets differ as their names claim", tests: &["v53_recipes_are_deterministic_and_layers_do_what_they_say", "v53_presets_expand_to_the_maps_they_name"] },
+    Gate { id: "V54", property: "asset removal preserves history", reference: "removal tombstones rather than shifting: every index already in an event log still resolves to the same asset", tests: &["v54_removal_tombstones_keep_logged_indices_valid"] },
 ];
