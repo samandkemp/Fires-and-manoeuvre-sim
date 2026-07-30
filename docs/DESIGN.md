@@ -80,6 +80,21 @@ requested `woods_fraction`; urban = seeded rectangular blocks (~200–500 m), ov
 woods. Real-DEM import is deliberately out of scope (decision: synthetic indefinitely)
 but the seam keeps it a clean later addition.
 
+**Composable recipes (2026-07-30).** `Flat` and `Hills` answer "give me a map"; they do
+not answer "give me *this* map". `TerrainSource::Layers` takes a **recipe** — a base
+surface plus ordered feature layers (`Ridge`, `Woodland`, `Urban`) — so a map can be
+described: rolling relief, a ridge through the middle, light urban. Each layer is a small
+deterministic op over `(elevation, terrain_type)` drawing from the one seeded stream, and
+**the written order is part of the contract**: layers apply in sequence, so urban over
+woodland leaves urban and the reverse does not. `TerrainSource::Preset` names common
+recipes (`rolling_hills`, `wooded_hills`, `light_urban`, `dense_urban`, `mountain_pass`,
+`flat_plain`), expanding to the same structure — sugar, not a second mechanism, so a
+preset can always be copied out and adjusted.
+
+`Flat` and `Hills` are deliberately **left as their own arms** rather than re-expressed as
+recipes: they consume the RNG in an order that existing scenarios and gates depend on, and
+rewriting them would silently change every seeded map. Gate: **V53**.
+
 ### 1.4 Line of sight  *(plan step 1.3 — the load-bearing primitive)*
 
 **Query.** `los(a, h_a, b, h_b) -> LosResult`, world positions `a, b` with actor
@@ -773,4 +788,5 @@ Stated rather than hidden, each a clean later addition and none a refactor:
 | V49 | missile time-to-kill | per-shot kill fraction = `ssk_p` within binomial CI; `E[shots] = 1/p` (geometric); `E[TTK] = t_f/p + (1/p − 1)t_r` |
 | V50 | cue latency & leakage | leakage rises monotonically in `cue_latency_s`, matches `exp(−λ_k·W_eff)`, and reaches 1 above the critical latency; warning lead `D` raises `L* = W + D − R` one second per second, and `D = 0` reproduces `W − L − R` |
 | V51 | envelope & magazine gating | exactly zero engagements outside the slant-range band, outside the altitude band, without LOS when `requires_los`, without a cue when `self_cue` is off, or with an empty magazine; concurrent engagements never exceed `channels` |
+| V53 | terrain recipes | a recipe + seed reproduces bit-identically; each layer meets its own invariant (woodland paints its `fraction`; a ridge lifts its crest line by `crest_m`); layer order is significant; presets differ as their names claim |
 | V52 | air-off identity | no air and no air defence ⇒ event log bit-identical to the pre-air build; with air, same `(scenario, seed)` reproduces exactly |

@@ -375,6 +375,12 @@ pub enum TerrainSource {
         #[serde(default = "default_urban_blocks")]
         urban_blocks: u32,
     },
+    /// A composable recipe: a base surface plus ordered feature layers, which is how a
+    /// map is *described* rather than picked from a menu (`docs/DESIGN.md` §1.3).
+    Layers(TerrainRecipe),
+    /// A named recipe — `{ preset = "mountain_pass" }` — expanded via
+    /// [`TerrainPreset::recipe`].
+    Preset(TerrainPreset),
 }
 
 fn default_woods_fraction() -> f32 {
@@ -467,6 +473,342 @@ impl TerrainSource {
                 }
 
                 TerrainGrid::from_layers(cell_size_m, elevation_m, terrain_type, params)
+            }
+            // `Flat` and `Hills` above are kept as their own arms rather than folded into
+            // recipes: they draw from the RNG in an order that scenarios and gates already
+            // depend on, and re-expressing them would silently change every seeded map.
+            TerrainSource::Layers(ref recipe) => {
+                recipe.build(cell_size_m, width, height, seed, params)
+            }
+            TerrainSource::Preset(preset) => {
+                preset
+                    .recipe()
+                    .build(cell_size_m, width, height, seed, params)
+            }
+        }
+    }
+}
+
+/// A composable terrain recipe: a base surface, then ordered feature layers
+/// (`docs/DESIGN.md` §1.3).
+///
+/// This is what lets a map be *described* — "rolling hills, a ridge through the middle,
+/// light urban" — rather than picked from a fixed menu. Layers are applied **in the order
+/// written**, each drawing from the one seeded RNG, so the listed order is part of the
+/// determinism contract: the same recipe and seed always give the same map, and swapping
+/// two layers is a different map (urban over woodland leaves urban).
+#[derive(Clone, Debug, serde::Deserialize)]
+pub struct TerrainRecipe {
+    /// The starting surface.
+    pub base: BaseRelief,
+    /// Features painted onto it, in order.
+    #[serde(default)]
+    pub apply: Vec<TerrainLayer>,
+}
+
+/// The surface a recipe starts from.
+#[derive(Clone, Copy, Debug, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum BaseRelief {
+    /// Dead flat at a constant elevation.
+    Flat {
+        /// The elevation, metres.
+        elevation_m: f32,
+    },
+    /// A sum of seeded Gaussian hills — the rolling-relief base.
+    Hills {
+        /// Number of hills.
+        count: u32,
+        /// Peak height of the tallest, metres.
+        max_height_m: f32,
+        /// Characteristic hill radius (σ), metres.
+        base_radius_m: f32,
+    },
+}
+
+/// One feature painted onto the base.
+#[derive(Clone, Copy, Debug, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum TerrainLayer {
+    /// A linear ridge across the whole map — "a mountain running through the middle".
+    ///
+    /// A Gaussian cross-section about a line through the map centre, so the crest is a
+    /// smooth barrier rather than a wall: elevation gains
+    /// `crest_m · exp(−d² / 2·(width_m/2)²)` for perpendicular distance `d`.
+    Ridge {
+        /// Direction the ridge line runs, degrees (0° = east, CCW).
+        bearing_deg: f32,
+        /// Height added at the crest, metres.
+        crest_m: f32,
+        /// Full width of the ridge, metres (the Gaussian's 2σ).
+        width_m: f32,
+        /// Perpendicular offset of the ridge line from the map centre, metres.
+        #[serde(default)]
+        offset_m: f32,
+    },
+    /// Woodland painted where a seeded field exceeds the quantile giving `fraction`.
+    Woodland {
+        /// Fraction of the map to paint as `Trees`, `[0, 1)`.
+        fraction: f32,
+        /// Characteristic patch size, metres — small means many copses, large means
+        /// a few big forests at the same total coverage.
+        #[serde(default = "default_patch_scale")]
+        patch_scale_m: f32,
+    },
+    /// Rectangular urban blocks, overriding whatever they land on.
+    Urban {
+        /// Number of blocks.
+        blocks: u32,
+        /// Smallest block edge, metres.
+        #[serde(default = "default_block_min")]
+        min_size_m: f32,
+        /// Largest block edge, metres.
+        #[serde(default = "default_block_max")]
+        max_size_m: f32,
+    },
+}
+
+fn default_patch_scale() -> f32 {
+    300.0
+}
+
+fn default_block_min() -> f32 {
+    200.0
+}
+
+fn default_block_max() -> f32 {
+    500.0
+}
+
+/// A named recipe, so the common maps can be asked for by name.
+///
+/// Each expands to a [`TerrainRecipe`] — sugar, not a separate mechanism, so a preset can
+/// always be copied out and adjusted.
+#[derive(Clone, Copy, Debug, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum TerrainPreset {
+    /// A featureless plain: the fixture for isolating a model from terrain.
+    FlatPlain,
+    /// Gentle relief and scattered copses — the default battlegroup map.
+    RollingHills,
+    /// Rolling relief under heavy forest: concealment everywhere, few sightlines.
+    WoodedHills,
+    /// A few small built-up areas on open ground.
+    LightUrban,
+    /// A dense built-up belt: hard LOS blocking and short engagement ranges.
+    DenseUrban,
+    /// A high ridge across the middle of an otherwise rolling map, with a wooded valley
+    /// either side — the map that makes defilade and masking the whole problem.
+    MountainPass,
+}
+
+impl TerrainPreset {
+    /// Expand to the recipe it stands for.
+    #[must_use]
+    pub fn recipe(self) -> TerrainRecipe {
+        let rolling = BaseRelief::Hills {
+            count: 24,
+            max_height_m: 120.0,
+            base_radius_m: 600.0,
+        };
+        match self {
+            Self::FlatPlain => TerrainRecipe {
+                base: BaseRelief::Flat { elevation_m: 0.0 },
+                apply: Vec::new(),
+            },
+            Self::RollingHills => TerrainRecipe {
+                base: rolling,
+                apply: vec![TerrainLayer::Woodland {
+                    fraction: 0.25,
+                    patch_scale_m: 300.0,
+                }],
+            },
+            Self::WoodedHills => TerrainRecipe {
+                base: rolling,
+                apply: vec![TerrainLayer::Woodland {
+                    fraction: 0.6,
+                    patch_scale_m: 500.0,
+                }],
+            },
+            Self::LightUrban => TerrainRecipe {
+                base: rolling,
+                apply: vec![
+                    TerrainLayer::Woodland {
+                        fraction: 0.2,
+                        patch_scale_m: 300.0,
+                    },
+                    TerrainLayer::Urban {
+                        blocks: 4,
+                        min_size_m: 200.0,
+                        max_size_m: 400.0,
+                    },
+                ],
+            },
+            Self::DenseUrban => TerrainRecipe {
+                base: BaseRelief::Hills {
+                    count: 10,
+                    max_height_m: 40.0,
+                    base_radius_m: 700.0,
+                },
+                apply: vec![
+                    TerrainLayer::Woodland {
+                        fraction: 0.08,
+                        patch_scale_m: 200.0,
+                    },
+                    TerrainLayer::Urban {
+                        blocks: 22,
+                        min_size_m: 250.0,
+                        max_size_m: 700.0,
+                    },
+                ],
+            },
+            Self::MountainPass => TerrainRecipe {
+                base: rolling,
+                apply: vec![
+                    TerrainLayer::Ridge {
+                        bearing_deg: 20.0,
+                        crest_m: 320.0,
+                        width_m: 1400.0,
+                        offset_m: 0.0,
+                    },
+                    TerrainLayer::Woodland {
+                        fraction: 0.35,
+                        patch_scale_m: 400.0,
+                    },
+                ],
+            },
+        }
+    }
+}
+
+impl TerrainRecipe {
+    /// Build the recipe: base surface, then each layer in the order written, all drawing
+    /// from one seeded stream.
+    fn build(
+        &self,
+        cell_size_m: f32,
+        width: usize,
+        height: usize,
+        seed: u64,
+        params: &TerrainParamsTable,
+    ) -> TerrainGrid {
+        let transform = GridTransform::new(cell_size_m, width, height);
+        let mut rng = SimRng::seed_from_u64(seed);
+
+        let mut elevation_m = match self.base {
+            BaseRelief::Flat { elevation_m } => Array2::from_elem((height, width), elevation_m),
+            BaseRelief::Hills {
+                count,
+                max_height_m,
+                base_radius_m,
+            } => {
+                let hills = place_hills(count, max_height_m, base_radius_m, &transform, &mut rng);
+                Array2::from_shape_fn((height, width), |(iy, ix)| {
+                    let p = transform.cell_center(ix, iy);
+                    hills.iter().map(|hill| hill.elevation_at(p)).sum()
+                })
+            }
+        };
+        let mut terrain_type = Array2::from_elem((height, width), TerrainType::Open);
+
+        for layer in &self.apply {
+            layer.apply(
+                &mut elevation_m,
+                &mut terrain_type,
+                &transform,
+                &mut rng,
+                width,
+                height,
+            );
+        }
+        TerrainGrid::from_layers(cell_size_m, elevation_m, terrain_type, params)
+    }
+}
+
+impl TerrainLayer {
+    fn apply(
+        &self,
+        elevation_m: &mut Array2<f32>,
+        terrain_type: &mut Array2<TerrainType>,
+        transform: &GridTransform,
+        rng: &mut SimRng,
+        width: usize,
+        height: usize,
+    ) {
+        let extent_x = width as f32 * transform.cell_size_m();
+        let extent_y = height as f32 * transform.cell_size_m();
+        let centre = Vec2::new(extent_x * 0.5, extent_y * 0.5);
+
+        match *self {
+            Self::Ridge {
+                bearing_deg,
+                crest_m,
+                width_m,
+                offset_m,
+            } => {
+                // Perpendicular distance to a line through `centre + offset·n` running
+                // along `bearing_deg`; `n` is the unit normal to that direction.
+                let dir = Vec2::from_angle(bearing_deg.to_radians());
+                let normal = Vec2::new(-dir.y, dir.x);
+                let sigma = (width_m * 0.5).max(1.0);
+                for iy in 0..height {
+                    for ix in 0..width {
+                        let p = transform.cell_center(ix, iy);
+                        let d = (p - centre).dot(normal) - offset_m;
+                        elevation_m[[iy, ix]] += crest_m * (-(d * d) / (2.0 * sigma * sigma)).exp();
+                    }
+                }
+            }
+            Self::Woodland {
+                fraction,
+                patch_scale_m,
+            } => {
+                // A second hill-sum field thresholded at the quantile that paints the
+                // requested fraction — patch_scale sets how clumped the result is.
+                let frac = fraction.clamp(0.0, 0.95);
+                if frac <= 0.0 {
+                    return;
+                }
+                let count = ((extent_x * extent_y) / (patch_scale_m * patch_scale_m)).max(1.0);
+                let field_hills =
+                    place_hills(count as u32, 1.0, patch_scale_m * 0.5, transform, rng);
+                let field = Array2::from_shape_fn((height, width), |(iy, ix)| {
+                    let p = transform.cell_center(ix, iy);
+                    field_hills
+                        .iter()
+                        .map(|hill| hill.elevation_at(p))
+                        .sum::<f32>()
+                });
+                let mut sorted: Vec<f32> = field.iter().copied().collect();
+                sorted.sort_by(f32::total_cmp);
+                let idx = ((1.0 - frac) * (sorted.len() - 1) as f32).round() as usize;
+                let threshold = sorted[idx];
+                for (t, &v) in terrain_type.iter_mut().zip(field.iter()) {
+                    if v > threshold {
+                        *t = TerrainType::Trees;
+                    }
+                }
+            }
+            Self::Urban {
+                blocks,
+                min_size_m,
+                max_size_m,
+            } => {
+                let (lo, hi) = (min_size_m.max(1.0), max_size_m.max(min_size_m + 1.0));
+                for _ in 0..blocks {
+                    let cx = rng.random_range(0.0..extent_x);
+                    let cy = rng.random_range(0.0..extent_y);
+                    let half_x = rng.random_range(lo..hi) * 0.5;
+                    let half_y = rng.random_range(lo..hi) * 0.5;
+                    for iy in 0..height {
+                        for ix in 0..width {
+                            let p = transform.cell_center(ix, iy);
+                            if (p.x - cx).abs() < half_x && (p.y - cy).abs() < half_y {
+                                terrain_type[[iy, ix]] = TerrainType::Urban;
+                            }
+                        }
+                    }
+                }
             }
         }
     }
