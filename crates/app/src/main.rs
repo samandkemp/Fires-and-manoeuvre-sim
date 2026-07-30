@@ -51,13 +51,15 @@ enum ClickMode {
 }
 
 /// A reset requested from the panel, applied after the egui closure releases the sim.
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 enum ResetKind {
     None,
-    /// Rebuild the sim fresh from the default scenario.
+    /// Rebuild the sim fresh from the currently loaded scenario.
     Scenario,
     /// Clear all placed assets, keeping the terrain.
     Clear,
+    /// Load a different scenario by name, rebuilding terrain and all assets.
+    Load(String),
 }
 
 /// Panel state: interaction mode, selected types, clock control.
@@ -96,6 +98,16 @@ struct Probe {
 #[derive(Resource, Default)]
 struct Overlay(Option<Entity>);
 
+/// The map's terrain sprite, so a scenario switch can re-texture it in place.
+#[derive(Component)]
+struct MapSprite;
+
+/// A scenario the panel has asked to load. Applied by [`apply_scenario_load`] rather than
+/// inline, because switching scenario re-textures the map and moves the camera — queries
+/// the egui panel cannot hold at the same time as the ones it already borrows.
+#[derive(Resource, Default)]
+struct PendingLoad(Option<String>);
+
 /// Eye height for the probe endpoints (metres).
 const PROBE_HEIGHT_M: f32 = 2.0;
 /// Exposure time for the Pd coverage overlay: colour shows P(detect by this long).
@@ -107,8 +119,12 @@ fn main() {
         .add_plugins(EguiPlugin::default())
         .add_plugins(PanCamPlugin)
         .init_resource::<Overlay>()
+        .init_resource::<PendingLoad>()
         .add_systems(Startup, setup)
-        .add_systems(Update, (advance_sim, draw_markers, draw_probe))
+        .add_systems(
+            Update,
+            (advance_sim, draw_markers, draw_probe, apply_scenario_load),
+        )
         .add_systems(EguiPrimaryContextPass, ui_panel);
 
     // Opt-in framebuffer capture: FIRES_SIM_SCREENSHOT=<path.png> saves one shot a few
@@ -120,8 +136,23 @@ fn main() {
     app.run();
 }
 
+/// The scenario to open: the first CLI argument, or `default`. A bare name resolves
+/// inside `scenarios/`; anything with a separator or a `.toml` suffix is taken as a path.
+fn requested_scenario() -> String {
+    std::env::args()
+        .nth(1)
+        .filter(|a| !a.starts_with('-'))
+        .unwrap_or_else(|| "default".to_owned())
+}
+
 fn setup(mut commands: Commands, mut images: ResMut<Assets<Image>>) {
-    let data = terrain_view::load_default().expect("default scenario should load");
+    let requested = requested_scenario();
+    let data = terrain_view::load_scenario(&requested).unwrap_or_else(|e| {
+        // A mistyped name should say so and list the alternatives, not panic opaquely.
+        eprintln!("could not load scenario '{requested}': {e}");
+        eprintln!("available: {}", terrain_view::list_scenarios().join(", "));
+        std::process::exit(2);
+    });
     let mut sim = Sim::new(&data.scenario, &data.libs, data.scenario.default_seed)
         .expect("default scenario should resolve");
 
@@ -140,6 +171,7 @@ fn setup(mut commands: Commands, mut images: ResMut<Assets<Image>>) {
             scale: Vec3::splat(cell),
             ..default()
         },
+        MapSprite,
     ));
 
     // Whole map in frame at startup; pancam takes over (left/middle drag — right-click
@@ -199,6 +231,71 @@ fn setup(mut commands: Commands, mut images: ResMut<Assets<Image>>) {
     });
 }
 
+/// Load a scenario the panel asked for: rebuild the sim, re-texture the map, and frame
+/// the new extent.
+///
+/// Separate from the panel because a scenario switch changes the *terrain*, so it must
+/// hold mutable access to the map sprite and the camera — queries the panel cannot take
+/// while it already borrows the camera immutably for its click handling.
+fn apply_scenario_load(
+    mut pending: ResMut<PendingLoad>,
+    mut sim: ResMut<SimRes>,
+    mut ui_state: ResMut<UiState>,
+    mut probe: ResMut<Probe>,
+    mut images: ResMut<Assets<Image>>,
+    mut map: Query<(&mut Sprite, &mut Transform), (With<MapSprite>, Without<Camera2d>)>,
+    mut camera: Query<(&mut Transform, &mut Projection), With<Camera2d>>,
+) {
+    let Some(name) = pending.0.take() else {
+        return;
+    };
+    let data = match terrain_view::load_scenario(&name) {
+        Ok(d) => d,
+        Err(e) => {
+            // A bad scenario must not take the app down mid-session — keep the old one.
+            error!("could not load scenario '{name}': {e}");
+            return;
+        }
+    };
+    let fresh = match Sim::new(&data.scenario, &data.libs, data.scenario.default_seed) {
+        Ok(s) => s,
+        Err(e) => {
+            error!("scenario '{name}' does not resolve: {e}");
+            return;
+        }
+    };
+
+    sim.sim = fresh;
+    sim.data = data;
+    sim.placed = 0;
+    ui_state.selected = None;
+    ui_state.selected_air = None;
+    ui_state.running = false;
+    probe.observer = None;
+
+    // Re-texture the map and reframe, exactly as `setup` does for the first scenario.
+    let terrain = sim.sim.terrain();
+    let cell = terrain.transform().cell_size_m();
+    let (extent_x, extent_y) = (
+        terrain.width() as f32 * cell,
+        terrain.height() as f32 * cell,
+    );
+    let centre = Vec3::new(extent_x / 2.0, extent_y / 2.0, 0.0);
+    let handle = images.add(terrain_view::terrain_image(terrain));
+    if let Ok((mut sprite, mut transform)) = map.single_mut() {
+        *sprite = Sprite::from_image(handle);
+        transform.translation = centre;
+        transform.scale = Vec3::splat(cell);
+    }
+    if let Ok((mut cam_tf, mut projection)) = camera.single_mut() {
+        cam_tf.translation = centre;
+        if let Projection::Orthographic(o) = &mut *projection {
+            o.scale = (extent_x / 1200.0).max(extent_y / 680.0).max(1.0);
+        }
+    }
+    info!("loaded scenario '{}'", sim.data.scenario_name);
+}
+
 /// Advance the sim clock: `ticks_per_frame` ticks of `dt_s` per rendered frame while
 /// running (1 tick/frame ≈ 60× real time at 60 fps).
 fn advance_sim(mut sim: ResMut<SimRes>, ui: Res<UiState>) {
@@ -222,6 +319,7 @@ fn ui_panel(
     mut ui_state: ResMut<UiState>,
     mut probe: ResMut<Probe>,
     mut overlay: ResMut<Overlay>,
+    mut pending_load: ResMut<PendingLoad>,
     mut commands: Commands,
     mut images: ResMut<Assets<Image>>,
     buttons: Res<ButtonInput<MouseButton>>,
@@ -260,6 +358,18 @@ fn ui_panel(
                     reset_pending = ResetKind::Clear;
                 }
             });
+            // Scenario picker: every *.toml in scenarios/ that parses as a scenario.
+            let current = sim.data.scenario_name.clone();
+            egui::ComboBox::from_label("scenario")
+                .selected_text(&current)
+                .show_ui(ui, |ui| {
+                    for name in &sim.data.available {
+                        if ui.selectable_label(*name == current, name).clicked() && *name != current
+                        {
+                            reset_pending = ResetKind::Load(name.clone());
+                        }
+                    }
+                });
 
             ui.separator();
             ui.label("Right-click on map:");
@@ -577,6 +687,12 @@ fn ui_panel(
             sim.placed = 0;
             ui_state.selected = None;
             ui_state.selected_air = None;
+            if let Some(e) = overlay.0.take() {
+                commands.entity(e).despawn();
+            }
+        }
+        ResetKind::Load(name) => {
+            pending_load.0 = Some(name);
             if let Some(e) = overlay.0.take() {
                 commands.entity(e).despawn();
             }

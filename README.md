@@ -59,11 +59,16 @@ independently testable and the simulation runnable headless.
 ## Quick start
 
 ```
-cargo run -p app              # open the tactical map window
+cargo run -p app              # open the tactical map window (the `default` scenario)
+cargo run -p app -- air_raid  # open a named scenario from scenarios/
 cargo test --workspace        # run the engine tests and the validation gates
 cargo run -p validation --release --bin validation_report   # the V-gate table
 cargo clippy --workspace      # lint
 ```
+
+Any `scenarios/*.toml` that parses as a scenario can be opened by bare name, or by path
+for one kept elsewhere; the in-app **scenario** picker lists them and switches without a
+restart. An unknown name prints the available ones rather than failing obscurely.
 
 The first build compiles the Bevy engine and takes several minutes; iterative rebuilds
 are seconds (a fast-linker and dependency-optimisation profile are already configured).

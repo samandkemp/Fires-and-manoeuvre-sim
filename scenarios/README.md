@@ -22,3 +22,30 @@ with those libraries empty, so a pre-Phase-9 set still works.
 
 The schema these parse into lives in `crates/sim_core/src/scenario.rs`; the conventions
 they follow are in `docs/DESIGN.md`.
+
+## Loading a scenario
+
+```
+cargo run -p app                       # the `default` scenario
+cargo run -p app -- air_raid           # by bare name, resolved in this directory
+cargo run -p app -- path/to/mine.toml  # or by path, for one kept elsewhere
+```
+
+The app's **scenario** picker (top of the control panel) lists every file here that parses
+as a scenario and switches between them without a restart — terrain, forces and all.
+
+Scenario files are told apart from the stat-block libraries by *being parseable as a
+scenario*, not by a hard-coded list of names: a scenario needs a `name` and a `[terrain]`
+block, which no library file has. Adding a new library never confuses the picker.
+
+## What a scenario contains
+
+| Block | Meaning |
+|---|---|
+| `name`, `default_seed` | Identity, and the seed used unless a run overrides it |
+| `[sim]` | Tick and epoch length, plus the suppression dials (DESIGN §3.3, §4.3) |
+| `[terrain]` | Grid size and cell size, and a `source` describing how to generate it |
+| `[[blue.*]]` / `[[red.*]]` | Placed `units`, `sensors`, `jammers`, `air`, `air_defence` |
+
+Every placed asset names a `type` from the libraries above, so a scenario says *where*
+things are and the libraries say *what they are*.

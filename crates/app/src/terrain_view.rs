@@ -1,5 +1,5 @@
-//! Turning a headless [`TerrainGrid`] into something on screen: load the default
-//! scenario, and rasterise the elevation into a hypsometric-tint × hillshade texture.
+//! Turning a headless [`TerrainGrid`] into something on screen: find and load
+//! scenarios, and rasterise the elevation into a hypsometric-tint × hillshade texture.
 //! This is the only place the app interprets terrain visually; the maths stays in
 //! `sim_core`.
 
@@ -9,25 +9,72 @@ use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat};
 use ndarray::Array2;
 use sim_core::scenario::{Libraries, Scenario, ScenarioError};
 use sim_core::terrain::{TerrainGrid, TerrainType};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 /// Everything the app loads from `scenarios/` at startup.
 pub struct LoadedData {
-    /// The default scenario.
+    /// The scenario currently loaded.
     pub scenario: Scenario,
     /// Every stat-block library the scenario resolves against.
     pub libs: Libraries,
+    /// Bare name of the loaded scenario (`"air_raid"`), for the title bar and picker.
+    pub scenario_name: String,
+    /// Every scenario found in `scenarios/`, for the in-app picker.
+    pub available: Vec<String>,
 }
 
-/// Load the default scenario and all stat-block libraries from the workspace
-/// `scenarios/` directory (resolved from this crate's manifest dir, so the working
-/// directory doesn't matter).
-pub fn load_default() -> Result<LoadedData, ScenarioError> {
-    let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../scenarios");
+/// The workspace `scenarios/` directory, resolved from this crate's manifest dir so the
+/// working directory doesn't matter.
+#[must_use]
+pub fn scenarios_dir() -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("../../scenarios")
+}
+
+/// Load a scenario by bare name (`"air_raid"`, resolved inside `scenarios/`) or by path,
+/// together with all stat-block libraries.
+///
+/// # Errors
+/// If the scenario or any library fails to read or parse.
+pub fn load_scenario(name: &str) -> Result<LoadedData, ScenarioError> {
+    let dir = scenarios_dir();
+    // A name with a separator or a `.toml` suffix is a path the caller means literally;
+    // anything else is a scenario living in `scenarios/`.
+    let path = if name.ends_with(".toml") || name.contains('/') || name.contains('\\') {
+        PathBuf::from(name)
+    } else {
+        dir.join(format!("{name}.toml"))
+    };
+    let scenario_name = path
+        .file_stem()
+        .map_or_else(|| name.to_owned(), |s| s.to_string_lossy().into_owned());
     Ok(LoadedData {
-        scenario: Scenario::load(&dir.join("default.toml"))?,
+        scenario: Scenario::load(&path)?,
         libs: Libraries::load_dir(&dir)?,
+        scenario_name,
+        available: list_scenarios(),
     })
+}
+
+/// Every scenario in `scenarios/`, by bare name, sorted.
+///
+/// The directory mixes scenarios with stat-block libraries (`units.toml` and friends),
+/// and rather than hard-code which names are which — a list that would rot the moment a
+/// library is added — a file counts as a scenario **if it parses as one**. `Scenario`
+/// requires a `name` and a `[terrain]` block, which no library has.
+#[must_use]
+pub fn list_scenarios() -> Vec<String> {
+    let Ok(entries) = std::fs::read_dir(scenarios_dir()) else {
+        return Vec::new();
+    };
+    let mut names: Vec<String> = entries
+        .filter_map(Result::ok)
+        .map(|e| e.path())
+        .filter(|p| p.extension().is_some_and(|e| e == "toml"))
+        .filter(|p| Scenario::load(p).is_ok())
+        .filter_map(|p| p.file_stem().map(|s| s.to_string_lossy().into_owned()))
+        .collect();
+    names.sort();
+    names
 }
 
 /// Rasterise a terrain grid into an RGBA image: a hypsometric colour ramp keyed on
