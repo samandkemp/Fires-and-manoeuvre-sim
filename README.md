@@ -84,7 +84,14 @@ cargo run -p experiments --bin risk_path       # least-risk pathing
 cargo run -p experiments --bin interdiction    # fires against a moving force
 cargo run -p experiments --release --bin air_raid # drone raid vs air defence
 cargo run -p experiments --release --bin bench # hot-path timings
+cargo run -p experiments --release --bin batch -- scenarios --seeds 50   # batch a folder
 ```
+
+`batch` runs every scenario in a folder for N seeds and writes `out/<scenario>.csv` (a row
+per seed) plus `out/summary.csv` (mean and standard error per scenario) — losses each
+side, detections, time to first contact, and for air: launched, downed, leakers, munitions
+released. The standard error sits beside every mean, because that is what says whether a
+difference between two scenarios means anything.
 
 ## Subsystems
 
