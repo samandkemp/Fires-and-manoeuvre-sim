@@ -10,6 +10,8 @@
 //! placeholder dial. The one exception is [`scenario_params`], used by the gates that
 //! test scenario loading itself.
 
+pub mod gates;
+
 use sim_core::scenario::load_terrain_params;
 use sim_core::terrain::{
     GridTransform, TerrainGrid, TerrainParams, TerrainParamsTable, TerrainSource, TerrainType,

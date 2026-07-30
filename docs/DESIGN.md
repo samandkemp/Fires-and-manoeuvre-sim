@@ -145,6 +145,14 @@ dials pending the Phase 5 movement TOML), not a baked isotropic raster.
 
 ### 1.6 Validation matrix (the contract — each test names its analytical reference)
 
+> **Where the gates live.** Every V-number below is enforced by a test in
+> `crates/validation` (the sole exception is V52's zero-draw half, a unit test inside
+> `sim_core` because it asserts a property of the RNG draw stream). The catalogue in
+> `crates/validation/src/gates.rs` mirrors these tables machine-readably, and
+> `crates/validation/tests/catalogue.rs` fails if the two ever disagree — a gate here with
+> no test, or a V-numbered test not listed here, is a build failure rather than a silent
+> gap. `cargo run -p validation --bin validation_report` prints the lot with its results.
+
 | # | Property | Analytical reference | Step |
 |---|----------|----------------------|------|
 | V1 | world↔cell round-trip | `world_to_cell(cell_center(c)) = c` for all cells | 1.1 |

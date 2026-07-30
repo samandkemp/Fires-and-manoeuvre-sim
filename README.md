@@ -48,6 +48,7 @@ concrete.
 | `crates/sim_core/` | Headless, deterministic OR engine — pure Rust, no Bevy. Where all the maths lives |
 | `crates/app/` | Bevy front-end: tactical map, pan/zoom, egui control panel |
 | `crates/experiments/` | Headless batch runs: sweeps, Monte Carlo, equilibria. Depends on `sim_core` only |
+| `crates/validation/` | The V1–V52 gates: every model checked against a closed form or a stated invariant |
 | `scenarios/` | TOML scenarios and the unit/weapon/sensor stat blocks |
 | `docs/DESIGN.md` | The deep spec: equations, state machines, and the validation gate for every model |
 | `SETUP.md` | Environment setup (Rust + Bevy + VSCode), written for a Rust beginner |
@@ -58,9 +59,10 @@ independently testable and the simulation runnable headless.
 ## Quick start
 
 ```
-cargo run -p app          # open the tactical map window
-cargo test -p sim_core    # run the headless OR-engine tests
-cargo clippy --workspace  # lint
+cargo run -p app              # open the tactical map window
+cargo test --workspace        # run the engine tests and the validation gates
+cargo run -p validation --release --bin validation_report   # the V-gate table
+cargo clippy --workspace      # lint
 ```
 
 The first build compiles the Bevy engine and takes several minutes; iterative rebuilds
@@ -75,6 +77,7 @@ cargo run -p experiments --bin duel_probe      # a direct-fire duel
 cargo run -p experiments --bin sensor_siting   # sensor placement value
 cargo run -p experiments --bin risk_path       # least-risk pathing
 cargo run -p experiments --bin interdiction    # fires against a moving force
+cargo run -p experiments --release --bin air_raid # drone raid vs air defence
 cargo run -p experiments --release --bin bench # hot-path timings
 ```
 
@@ -104,24 +107,35 @@ cargo run -p experiments --release --bin bench # hot-path timings
 ## Validation
 
 Every model ships with a test checking it against a closed-form result or a documented
-invariant — `cargo test -p sim_core` runs 59 of them. The gates are numbered V1–V43 and
-each is stated in `docs/DESIGN.md` next to the model it constrains, for example:
+invariant. The gates are numbered **V1–V52**, live in the `validation` crate, and each is
+stated in `docs/DESIGN.md` next to the model it constrains, for example:
 
 - **V14/V15** — the exponential detection law, Monte Carlo against `1 − e^(−λT)`
 - **V28** — the stationary distribution of the suppression Markov chain
 - **V30** — attrition against Lanchester's square law
 - **V40** — EW degrades detection, and EW switched off is exactly the identity
+- **V48/V49** — air-defence time-to-kill: exponential for a gun, geometric for a missile
+
+`cargo run -p validation --bin validation_report` prints every gate beside the closed form
+it is checked against, which is the question the project actually cares about — not "are
+the tests green" but *is the maths still right, and right against what*. A catalogue test
+keeps that table from drifting out of step with the suite in either direction.
 
 Rasterised layers (viewshed, coverage, belief, risk) are computed in parallel and remain
 deterministic: no result depends on thread scheduling.
 
 ## Status
 
-All eight roadmap phases are implemented: terrain and LOS, sensing, fires, suppression
+All eight roadmap phases are implemented — terrain and LOS, sensing, fires, suppression
 and attrition, movement as DP, game-theoretic decisions, visualisation, and electronic
-warfare with partial observability.
+warfare with partial observability — plus a ninth on air: drones as a third asset class
+(altitude above ground or sea level, turn-rate-limited flight, path or transit-then-orbit
+plans, reconnaissance and strike payloads) answered by air defence (gun or missile, each
+with its own time-to-kill law, gated by an engagement envelope and by the sensor-to-shooter
+timeline).
 
-Possible next steps: ingesting real-world elevation data, richer stat shapes, live
+Possible next steps: kill-chain modelling (autonomous target selection and sensor-to-shooter
+pairing), suppression of enemy air defence, ingesting real-world elevation data, live
 playback and state scrubbing, full-resolution interactive path-planning and belief
 (currently coarse for interactivity), further sensor modalities such as acoustic and
 EO/IR, and a dynamic stochastic game using DP value functions as payoffs.
