@@ -98,6 +98,22 @@ struct Probe {
 #[derive(Resource, Default)]
 struct Overlay(Option<Entity>);
 
+/// A sensor paired with its effective placement: (position, height above its own ground,
+/// facing). A carried sensor reports its airframe's, not its own mount height.
+type PlacedSensor<'a> = (&'a sim_core::sim::SensorState, (Vec2, f32, f32));
+
+/// The map sprite, excluded from the camera so the two `Transform`s can be held at once.
+type MapSpriteQuery<'w, 's> = Query<
+    'w,
+    's,
+    (&'static mut Sprite, &'static mut Transform),
+    (With<MapSprite>, Without<Camera2d>),
+>;
+
+/// The camera's transform and projection, for reframing on a scenario switch.
+type CameraFrameQuery<'w, 's> =
+    Query<'w, 's, (&'static mut Transform, &'static mut Projection), With<Camera2d>>;
+
 /// The map's terrain sprite, so a scenario switch can re-texture it in place.
 #[derive(Component)]
 struct MapSprite;
@@ -243,8 +259,8 @@ fn apply_scenario_load(
     mut ui_state: ResMut<UiState>,
     mut probe: ResMut<Probe>,
     mut images: ResMut<Assets<Image>>,
-    mut map: Query<(&mut Sprite, &mut Transform), (With<MapSprite>, Without<Camera2d>)>,
-    mut camera: Query<(&mut Transform, &mut Projection), With<Camera2d>>,
+    mut map: MapSpriteQuery,
+    mut camera: CameraFrameQuery,
 ) {
     let Some(name) = pending.0.take() else {
         return;
@@ -931,7 +947,7 @@ fn rebuild_belief_overlay(
 ) {
     // Live Blue sensors, each paired with its *effective* placement — a carried sensor
     // reports its airframe's position, altitude and heading (docs/DESIGN.md §9).
-    let blue: Vec<(&sim_core::sim::SensorState, (Vec2, f32, f32))> = sim
+    let blue: Vec<PlacedSensor> = sim
         .sim
         .sensors()
         .iter()
