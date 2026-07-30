@@ -723,6 +723,15 @@ a carried one reports the position, height and facing of the airframe carrying i
 and `mount_height_m`, so step 3 is unchanged — same draws, same order — whenever there is
 no air. Steps 4, 6 and 7 iterate empty lists in that case and draw nothing at all.
 
+A carried sensor's public `pos`/`facing_deg` are also **written back from the airframe each
+tick**, immediately after air movement. The airframe stays the source of truth and
+`sensor_view` is still the accessor that knows about altitude, but leaving the public
+fields frozen at the placement point made any consumer outside the detection loop — the
+app's coverage and belief overlays, the `duel_probe` diagnostic — plot a recce drone's
+sensor at its take-off position and ground mount height. `Sim::sensor_active` is the
+matching gate: a carried sensor dies with its airframe, so a shot-down drone must drop out
+of coverage rasters as well as out of the detection loop.
+
 Ground fires cannot accidentally engage air: target selection iterates the *unit* list, so
 the separation is structural rather than a gate that could be forgotten.
 `WeaponType.engages_air` (default false) exists as the opt-in seam for a future dual-role

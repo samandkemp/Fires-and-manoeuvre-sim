@@ -6,7 +6,7 @@
 
 use glam::Vec2;
 use sim_core::scenario::{Libraries, Scenario};
-use sim_core::sensing::detection_rate;
+use sim_core::sensing::{concealment_at, detection_rate_against};
 use sim_core::sim::{Side, Sim};
 use std::path::Path;
 
@@ -18,18 +18,32 @@ fn main() {
     let sim = Sim::new(&scenario, &libs, scenario.default_seed).expect("resolve scenario");
     let terrain = sim.terrain();
 
-    println!("=== pairwise geometry (blue sensors → red units) ===");
-    for s in sim.sensors().iter().filter(|s| s.side == Side::Blue) {
+    // Ranges are **slant** ranges throughout (docs/DESIGN.md §9.1) — the same convention
+    // the sim's gates use, so what this prints and what the sim decides cannot disagree.
+    println!("=== pairwise geometry (blue sensors → red units, slant ranges) ===");
+    for (i, s) in sim
+        .sensors()
+        .iter()
+        .enumerate()
+        .filter(|(i, s)| s.side == Side::Blue && sim.sensor_active(*i))
+    {
+        // A carried sensor sees from its airframe's position and altitude, not from its
+        // own `mount_height_m` — `sensor_view` is the accessor that knows the difference.
+        let (s_pos, s_height, s_facing) = sim.sensor_view(i);
         for u in sim.units().iter().filter(|u| u.side == Side::Red) {
-            let r = s.pos.distance(u.pos);
-            let l = sim_core::los::line_of_sight(
+            let r = sim_core::los::slant_range(terrain, s_pos, s_height, u.pos, u.stats.height_m);
+            let l = sim_core::los::line_of_sight(terrain, s_pos, s_height, u.pos, u.stats.height_m);
+            let lambda = detection_rate_against(
                 terrain,
-                s.pos,
-                s.stats.mount_height_m,
+                &s.stats,
+                s_pos,
+                s_height,
+                s_facing,
                 u.pos,
                 u.stats.height_m,
+                u.stats.signature_in(s.stats.modality),
+                concealment_at(terrain, u.pos),
             );
-            let lambda = detection_rate(terrain, &s.stats, s.pos, s.facing_deg, &u.stats, u.pos);
             println!(
                 "{:>10} -> {:<10} r={:>6.0}m  LOS={:<7} tau={:.2}  lambda={:.5}/s  {}",
                 s.id,
@@ -47,7 +61,7 @@ fn main() {
         }
     }
 
-    println!("\n=== blue shooters → red units (range / LOS / in weapon band) ===");
+    println!("\n=== blue shooters → red units (slant range / LOS / in weapon band) ===");
     for s in sim
         .units()
         .iter()
@@ -55,7 +69,8 @@ fn main() {
     {
         let w = s.weapon.as_ref().unwrap();
         for u in sim.units().iter().filter(|u| u.side == Side::Red) {
-            let r = s.pos.distance(u.pos);
+            // 2 m firing height, as `Sim`'s SHOOTER_HEIGHT_M.
+            let r = sim_core::los::slant_range(terrain, s.pos, 2.0, u.pos, u.stats.height_m);
             let clear = sim_core::los::visible(terrain, s.pos, 2.0, u.pos, u.stats.height_m);
             let in_band = r <= w.max_range_m && r >= w.min_range_m;
             println!(

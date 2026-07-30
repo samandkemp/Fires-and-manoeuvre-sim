@@ -733,12 +733,15 @@ fn rebuild_coverage_overlay(
     commands: &mut Commands,
     images: &mut Assets<Image>,
 ) {
-    let Some(sensor) = sim
+    // Most recently placed live Blue sensor. `sensor_active` matters now that a sensor
+    // can be carried: a shot-down recce drone's sensor must not paint coverage.
+    let Some((s_idx, sensor)) = sim
         .sim
         .sensors()
         .iter()
+        .enumerate()
         .rev()
-        .find(|s| s.side == Side::Blue)
+        .find(|(i, s)| s.side == Side::Blue && sim.sim.sensor_active(*i))
     else {
         return;
     };
@@ -753,16 +756,23 @@ fn rebuild_coverage_overlay(
     let terrain = sim.sim.terrain();
     let t0 = std::time::Instant::now();
     let (h, w) = (terrain.height(), terrain.width());
+    // Read the sensor's *effective* placement: for a carried sensor this is the
+    // airframe's position, altitude and heading, not the ground mount height.
+    let (s_pos, s_height, s_facing) = sim.sim.sensor_view(s_idx);
+    let signature = reference.signature_in(sensor.stats.modality);
     let mut pd = ndarray::Array2::<f32>::zeros((h, w));
     ndarray::Zip::indexed(&mut pd).par_for_each(|(iy, ix), v| {
         let target = terrain.transform().cell_center(ix, iy);
-        let lambda = sensing::detection_rate(
+        let lambda = sensing::detection_rate_against(
             terrain,
             &sensor.stats,
-            sensor.pos,
-            sensor.facing_deg,
-            reference,
+            s_pos,
+            s_height,
+            s_facing,
             target,
+            reference.height_m,
+            signature,
+            sensing::concealment_at(terrain, target),
         );
         *v = 1.0 - (-lambda * exposure_s).exp();
     });
@@ -803,11 +813,15 @@ fn rebuild_belief_overlay(
     commands: &mut Commands,
     images: &mut Assets<Image>,
 ) {
-    let blue: Vec<_> = sim
+    // Live Blue sensors, each paired with its *effective* placement — a carried sensor
+    // reports its airframe's position, altitude and heading (docs/DESIGN.md §9).
+    let blue: Vec<(&sim_core::sim::SensorState, (Vec2, f32, f32))> = sim
         .sim
         .sensors()
         .iter()
-        .filter(|s| s.side == Side::Blue)
+        .enumerate()
+        .filter(|(i, s)| s.side == Side::Blue && sim.sim.sensor_active(*i))
+        .map(|(i, s)| (s, sim.sim.sensor_view(i)))
         .collect();
     if blue.is_empty() {
         return;
@@ -843,11 +857,20 @@ fn rebuild_belief_overlay(
         let ix = (cx * STRIDE + STRIDE / 2).min(w - 1);
         let iy = (cy * STRIDE + STRIDE / 2).min(h - 1);
         let pos = terrain.transform().cell_center(ix, iy);
+        let concealment = sensing::concealment_at(terrain, pos);
         let mut p = 1.0f32;
-        for s in &blue {
-            let lambda =
-                sensing::detection_rate(terrain, &s.stats, s.pos, s.facing_deg, reference, pos)
-                    * sim_core::ew::jamming_factor(pos, &red_jammers);
+        for (s, (s_pos, s_height, s_facing)) in &blue {
+            let lambda = sensing::detection_rate_against(
+                terrain,
+                &s.stats,
+                *s_pos,
+                *s_height,
+                *s_facing,
+                pos,
+                reference.height_m,
+                reference.signature_in(s.stats.modality),
+                concealment,
+            ) * sim_core::ew::jamming_factor(pos, &red_jammers);
             p *= (-lambda * exposure_s).exp();
         }
         *v = p;

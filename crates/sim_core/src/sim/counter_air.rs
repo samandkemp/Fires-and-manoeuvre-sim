@@ -27,7 +27,7 @@ impl Sim {
             return;
         }
         for s_idx in 0..self.sensors.len() {
-            if !self.sensor_live(s_idx) {
+            if !self.sensor_active(s_idx) {
                 continue;
             }
             let view = self.sensor_view(s_idx);

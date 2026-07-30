@@ -81,11 +81,11 @@ pub struct SensorState {
     pub id: String,
     /// Owning side.
     pub side: Side,
-    /// World position, metres. Ignored when the sensor is carried — see
-    /// [`SensorState::carrier`].
+    /// World position, metres. For a carried sensor this is **kept in step with the
+    /// airframe** each tick (see [`SensorState::carrier`]), so reading it is always safe.
     pub pos: Vec2,
-    /// Facing, degrees (0° = east, CCW); only matters with a finite field of regard.
-    /// Ignored when carried: a carried sensor faces where its airframe is pointing.
+    /// Facing, degrees (0° = east, CCW); only matters with a finite field of regard. A
+    /// carried sensor faces where its airframe is pointing, synced each tick.
     pub facing_deg: f32,
     /// Resolved stat block.
     pub stats: SensorType,
@@ -518,6 +518,30 @@ impl Sim {
         }
     }
 
+    /// Write each carried sensor's position and facing back from its airframe.
+    ///
+    /// The airframe is the source of truth, and [`Sim::sensor_view`] reads through to it —
+    /// but `SensorState.pos` is a public field, and leaving it frozen at the placement
+    /// point made every consumer that reasonably reads `sensor.pos` (overlays, the
+    /// `duel_probe` experiment) silently plot a recce drone's sensor at its take-off
+    /// point. Syncing once per tick makes the obvious thing correct instead. Costs one
+    /// pass over the sensor list, draws no randomness, and does nothing at all when
+    /// nothing is carried.
+    fn sync_carried_sensors(&mut self) {
+        for s_idx in 0..self.sensors.len() {
+            let Some(carrier) = self.sensors[s_idx].carrier else {
+                continue;
+            };
+            let Some(air) = self.air.get(carrier) else {
+                continue;
+            };
+            let (pos, facing) = (air.pos, air.heading_deg);
+            let sensor = &mut self.sensors[s_idx];
+            sensor.pos = pos;
+            sensor.facing_deg = facing;
+        }
+    }
+
     /// One candidate (sensor, target) glimpse (`docs/DESIGN.md` §3.2): the rate, the EW
     /// modifier, and the single seeded draw. `true` means this tick detected the target.
     ///
@@ -555,8 +579,10 @@ impl Sim {
     }
 
     /// Is this sensor currently able to sense at all? A carried sensor dies with its
-    /// airframe.
-    fn sensor_live(&self, sensor_idx: usize) -> bool {
+    /// airframe — so a shot-down recce drone's sensor must be excluded from coverage and
+    /// belief rasters too, not just from the detection loop.
+    #[must_use]
+    pub fn sensor_active(&self, sensor_idx: usize) -> bool {
         match self.sensors[sensor_idx].carrier {
             Some(a) => self.air.get(a).is_some_and(|air| air.alive),
             None => true,
@@ -729,12 +755,13 @@ impl Sim {
         for a in &mut self.air {
             a.advance(dt);
         }
+        self.sync_carried_sensors();
 
         // 3. Sensing vs ground units. Unchanged draws and draw order from Phase 2:
         // `sensor_view` returns exactly the sensor's own position and mount height
         // unless it is carried, so a sim with no air is bit-identical here.
         for s_idx in 0..self.sensors.len() {
-            if !self.sensor_live(s_idx) {
+            if !self.sensor_active(s_idx) {
                 continue;
             }
             let view = self.sensor_view(s_idx);
@@ -1789,6 +1816,65 @@ mod tests {
         assert!(
             sim.air()[0].orbit_phase.is_some(),
             "and settle into its orbit"
+        );
+    }
+
+    // A carried sensor's *public* position field must track its airframe, and it must go
+    // inert when the airframe is shot down. Regression guard: consumers outside the
+    // detection loop (the app's coverage/belief overlays, the `duel_probe` experiment)
+    // read `SensorState.pos` directly, and a frozen value silently plotted a recce
+    // drone's coverage from its take-off point.
+    #[test]
+    fn carried_sensor_tracks_its_airframe() {
+        let libs = air_libs();
+        let text = r#"
+            name = "carry"
+            [sim]
+            dt_s = 1.0
+            [terrain]
+            cell_size_m = 10.0
+            width_cells = 250
+            height_cells = 200
+            [terrain.source.flat]
+            elevation_m = 0.0
+            [[blue.air]]
+            id = "recce-1"
+            type = "recce"
+            pos = [200.0, 1000.0]
+            altitude_m = 120.0
+            heading_deg = 0.0
+            waypoints = [[2000.0, 1000.0]]
+        "#;
+        let scn = Scenario::from_toml_str(text).unwrap();
+        let mut sim = Sim::new(&scn, &libs, 1).unwrap();
+        assert_eq!(sim.sensors()[0].carrier, Some(0));
+
+        let start = sim.sensors()[0].pos;
+        assert_eq!(start, Vec2::new(200.0, 1000.0), "placed with its airframe");
+        sim.run_until(20.0);
+
+        let air_pos = sim.air()[0].pos;
+        assert!(
+            air_pos.x > 900.0,
+            "sanity: the drone should have flown on (at {air_pos})"
+        );
+        assert_eq!(
+            sim.sensors()[0].pos,
+            air_pos,
+            "the carried sensor's position must follow the airframe, not stay at take-off"
+        );
+        assert_eq!(sim.sensors()[0].facing_deg, sim.air()[0].heading_deg);
+        // And the effective view reports the airframe's altitude, not the mount height.
+        let (view_pos, view_height, _) = sim.sensor_view(0);
+        assert_eq!(view_pos, air_pos);
+        assert_eq!(view_height, 120.0);
+        assert!(sim.sensor_active(0));
+
+        // Shot down ⇒ the sensor is inert, so it must not paint coverage either.
+        sim.air_mut(0).alive = false;
+        assert!(
+            !sim.sensor_active(0),
+            "a carried sensor dies with its airframe"
         );
     }
 
