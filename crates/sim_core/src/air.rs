@@ -454,8 +454,10 @@ pub fn wrap360(deg: f32) -> f32 {
     deg.rem_euclid(360.0)
 }
 
-/// Wrap an angle difference to `(-180, 180]`.
-fn wrap180(deg: f32) -> f32 {
+/// Wrap an angle difference to `(-180, 180]` — the signed short way round, which is what
+/// makes "how far off heading am I?" answerable without a sign convention argument.
+#[must_use]
+pub fn wrap180(deg: f32) -> f32 {
     let d = deg.rem_euclid(360.0);
     if d > 180.0 {
         d - 360.0

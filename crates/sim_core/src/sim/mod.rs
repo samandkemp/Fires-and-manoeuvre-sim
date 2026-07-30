@@ -1028,6 +1028,24 @@ impl Sim {
         self.dt_s
     }
 
+    /// Decision epochs resolved so far (`docs/DESIGN.md` §3.3). One per `epoch_s` of sim
+    /// time crossed, so it is the count of fires resolutions the run has performed.
+    #[must_use]
+    pub fn epochs_run(&self) -> u64 {
+        self.epochs_run
+    }
+
+    /// Force a unit's suppression state (`docs/DESIGN.md` §4.3).
+    ///
+    /// The suppression chain is normally driven by near-miss volume, but pinning a unit
+    /// directly is what lets a caller isolate the *effect* of a state from the process
+    /// that produces it — which is how V31 measures the fire-effectiveness multiplier and
+    /// V38 checks that a pinned unit halts. Also the hook a scenario script or the app
+    /// would use to set up a situation.
+    pub fn set_suppression(&mut self, unit_idx: usize, state: Suppression) {
+        self.units[unit_idx].suppression = state;
+    }
+
     /// The terrain the sim runs over.
     #[must_use]
     pub fn terrain(&self) -> &TerrainGrid {
@@ -1290,7 +1308,7 @@ mod tests {
             ..Libraries::with_terrain(terrain_params())
         };
         let mut sim = Sim::new(&scn, &libs, 0).unwrap();
-        sim.units[0].suppression = Suppression::Pinned;
+        sim.set_suppression(0, Suppression::Pinned);
         sim.run_until(30.0);
         assert_eq!(sim.units()[0].pos.x, 0.0, "a pinned unit must not move");
     }
@@ -1885,7 +1903,8 @@ mod tests {
         let mut sim = Sim::new(&scn, &libs, 3).unwrap();
         sim.run_until(35.0);
         assert_eq!(
-            sim.epochs_run, 3,
+            sim.epochs_run(),
+            3,
             "35 s at 10 s epochs = 3 boundaries crossed"
         );
     }
@@ -2149,9 +2168,9 @@ mod tests {
             let mut total = 0u32;
             for seed in 0..trials {
                 let mut sim = Sim::new(&scn, &libs, seed).unwrap();
-                sim.units[0].suppression = state;
+                sim.set_suppression(0, state);
                 sim.run_until(10.0); // one epoch
-                total += sim.units[1].initial_elements - sim.units[1].elements;
+                total += sim.units()[1].initial_elements - sim.units()[1].elements;
             }
             f64::from(total) / trials as f64
         };
