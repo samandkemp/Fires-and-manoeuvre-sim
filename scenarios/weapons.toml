@@ -22,3 +22,21 @@ max_range_m = 24000.0
 min_range_m = 2000.0
 cep_m = 90.0
 lethal_radius_m = 40.0
+
+# Air-delivered payloads (docs/DESIGN.md §9.3). Both are `indirect`: a released munition
+# resolves as an ordinary artillery round — CEP-sampled burst point, Carleton area damage
+# — so the maths is shared, only the accuracy differs. Guidance shows up as a small CEP.
+
+[guided_bomb]
+class = "indirect"
+rof_rounds_per_min = 60.0      # release is instantaneous; the limit is `munitions`
+max_range_m = 2000.0
+cep_m = 12.0                   # guided: an order of magnitude tighter than a howitzer
+lethal_radius_m = 45.0
+
+[fpv_warhead]
+class = "indirect"
+rof_rounds_per_min = 60.0
+max_range_m = 100.0
+cep_m = 3.0                    # flown onto the target by eye
+lethal_radius_m = 15.0         # small warhead: precise but not devastating

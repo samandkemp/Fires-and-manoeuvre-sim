@@ -7,28 +7,16 @@ use bevy::asset::RenderAssetUsages;
 use bevy::prelude::*;
 use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat};
 use ndarray::Array2;
-use sim_core::fires::WeaponType;
-use sim_core::scenario::{
-    load_sensor_types, load_terrain_params, load_unit_types, load_weapon_types, Scenario,
-    ScenarioError,
-};
-use sim_core::sensing::{SensorType, UnitType};
-use sim_core::terrain::{TerrainGrid, TerrainParamsTable, TerrainType};
-use std::collections::BTreeMap;
+use sim_core::scenario::{Libraries, Scenario, ScenarioError};
+use sim_core::terrain::{TerrainGrid, TerrainType};
 use std::path::Path;
 
 /// Everything the app loads from `scenarios/` at startup.
 pub struct LoadedData {
     /// The default scenario.
     pub scenario: Scenario,
-    /// Per-terrain-type dials.
-    pub terrain_params: TerrainParamsTable,
-    /// Sensor stat-block library.
-    pub sensor_types: BTreeMap<String, SensorType>,
-    /// Unit stat-block library.
-    pub unit_types: BTreeMap<String, UnitType>,
-    /// Weapon stat-block library.
-    pub weapon_types: BTreeMap<String, WeaponType>,
+    /// Every stat-block library the scenario resolves against.
+    pub libs: Libraries,
 }
 
 /// Load the default scenario and all stat-block libraries from the workspace
@@ -38,10 +26,7 @@ pub fn load_default() -> Result<LoadedData, ScenarioError> {
     let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../scenarios");
     Ok(LoadedData {
         scenario: Scenario::load(&dir.join("default.toml"))?,
-        terrain_params: load_terrain_params(&dir.join("terrain_types.toml"))?,
-        sensor_types: load_sensor_types(&dir.join("sensors.toml"))?,
-        unit_types: load_unit_types(&dir.join("units.toml"))?,
-        weapon_types: load_weapon_types(&dir.join("weapons.toml"))?,
+        libs: Libraries::load_dir(&dir)?,
     })
 }
 

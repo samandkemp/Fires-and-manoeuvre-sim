@@ -51,10 +51,38 @@ pub struct WeaponType {
     /// Indirect: Carleton lethal-radius scale `R_L`, metres.
     #[serde(default)]
     pub lethal_radius_m: f32,
+    /// May this weapon engage air targets (`docs/DESIGN.md` §9.6)? Dormant seam: air
+    /// defence is its own class, and ground target selection iterates only the unit
+    /// list, so a ground weapon structurally cannot pick a drone today. This is the
+    /// opt-in a future dual-role autocannon would flip.
+    #[serde(default)]
+    pub engages_air: bool,
 }
 
 fn one() -> f32 {
     1.0
+}
+
+// Manual `Default` (not derived), for the same reason `UnitType` has one: the derive
+// would zero `p_kill_given_hit` and `moving_target_penalty`, silently making any
+// code-built weapon incapable of killing anything. This keeps a
+// `WeaponType { .., ..Default::default() }` literal agreeing with what the TOML defaults
+// would have given.
+impl Default for WeaponType {
+    fn default() -> Self {
+        Self {
+            class: WeaponClass::Direct,
+            rof_rounds_per_min: 0.0,
+            max_range_m: 0.0,
+            min_range_m: 0.0,
+            dispersion_mrad: 0.0,
+            p_kill_given_hit: one(),
+            moving_target_penalty: one(),
+            cep_m: 0.0,
+            lethal_radius_m: 0.0,
+            engages_air: false,
+        }
+    }
 }
 
 /// Error function, Abramowitz & Stegun 7.1.26 (max abs error ~1.5e-7). std has no `erf`.

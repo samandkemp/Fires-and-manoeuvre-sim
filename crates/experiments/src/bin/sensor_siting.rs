@@ -7,9 +7,7 @@
 //! Run: `cargo run -p experiments --bin sensor_siting -- [sensor_type] [--release for speed]`
 
 use glam::Vec2;
-use sim_core::scenario::{
-    load_sensor_types, load_terrain_params, load_unit_types, load_weapon_types, Scenario,
-};
+use sim_core::scenario::{Libraries, Scenario};
 use sim_core::sensing::{detection_rate, SensorType, UnitType};
 use sim_core::sim::{Side, Sim};
 use std::path::Path;
@@ -21,21 +19,10 @@ fn main() {
 
     let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../scenarios");
     let scenario = Scenario::load(&dir.join("default.toml")).unwrap();
-    let terrain_params = load_terrain_params(&dir.join("terrain_types.toml")).unwrap();
-    let sensor_types = load_sensor_types(&dir.join("sensors.toml")).unwrap();
-    let unit_types = load_unit_types(&dir.join("units.toml")).unwrap();
-    let weapon_types = load_weapon_types(&dir.join("weapons.toml")).unwrap();
-    let sensor = sensor_types.get(&sensor_id).expect("unknown sensor type");
+    let libs = Libraries::load_dir(&dir).unwrap();
+    let sensor = libs.sensors.get(&sensor_id).expect("unknown sensor type");
 
-    let sim = Sim::new(
-        &scenario,
-        &terrain_params,
-        &sensor_types,
-        &unit_types,
-        &weapon_types,
-        scenario.default_seed,
-    )
-    .unwrap();
+    let sim = Sim::new(&scenario, &libs, scenario.default_seed).unwrap();
     let terrain = sim.terrain();
     let reds: Vec<(&UnitType, Vec2)> = sim
         .units()

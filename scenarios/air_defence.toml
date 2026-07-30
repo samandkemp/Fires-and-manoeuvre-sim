@@ -1,0 +1,65 @@
+# Air-defence stat blocks. Abstract placeholder dials — see docs/DESIGN.md §9.4–§9.5.
+#
+# Two engagement models, because time-to-kill is distributed differently in each:
+#   gun      — a Poisson kill process while the target is in envelope: TTK ~ Exp(λ),
+#              E[TTK] = 1/kill_rate_per_s. Fast, but only close in and low down.
+#   missile  — shoot-look-shoot: flight time = slant_range / missile_speed_m_s, then a
+#              Bernoulli(ssk_p) resolution, then reload_s on a miss.
+#              E[TTK] = t_f/p + (1/p − 1)·reload_s. Long reach, but slow and few rounds.
+#
+# The levers that decide whether the envelope ever opens (DESIGN §9.5):
+#   sensor         — an organic radar lets the battery cue itself (latency 0). Omit it
+#                    and the battery can only fire on tracks handed to it over the net.
+#   cue_latency_s  — the comms Tx/Rx delay paid on any externally cued track. An
+#                    instance may also set `self_cue = false` to force this even on a
+#                    battery that has its own radar.
+#   reaction_time_s— system/crew delay once a track is actionable.
+#   magazine       — interceptors (missile) or burst allocations (gun); 0 = unlimited.
+#   channels       — simultaneous engagements: what a raid saturates.
+
+[ciws]
+max_range_m = 2000.0
+min_alt_m = 0.0
+max_alt_m = 1500.0
+mount_height_m = 3.0
+requires_los = true
+reaction_time_s = 2.0
+cue_latency_s = 4.0
+magazine = 30
+channels = 1
+sensor = "ciws_radar"          # self-cueing: its own radar closes the loop
+[ciws.engagement.gun]
+kill_rate_per_s = 0.9          # E[TTK] ≈ 1.1 s once it is firing
+
+[sam]
+min_range_m = 500.0            # inner dead zone
+max_range_m = 12000.0
+min_alt_m = 100.0
+max_alt_m = 6000.0
+mount_height_m = 4.0
+requires_los = true
+reaction_time_s = 5.0
+cue_latency_s = 12.0
+magazine = 8
+channels = 2
+# No organic sensor: this battery is deliberately dependent on the cueing chain, so it
+# always pays cue_latency_s. That is the lever to sweep in the air_raid experiment.
+[sam.engagement.missile]
+ssk_p = 0.65
+missile_speed_m_s = 700.0
+reload_s = 8.0                 # E[TTK] at 6 km ≈ 13.2 s + 4.3 s = 17.5 s
+
+[gun_truck]
+# A short-range self-defence gun with no radar at all: cheap, quick to react, but blind
+# without a cue — the clearest illustration of the sensor-to-shooter timeline.
+max_range_m = 1200.0
+min_alt_m = 0.0
+max_alt_m = 800.0
+mount_height_m = 2.5
+requires_los = true
+reaction_time_s = 1.0
+cue_latency_s = 6.0
+magazine = 0                   # unlimited ammunition
+channels = 1
+[gun_truck.engagement.gun]
+kill_rate_per_s = 0.5

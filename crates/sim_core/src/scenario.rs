@@ -1,6 +1,8 @@
 //! Scenario loading: TOML → structs → a deterministic [`TerrainGrid`]. The only I/O the
 //! engine performs. See `docs/DESIGN.md` §1.
 
+use crate::air::{AirType, AltitudeRef, Terminal};
+use crate::air_defence::AirDefenceType;
 use crate::fires::WeaponType;
 use crate::sensing::{SensorType, UnitType};
 use crate::terrain::{TerrainGrid, TerrainParamsTable, TerrainSource};
@@ -122,6 +124,81 @@ pub struct Force {
     /// Placed jammers (protect this side's units from enemy detection).
     #[serde(default)]
     pub jammers: Vec<JammerInstance>,
+    /// Placed air assets — drones (`docs/DESIGN.md` §9).
+    #[serde(default)]
+    pub air: Vec<AirInstance>,
+    /// Placed air-defence batteries (`docs/DESIGN.md` §9.4).
+    #[serde(default)]
+    pub air_defence: Vec<AirDefenceInstance>,
+}
+
+/// A placed air asset: a type id from `air.toml` plus where it is, how it is flying, and
+/// what (if anything) it has been sent to attack.
+#[derive(Debug, Clone, serde::Deserialize)]
+pub struct AirInstance {
+    /// Unique-in-scenario id.
+    pub id: String,
+    /// Key into the air-type library.
+    #[serde(rename = "type")]
+    pub type_id: String,
+    /// World position, metres `[x, y]`.
+    pub pos: [f32; 2],
+    /// Altitude, metres, in the frame given by `altitude_ref`.
+    #[serde(default)]
+    pub altitude_m: f32,
+    /// Is `altitude_m` above ground (`agl`, the default) or above sea level (`amsl`)?
+    #[serde(default)]
+    pub altitude_ref: AltitudeRef,
+    /// Initial heading, degrees (0° = east, CCW).
+    #[serde(default)]
+    pub heading_deg: f32,
+    /// Speed override, metres/second; omitted uses the type's cruise speed.
+    #[serde(default)]
+    pub speed_m_s: Option<f32>,
+    /// Flight-plan waypoints as world points.
+    #[serde(default)]
+    pub waypoints: Vec<[f32; 2]>,
+    /// What to do at the final waypoint: `"hold"` (default) or
+    /// `{ orbit = { radius_m = .., clockwise = .. } }`.
+    #[serde(default)]
+    pub terminal: Terminal,
+    /// Assigned strike target: `{ unit = "id" }` or `{ point = [x, y] }`. Omitted means
+    /// the aim point is the final waypoint (`docs/DESIGN.md` §9.3).
+    #[serde(default)]
+    pub target: Option<TargetConfig>,
+}
+
+/// A strike drone's assigned target, in scenario form (the runtime form is
+/// [`crate::air::TargetSpec`], which carries a `Vec2`).
+#[derive(Debug, Clone, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum TargetConfig {
+    /// A named unit; the aim point tracks it as it moves.
+    Unit(String),
+    /// A fixed ground point `[x, y]`.
+    Point([f32; 2]),
+}
+
+/// A placed air-defence battery: a type id from `air_defence.toml` plus its position and
+/// whether its organic sensor is switched on.
+#[derive(Debug, Clone, serde::Deserialize)]
+pub struct AirDefenceInstance {
+    /// Unique-in-scenario id.
+    pub id: String,
+    /// Key into the air-defence type library.
+    #[serde(rename = "type")]
+    pub type_id: String,
+    /// World position, metres `[x, y]`.
+    pub pos: [f32; 2],
+    /// Use the battery's organic sensor? Setting this `false` forces the battery onto
+    /// the external cueing chain, so it always pays `cue_latency_s` (§9.5) — the lever
+    /// for studying cued-from-elsewhere air defence.
+    #[serde(default = "default_self_cue")]
+    pub self_cue: bool,
+}
+
+fn default_self_cue() -> bool {
+    true
 }
 
 /// A placed jammer (`docs/DESIGN.md` §8): position + degradation dials.
@@ -283,6 +360,103 @@ pub fn load_weapon_types(path: &Path) -> Result<BTreeMap<String, WeaponType>, Sc
     Ok(toml::from_str(&text)?)
 }
 
+/// Load the air-type library (`scenarios/air.toml`).
+///
+/// # Errors
+/// As [`Scenario::load`].
+pub fn load_air_types(path: &Path) -> Result<BTreeMap<String, AirType>, ScenarioError> {
+    let text = std::fs::read_to_string(path).map_err(|source| ScenarioError::Io {
+        path: path.to_path_buf(),
+        source,
+    })?;
+    Ok(toml::from_str(&text)?)
+}
+
+/// Load the air-defence type library (`scenarios/air_defence.toml`).
+///
+/// # Errors
+/// As [`Scenario::load`].
+pub fn load_air_defence_types(
+    path: &Path,
+) -> Result<BTreeMap<String, AirDefenceType>, ScenarioError> {
+    let text = std::fs::read_to_string(path).map_err(|source| ScenarioError::Io {
+        path: path.to_path_buf(),
+        source,
+    })?;
+    Ok(toml::from_str(&text)?)
+}
+
+/// Every stat-block library a scenario resolves its instances against.
+///
+/// Bundled into one struct rather than passed as a growing list of positional maps:
+/// [`crate::sim::Sim::new`] takes `(scenario, libraries, seed)` and stays that way as new
+/// asset classes arrive.
+#[derive(Debug, Clone)]
+pub struct Libraries {
+    /// Per-terrain-type dials.
+    pub terrain_params: TerrainParamsTable,
+    /// Sensor stat blocks (`sensors.toml`).
+    pub sensors: BTreeMap<String, SensorType>,
+    /// Unit stat blocks (`units.toml`).
+    pub units: BTreeMap<String, UnitType>,
+    /// Weapon stat blocks (`weapons.toml`).
+    pub weapons: BTreeMap<String, WeaponType>,
+    /// Air stat blocks (`air.toml`).
+    pub air: BTreeMap<String, AirType>,
+    /// Air-defence stat blocks (`air_defence.toml`).
+    pub air_defence: BTreeMap<String, AirDefenceType>,
+}
+
+impl Libraries {
+    /// Terrain dials with every stat-block library empty — the base for tests that
+    /// supply only the libraries they exercise:
+    /// `Libraries { units, ..Libraries::with_terrain(params) }`.
+    #[must_use]
+    pub fn with_terrain(terrain_params: TerrainParamsTable) -> Self {
+        Self {
+            terrain_params,
+            sensors: BTreeMap::new(),
+            units: BTreeMap::new(),
+            weapons: BTreeMap::new(),
+            air: BTreeMap::new(),
+            air_defence: BTreeMap::new(),
+        }
+    }
+
+    /// Load every library from a `scenarios/`-shaped directory. The air and air-defence
+    /// libraries are optional: a directory without them loads as empty maps, so
+    /// pre-Phase-9 scenario sets still work.
+    ///
+    /// # Errors
+    /// As [`Scenario::load`], for any library that exists but fails to parse.
+    pub fn load_dir(dir: &Path) -> Result<Self, ScenarioError> {
+        Ok(Self {
+            terrain_params: load_terrain_params(&dir.join("terrain_types.toml"))?,
+            sensors: load_sensor_types(&dir.join("sensors.toml"))?,
+            units: load_unit_types(&dir.join("units.toml"))?,
+            weapons: load_weapon_types(&dir.join("weapons.toml"))?,
+            air: load_optional(&dir.join("air.toml"), load_air_types)?,
+            air_defence: load_optional(&dir.join("air_defence.toml"), load_air_defence_types)?,
+        })
+    }
+}
+
+/// Load a library only if the file is there, else an empty map.
+///
+/// A generic `fn` rather than a closure: a closure would be monomorphised to the first
+/// element type it is called with, so a second call for a different library would not
+/// type-check.
+fn load_optional<T>(
+    path: &Path,
+    load: fn(&Path) -> Result<BTreeMap<String, T>, ScenarioError>,
+) -> Result<BTreeMap<String, T>, ScenarioError> {
+    if path.exists() {
+        load(path)
+    } else {
+        Ok(BTreeMap::new())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -343,6 +517,59 @@ mod tests {
         let params = load_terrain_params(&scenario_path("terrain_types.toml")).unwrap();
         let g = scn.build_terrain(&params, scn.default_seed);
         assert!(g.elevation().iter().all(|&z| z == 100.0));
+    }
+
+    // Every scenario shipped in `scenarios/` must parse *and* resolve every instance
+    // against the libraries — the gate that catches a typo'd type id or a schema drift in
+    // air.toml / air_defence.toml, which otherwise only shows up when the app won't start.
+    #[test]
+    fn shipped_scenarios_load_and_resolve() {
+        let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../scenarios");
+        let libs = Libraries::load_dir(&dir).expect("libraries should load");
+        assert!(
+            !libs.air.is_empty() && !libs.air_defence.is_empty(),
+            "the air libraries should be present"
+        );
+
+        for name in ["default.toml", "flat_range.toml", "air_raid.toml"] {
+            let scn = Scenario::load(&dir.join(name))
+                .unwrap_or_else(|e| panic!("{name} should load: {e}"));
+            let sim = crate::sim::Sim::new(&scn, &libs, scn.default_seed)
+                .unwrap_or_else(|e| panic!("{name} should resolve: {e}"));
+            // A resolved air asset must have picked up whatever its type declared.
+            for a in sim.air() {
+                assert!(
+                    a.sensor.is_some() || a.payload.is_some(),
+                    "{name}: air asset '{}' carries neither sensor nor payload",
+                    a.id
+                );
+                assert!(
+                    a.alive && a.speed_m_s > 0.0,
+                    "{name}: '{}' cannot fly",
+                    a.id
+                );
+            }
+        }
+    }
+
+    // The air raid scenario is the counter-air demo: it must actually produce a fight.
+    #[test]
+    fn air_raid_scenario_produces_a_counter_air_fight() {
+        let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../scenarios");
+        let libs = Libraries::load_dir(&dir).unwrap();
+        let scn = Scenario::load(&dir.join("air_raid.toml")).unwrap();
+        let mut sim = crate::sim::Sim::new(&scn, &libs, scn.default_seed).unwrap();
+        assert_eq!(sim.air().len(), 4);
+        assert_eq!(sim.air_defence().len(), 2);
+        sim.run_until(400.0);
+        assert!(
+            !sim.air_events().is_empty(),
+            "Blue should detect the inbound raid"
+        );
+        assert!(
+            !sim.air_defence_events().is_empty(),
+            "and the defences should engage it"
+        );
     }
 
     #[test]

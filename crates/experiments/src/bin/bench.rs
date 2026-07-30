@@ -73,4 +73,49 @@ fn main() {
             t.elapsed()
         );
     }
+
+    // Slant range (docs/DESIGN.md §9.1): the cost of the convention, and how far it
+    // actually moves the answer on relief — the number behind "no re-baseline needed".
+    let mut acc = 0.0f32;
+    let t = Instant::now();
+    for _ in 0..n {
+        let a = Vec2::new(rnd() * 9900.0, rnd() * 9900.0);
+        let b = Vec2::new(rnd() * 9900.0, rnd() * 9900.0);
+        acc += los::slant_range(&terrain, a, 2.0, b, 2.0);
+    }
+    let el = t.elapsed();
+    println!(
+        "slant_range {n} queries    : {:>8.1?}  = {:>6.3} us/query   (acc {acc:.0})",
+        el,
+        el.as_secs_f64() * 1e6 / n as f64
+    );
+
+    // How much does slant differ from horizontal on this map? Ground-to-ground first
+    // (the existing gates), then against an airborne endpoint (what Phase 9 needed).
+    let report = |label: &str, h_b: f32, samples: u32, rnd: &mut dyn FnMut() -> f32| {
+        let (mut worst, mut worst_rel, mut sum_rel) = (0.0f32, 0.0f32, 0.0f64);
+        for _ in 0..samples {
+            let a = Vec2::new(rnd() * 9900.0, rnd() * 9900.0);
+            let b = Vec2::new(rnd() * 9900.0, rnd() * 9900.0);
+            let horizontal = a.distance(b);
+            if horizontal < 1.0 {
+                continue;
+            }
+            let slant = los::slant_range(&terrain, a, 2.0, b, h_b);
+            let delta = slant - horizontal;
+            let rel = delta / horizontal;
+            worst = worst.max(delta);
+            worst_rel = worst_rel.max(rel);
+            sum_rel += f64::from(rel);
+        }
+        println!(
+            "  {label:<28}: mean +{:.4}%  worst +{:.2}% ({:.0} m)",
+            sum_rel / f64::from(samples) * 100.0,
+            worst_rel * 100.0,
+            worst
+        );
+    };
+    println!("slant vs horizontal range on 120 m relief:");
+    report("ground-ground (h=2 m)", 2.0, 20_000, &mut rnd);
+    report("ground-air    (h=400 m)", 400.0, 20_000, &mut rnd);
 }

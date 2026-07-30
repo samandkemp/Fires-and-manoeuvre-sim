@@ -1,0 +1,47 @@
+# Air asset stat blocks. Abstract placeholder dials — see docs/DESIGN.md §9.
+#
+# `sensor` (optional) makes the airframe a recce platform: the id keys into sensors.toml
+# and the sensor rides the airframe, seeing from its altitude and facing its heading.
+# `payload` (optional) makes it a striker: an `indirect` weapon from weapons.toml, whose
+# CEP and lethal radius do the damage exactly as artillery does (DESIGN §9.3).
+# `munitions` + `expendable` span the spectrum: a reusable carrier drops several bombs
+# and flies on; a one-way attack munition carries one and dies with it.
+#
+# `max_turn_rate_deg_s` implies a minimum turn radius v/ω — small quadcopters turn on a
+# pin, larger fixed-wing airframes carve wide arcs, which is what makes an orbit legible.
+
+[recce_uas]
+height_m = 1.2
+silhouette_width_m = 3.0
+cruise_speed_m_s = 30.0
+max_turn_rate_deg_s = 12.0     # r_min ≈ 143 m
+endurance_s = 3600.0
+sensor = "uas_optical"
+[recce_uas.signature]
+optical = 0.25                 # small and high: hard to see, but not invisible
+
+[strike_uas]
+height_m = 1.5
+silhouette_width_m = 4.0
+cruise_speed_m_s = 45.0
+max_turn_rate_deg_s = 10.0     # r_min ≈ 258 m
+endurance_s = 2400.0
+payload = "guided_bomb"
+munitions = 2
+expendable = false             # a carrier: releases and flies on
+release_range_m = 1200.0       # glide release, well outside a CIWS envelope
+[strike_uas.signature]
+optical = 0.35
+
+[fpv]
+height_m = 0.4
+silhouette_width_m = 0.5
+cruise_speed_m_s = 30.0
+max_turn_rate_deg_s = 90.0     # r_min ≈ 19 m — turns on a pin
+endurance_s = 900.0
+payload = "fpv_warhead"
+munitions = 1
+expendable = true              # one-way attack munition
+release_range_m = 15.0         # flies into the target
+[fpv.signature]
+optical = 0.12                 # very hard to see, very short legs

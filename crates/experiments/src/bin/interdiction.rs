@@ -64,12 +64,9 @@ fn main() {
         class: WeaponClass::Indirect,
         rof_rounds_per_min: 12.0,
         max_range_m: 4000.0,
-        min_range_m: 0.0,
-        dispersion_mrad: 0.0,
-        p_kill_given_hit: 1.0,
-        moving_target_penalty: 1.0,
         cep_m: 50.0,
         lethal_radius_m: 35.0,
+        ..Default::default()
     };
     let red_unit = UnitType {
         height_m: 2.8,
@@ -94,15 +91,8 @@ fn main() {
         .collect();
 
     // Build the sim once (terrain-only), then reset + repopulate per battle.
-    let mut sim = Sim::new(
-        &scn,
-        &terrain_params,
-        &BTreeMap::new(),
-        &BTreeMap::new(),
-        &BTreeMap::new(),
-        1,
-    )
-    .unwrap();
+    let libs = sim_core::scenario::Libraries::with_terrain(terrain_params);
+    let mut sim = Sim::new(&scn, &libs, 1).unwrap();
 
     let (nb, nr) = (blue_sites.len(), red_routes.len());
     let mut payoff = Array2::<f32>::zeros((nb, nr));

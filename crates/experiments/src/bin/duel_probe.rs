@@ -5,9 +5,7 @@
 //! Run: `cargo run -p experiments --bin duel_probe`
 
 use glam::Vec2;
-use sim_core::scenario::{
-    load_sensor_types, load_terrain_params, load_unit_types, load_weapon_types, Scenario,
-};
+use sim_core::scenario::{Libraries, Scenario};
 use sim_core::sensing::detection_rate;
 use sim_core::sim::{Side, Sim};
 use std::path::Path;
@@ -15,20 +13,9 @@ use std::path::Path;
 fn main() {
     let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../scenarios");
     let scenario = Scenario::load(&dir.join("default.toml")).expect("load default");
-    let terrain_params = load_terrain_params(&dir.join("terrain_types.toml")).unwrap();
-    let sensor_types = load_sensor_types(&dir.join("sensors.toml")).unwrap();
-    let unit_types = load_unit_types(&dir.join("units.toml")).unwrap();
-    let weapon_types = load_weapon_types(&dir.join("weapons.toml")).unwrap();
+    let libs = Libraries::load_dir(&dir).unwrap();
 
-    let sim = Sim::new(
-        &scenario,
-        &terrain_params,
-        &sensor_types,
-        &unit_types,
-        &weapon_types,
-        scenario.default_seed,
-    )
-    .expect("resolve scenario");
+    let sim = Sim::new(&scenario, &libs, scenario.default_seed).expect("resolve scenario");
     let terrain = sim.terrain();
 
     println!("=== pairwise geometry (blue sensors → red units) ===");
@@ -83,15 +70,7 @@ fn main() {
     }
 
     // Run 10 minutes of sim and report detections.
-    let mut sim = Sim::new(
-        &scenario,
-        &terrain_params,
-        &sensor_types,
-        &unit_types,
-        &weapon_types,
-        scenario.default_seed,
-    )
-    .expect("resolve scenario");
+    let mut sim = Sim::new(&scenario, &libs, scenario.default_seed).expect("resolve scenario");
     sim.run_until(600.0);
     println!("\n=== detections after {:.0} s ===", sim.time_s());
     if sim.events().is_empty() {

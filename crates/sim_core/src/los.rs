@@ -11,9 +11,23 @@ use glam::Vec2;
 use std::cell::RefCell;
 
 thread_local! {
-    // Reused breakpoint buffer so `line_of_sight` — called per cell in every viewshed —
-    // does not allocate on the hot path.
-    static SCRATCH: RefCell<Vec<f32>> = const { RefCell::new(Vec::new()) };
+    // Reused breakpoint buffers so `line_of_sight` — called per cell in every viewshed —
+    // does not allocate on the hot path. Three buffers: the two per-axis crossing streams
+    // and the merged result (see `fill_breakpoints`).
+    static SCRATCH: RefCell<Scratch> = const {
+        RefCell::new(Scratch {
+            xs: Vec::new(),
+            ys: Vec::new(),
+            merged: Vec::new(),
+        })
+    };
+}
+
+/// Per-thread reusable working buffers for the LOS traversal.
+struct Scratch {
+    xs: Vec<f32>,
+    ys: Vec<f32>,
+    merged: Vec<f32>,
 }
 
 /// Everything one LOS query learns. Cheap to compute — the traversal produces all of it.
@@ -87,10 +101,9 @@ pub fn line_of_sight(terrain: &TerrainGrid, a: Vec2, h_a: f32, b: Vec2, h_b: f32
     // segment both are smooth; sampling ends + midpoint bounds the profile to half-cell
     // resolution (V11 cross-checks this against a fine fixed-step oracle).
     SCRATCH.with(|buf| {
-        let ss = &mut *buf.borrow_mut();
-        ss.clear();
-        fill_breakpoints(ss, p0, p1, span, half_cell);
-        ss.sort_unstable_by(f32::total_cmp);
+        let scratch = &mut *buf.borrow_mut();
+        fill_breakpoints(scratch, p0, p1, span, half_cell);
+        let ss = &mut scratch.merged;
         ss.dedup_by(|x, y| (*x - *y).abs() < 1e-6);
 
         // Ground elevation is shared between adjacent segments (s1 of one = s0 of next):
@@ -229,6 +242,22 @@ pub fn visible(terrain: &TerrainGrid, a: Vec2, h_a: f32, b: Vec2, h_b: f32) -> b
     line_of_sight(terrain, a, h_a, b, h_b).clear
 }
 
+/// True 3-D range between two actors (`docs/DESIGN.md` §9.1): the horizontal separation
+/// combined with the difference in absolute endpoint heights `z + h`.
+///
+/// This is the project's one range convention — detection cutoffs and weapon range gates
+/// all use it. On flat ground with equal actor heights the height term vanishes and it
+/// reduces exactly to `a.distance(b)`; for an airborne endpoint it is the difference
+/// between "overhead" and "point blank".
+#[must_use]
+pub fn slant_range(terrain: &TerrainGrid, a: Vec2, h_a: f32, b: Vec2, h_b: f32) -> f32 {
+    let horizontal = a.distance(b);
+    let rise = (terrain.sample_elevation(b) + h_b) - (terrain.sample_elevation(a) + h_a);
+    // hypot, not sqrt(x*x + y*y): it avoids overflow/underflow in the squares and is the
+    // idiomatic Rust spelling of the Pythagorean length.
+    horizontal.hypot(rise)
+}
+
 /// Brute-force viewshed (`docs/DESIGN.md` §1.5): the transmittance `τ` from an observer
 /// at `observer` (height `h_obs`) to a target of height `h_tgt` at every cell centre
 /// within `max_range_m`. `0.0` marks hard-blocked or out-of-range cells.
@@ -265,25 +294,61 @@ pub fn viewshed(
     out
 }
 
-/// Fill `out` with path distances (from `p0`, plus `0` and the span) at which the segment
-/// `p0 → p1` crosses any gridline of spacing `step` in x or y. Left unsorted; the caller
-/// sorts and dedups the reused buffer.
-fn fill_breakpoints(out: &mut Vec<f32>, p0: Vec2, p1: Vec2, span: f32, step: f32) {
-    out.push(0.0);
-    out.push(span);
-    for (c0, c1) in [(p0.x, p1.x), (p0.y, p1.y)] {
-        if (c1 - c0).abs() <= 1e-9 {
-            continue;
+/// Fill `scratch.merged` with the ascending path distances (from `p0`, including `0` and
+/// the span) at which the segment `p0 → p1` crosses any gridline of spacing `step` in x
+/// or y.
+///
+/// The two per-axis crossing streams are each generated **already ascending in path
+/// distance** (see [`axis_crossings`]), so they are combined by an O(n) merge rather than
+/// an O(n log n) sort. On a multi-kilometre ray this buffer holds ~2000 breakpoints and
+/// the sort was a measurable share of the query — this is the micro-optimisation
+/// `docs/DESIGN.md` §1.5 flagged as outstanding. The output order is identical to the
+/// sorted one, so results are bit-for-bit unchanged (V5–V13 are the check).
+fn fill_breakpoints(scratch: &mut Scratch, p0: Vec2, p1: Vec2, span: f32, step: f32) {
+    let Scratch { xs, ys, merged } = scratch;
+    xs.clear();
+    ys.clear();
+    merged.clear();
+    axis_crossings(xs, p0.x, p1.x, span, step);
+    axis_crossings(ys, p0.y, p1.y, span, step);
+
+    merged.push(0.0);
+    let (mut i, mut j) = (0usize, 0usize);
+    while i < xs.len() || j < ys.len() {
+        // Take from whichever stream is next; `j` exhausted ⇒ take x, and vice versa.
+        let take_x = j >= ys.len() || (i < xs.len() && xs[i] <= ys[j]);
+        if take_x {
+            merged.push(xs[i]);
+            i += 1;
+        } else {
+            merged.push(ys[j]);
+            j += 1;
         }
-        let (lo, hi) = if c0 <= c1 { (c0, c1) } else { (c1, c0) };
-        let mut k = (lo / step).ceil();
-        while k * step <= hi {
-            let t = (k * step - c0) / (c1 - c0);
-            if t > 0.0 && t < 1.0 {
-                out.push(t * span);
-            }
-            k += 1.0;
+    }
+    merged.push(span);
+}
+
+/// Push the path distances at which the segment crosses gridlines of spacing `step` on
+/// one axis, **in ascending path-distance order**.
+///
+/// Walking `k` upward gives ascending `t` when the segment runs in +axis, and descending
+/// `t` when it runs in −axis — so the loop walks `k` in whichever direction makes the
+/// output ascending, which is what lets the caller merge instead of sort.
+fn axis_crossings(out: &mut Vec<f32>, c0: f32, c1: f32, span: f32, step: f32) {
+    let d = c1 - c0;
+    if d.abs() <= 1e-9 {
+        return;
+    }
+    let (lo, hi) = if c0 <= c1 { (c0, c1) } else { (c1, c0) };
+    let (k_lo, k_hi) = ((lo / step).ceil(), (hi / step).floor());
+    let mut k = if d > 0.0 { k_lo } else { k_hi };
+    let dk = if d > 0.0 { 1.0 } else { -1.0 };
+    while k >= k_lo && k <= k_hi {
+        let t = (k * step - c0) / d;
+        if t > 0.0 && t < 1.0 {
+            out.push(t * span);
         }
+        k += dk;
     }
 }
 
@@ -364,6 +429,44 @@ mod tests {
             urban_blocks: 0,
         }
         .build(10.0, 96, 96, seed, &params())
+    }
+
+    // V45 (docs/DESIGN.md §9.1): slant range is the true 3-D separation, reduces to the
+    // horizontal distance when the endpoints are at equal absolute height, and is
+    // symmetric. Overhead is not point blank.
+    #[test]
+    fn v45_slant_range() {
+        let flat = flat_with_patch(64, 64, TerrainType::Open, 0..0, 0..0);
+        let a = Vec2::new(100.0, 100.0);
+
+        // Equal actor heights on flat ground ⇒ exactly the horizontal distance. This is
+        // why adopting slant range leaves V14–V18 (all flat-range gates) untouched.
+        let b = Vec2::new(500.0, 100.0);
+        assert_eq!(slant_range(&flat, a, 2.0, b, 2.0), a.distance(b));
+
+        // A drone directly overhead at altitude A is A away, not 0.
+        assert!(
+            (slant_range(&flat, a, 2.0, a, 802.0) - 800.0).abs() < 1e-3,
+            "an overhead target must be its altitude away, not point blank"
+        );
+
+        // General case: √(horizontal² + Δheight²), and symmetric in the endpoints.
+        let expected = (400.0f32 * 400.0 + 298.0 * 298.0).sqrt();
+        let r = slant_range(&flat, a, 2.0, b, 300.0);
+        assert!((r - expected).abs() < 1e-2, "got {r}, expected {expected}");
+        assert_eq!(r, slant_range(&flat, b, 300.0, a, 2.0));
+
+        // On relief the ground elevation difference counts too: the same horizontal
+        // separation is a longer slant range across a valley than across the flat.
+        let g = hills(7);
+        let (p, q) = (Vec2::new(200.0, 200.0), Vec2::new(600.0, 200.0));
+        let dz = g.sample_elevation(q) - g.sample_elevation(p);
+        let expected = p.distance(q).hypot(dz);
+        assert!((slant_range(&g, p, 2.0, q, 2.0) - expected).abs() < 1e-2);
+        assert!(
+            slant_range(&g, p, 2.0, q, 2.0) >= p.distance(q),
+            "slant range is never shorter than the horizontal separation"
+        );
     }
 
     // V5: on a flat open plane, everyone sees everyone; τ = 1.

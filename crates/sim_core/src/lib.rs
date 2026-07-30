@@ -12,6 +12,8 @@
 // it makes `cargo doc --open` a real reference.
 #![warn(missing_docs)]
 
+pub mod air;
+pub mod air_defence;
 pub mod ew;
 pub mod fires;
 pub mod game;

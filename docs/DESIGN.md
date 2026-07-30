@@ -5,7 +5,7 @@ validation reference for each subsystem. The README stays operational; this file
 the maths. A section is written **before** its subsystem is implemented, and every model
 states the analytical result or invariant its tests check against.
 
-Sections are filled in roadmap order. §§1–6 and §8 are written and implemented; §7
+Sections are filled in roadmap order. §§1–6, §8 and §9 are written and implemented; §7
 (the simulation loop) is a placeholder — the loop is documented alongside the code it
 lives in.
 
@@ -131,8 +131,14 @@ allocation-free (thread-local scratch, incremental `mask_height`, cached endpoin
 elevation) and `viewshed` is parallel over cells (`ndarray` `Zip::par_for_each`, rayon)
 — deterministic (each cell writes its own slot; scratch is thread-local). A 3 km-range
 viewshed dropped ~9.3 s → 1.8 s, results bit-identical. Brute force stands; no
-approximate sweep was needed. Remaining micro-opt: replace the breakpoint sort with an
-O(n) merge of the two monotonic crossing streams (marginal vs the sampling cost).* Mobility is
+approximate sweep was needed.* *Second pass (2026-07-30): the breakpoint **sort** is gone
+— each axis's gridline crossings are generated already ascending in path distance, so the
+two streams are combined by an O(n) merge instead of `sort_unstable_by`. Measured, not
+guessed: this was flagged as "marginal" but is worth **at least 10%** on long rays (LOS
+96.8 → 86.7 µs/query; 12 km viewshed 11.5 → 10.4 s — later runs measured 80.6 µs, so
+run-to-run variance on this machine is a few percent and 10% is the conservative read),
+because a multi-kilometre ray carries ~2000 breakpoints. Shorter rays gain little (a 3 km viewshed is unchanged), and output is
+bit-identical — V5–V13 and the V11 oracle are the check.* Mobility is
 exposed to Phase 5 as `move_cost(from_cell, to_cell)` on cell **edges** (slope
 direction matters; uphill penalised harder than downhill; constants are placeholder
 dials pending the Phase 5 movement TOML), not a baked isotropic raster.
@@ -507,3 +513,247 @@ heatmap (green = cleared coverage, magenta = plausible hiding ground).
 | V41 | Tiger problem | `bayes_update` reproduces the exact posteriors (0.85 after one hear-left; 0.9698 after two; symmetric reversal) |
 | V42 | belief well-formed | belief stays a normalised non-negative distribution; a peaked (detection) likelihood concentrates it and lowers entropy |
 | V43 | negative information | repeatedly *not* detecting shifts belief out of coverage into dead ground; the motion model raises entropy |
+
+## 9. Air: drones & counter-air *(Phase 9 — post-roadmap)*
+
+Air assets are a **third class** alongside units and sensors: airframes that fly at a
+chosen altitude, heading and speed along a flight path or a transit-then-orbit plan.
+Red strike drones bomb Blue ground units; Blue defeats them with an **air-defence**
+class whose engagement model — and therefore time-to-kill — varies by type. A drone may
+instead (or also) carry a sensor, making it a mobile elevated observer.
+
+The OR content is the **sensor-to-shooter timeline**: air defence can be self-cueing or
+forced to rely on external cueing across a comms link with a configurable latency, so
+raid leakage becomes a measurable function of cue delay, magazine depth, and engagement
+channels. That falls straight out of the §3 sensing model.
+
+Decisions (user, 2026-07-29): air is a new asset class (not a unit or sensor variant);
+per-instance altitude with an AGL/AMSL reference; **slant range everywhere**; air
+defence may carry an organic sensor with a per-instance self-cue switch and a comms
+latency dial; strike targeting is **assigned only** (kill-chain logic is deferred as its
+own piece); munitions are dials (`munitions` + `expendable`).
+
+### 9.1 Altitude, actor height, and the slant-range convention
+
+**Altitude is per instance**, with a reference frame, because the two behaviours differ
+in exactly the way that matters — whether terrain can mask the airframe:
+
+```
+h(p) = altitude_m                                 (altitude_ref = agl)
+h(p) = max(0, altitude_m − z(p))                  (altitude_ref = amsl)
+```
+
+`h` is precisely the **actor height** of §1.2, so LOS, viewshed, and sensing need no
+change: `line_of_sight(terrain, a, h_a, b, h_b)` already takes arbitrary endpoint
+heights. An AGL drone hugs the terrain and is never masked by the hill it overflies; an
+AMSL drone cruises level and *is* masked by higher ground. The `max(0, ·)` clamp means an
+AMSL altitude below the local ground is a drone on the deck — degenerate but well-defined,
+never negative.
+
+**Slant range replaces horizontal range** (a correction the air case forces, applied
+everywhere for one consistent rule):
+
+```
+r_slant(a, h_a, b, h_b) = √( ‖b − a‖² + ((z(b) + h_b) − (z(a) + h_a))² )
+```
+
+used for the detection cutoff and falloff `f(r)` of §3.2 and for both weapon range gates
+of §2. On flat ground with equal endpoint heights Δ = 0, so it reduces exactly to the old
+horizontal range and the §3/§4 gates are unchanged by construction; on relief it differs
+by the endpoint height difference. *(Alternative considered: slant only when an endpoint
+is airborne — keeps ground-vs-ground bit-identical, but at the price of two range rules
+that disagree by design. Rejected: one convention, documented.)*
+
+**Terrain effects on an airborne target.** Concealment and cover are properties of the
+cell a target *stands in*; an airborne target is not in it. So an air target contributes
+`concealment = 0` to the §3.2 rate and `cover = 0` to damage. Canopy transmittance `τ` is
+*not* waived — it is a property of the sightline, so a low drone seen through a belt of
+woods is still attenuated exactly as §1.4 says.
+
+### 9.2 Flight kinematics
+
+State: `pos`, `altitude_m` + `altitude_ref`, `heading_deg`, `speed_m_s`. Pure and
+RNG-free — flight is deterministic; all air stochasticity lives in detection and
+engagement.
+
+A **flight plan** is a waypoint list plus a terminal, which covers both requested
+behaviours with one structure:
+
+```
+FlightPlan { waypoints: [Vec2], terminal: Hold | Orbit { radius_m, clockwise } }
+```
+
+"Fly this path" is `terminal = Hold`; "go here and orbit at radius R" is a single
+waypoint with `terminal = Orbit`. The orbit centre is always the final waypoint.
+
+- **Transit.** Advance `speed·dt` along the polyline (the §6.1 route logic). The desired
+  heading is the bearing to the next waypoint; the actual heading turns toward it at up
+  to `max_turn_rate_deg_s · dt`. A turn-rate limit implies a minimum turn radius
+  `r_min = v / ω_max` (ω in rad/s) — the gate for V47.
+- **Orbit.** On reaching the terminal waypoint the airframe captures the circle at its
+  nearest point, then integrates the phase directly:
+  `θ(t + dt) = θ(t) ± (v/R)·dt`, `pos = c + R·(cos θ, sin θ)`, heading = tangent.
+  Integrating the phase rather than steering keeps the radius exact (no drift) and gives
+  the closed-form lap time `T = 2πR/v`.
+- **Endurance.** `endurance_s > 0` removes the airframe once its time aloft exceeds it.
+
+### 9.3 Strike
+
+A strike drone's aim point is its assigned target — a named unit or a fixed point — or,
+if none was assigned, its **final waypoint**. (Autonomous target selection is a kill-chain
+problem deferred deliberately; see §9.7.) On closing within `release_range_m` (slant) of
+the aim point it releases one munition, which is **exactly the §2.3 indirect round**:
+burst point `b = aim + N(0, σ²I)` with `σ = cep_m/1.1774`, Carleton damage
+`D(ρ) = exp(−ρ²/2R_L²)`, delivered as `D·(1 − cover)`.
+
+One generalisation of §2.3: an indirect round today damages only the unit it was aimed
+at, but a strike on a *point* must damage whatever is near the burst. Damage is therefore
+applied to **every live ground unit within `3·R_L` of the burst** (beyond 3 R_L the
+Carleton kernel is < 1.2e-4 — a documented cutoff that keeps the sweep O(units)). Each
+surviving element rolls independently, as §4.1; near-misses feed §4.3 suppression
+unchanged.
+
+`munitions` counts releases; `expendable` decides whether the airframe survives its
+attack. Together they span the modern spectrum — a reusable guided-bomb carrier
+(`munitions = 2, expendable = false`) and a one-way attack munition
+(`munitions = 1, expendable = true`) are the same model with different dials.
+
+### 9.4 Air defence — two engagement models, two closed forms
+
+The point of two models is that **time-to-kill has a different distribution** in each,
+which is what makes gun and missile defences trade off differently against a raid.
+
+**Gun / CIWS — a Poisson kill process.** While the target sits in the envelope, kills
+arrive at rate `λ_k`; per tick `p = 1 − e^{−λ_k·dt}`. This is structurally identical to
+the §3.2 glimpse model, so it inherits its tick-size invariance and its validation
+machinery:
+
+```
+TTK ~ Exp(λ_k)          E[TTK] = 1/λ_k          P(kill by t) = 1 − e^{−λ_k·t}
+```
+
+**Missile — discrete shoot-look-shoot.** A launch takes `t_f = r_slant / missile_speed`
+to arrive, then resolves as a Bernoulli trial with single-shot kill probability `p`; a
+miss is followed by `t_r` reload before the next launch. Shots-to-kill is Geometric(p),
+and the time to the N-th arrival is `N·t_f + (N−1)·t_r`, so
+
+```
+E[shots] = 1/p          E[TTK] = t_f/p + (1/p − 1)·t_r
+```
+
+*(Alternative considered for the missile: model interception kinematically, with the
+missile as a pursuing body and the kill depending on closing geometry. Rejected for v1 —
+the interesting OR variable here is delay and magazine, not endgame guidance; `p` and
+`t_f` are the dials that carry the behaviour.)*
+
+**Envelope.** An engagement requires the target inside `[min_range_m, max_range_m]`
+(slant) *and* `[min_alt_m, max_alt_m]` — the altitude band is what separates a low-tier
+CIWS from a high-tier SAM — plus LOS if `requires_los`, a free engagement channel, and
+magazine remaining. `channels` (simultaneous engagements) is the saturation lever a raid
+plays against.
+
+### 9.5 The cueing timeline
+
+A battery acts on whichever route to the track reaches it first — its own radar, or the
+network:
+
+```
+actionable_at = min( own_sensor_seen,                  // organic: no comms hop
+                     first_detected + cue_latency_s )  // handed over the net
+              + reaction_time_s
+```
+
+`own_sensor_seen` is when **this battery's** organic sensor first saw the target, and is
+unavailable if it has no sensor, its per-instance `self_cue` switch is off, or it simply
+has not seen the target yet. Turning `self_cue` off therefore forces the asset onto the
+external cueing chain and makes it pay `cue_latency_s` — the comms Tx/Rx lever.
+
+Taking the **minimum** is what makes this exact rather than approximate. Every airframe
+records when each sensor first saw it (`AirState.seen_by`), so a self-cueing battery whose
+radar acquires the target *after* someone else's sensor detected it still engages off its
+own radar instead of waiting out a comms hop it never needed. *(An earlier version keyed
+"self-cued" off whoever detected first, which got that case wrong; the per-sensor record
+replaced it. Consequence: the air detection loop runs each sensor's glimpse process until
+**that sensor** has seen the target, rather than stopping at the first global detection.)*
+
+This yields the phase's headline closed form. Note carefully **what the clock starts on**:
+the cueing chain begins at *detection*, not at envelope entry. Let a drone be detected
+`D` seconds before it enters the envelope (its **warning lead**) and spend `W` seconds
+inside the envelope before reaching its release point. The battery is actionable from
+`t_entry − D + L + R`, so the effective engagement window is
+
+```
+W_eff = max(0, W − max(0, L + R − D))
+```
+
+The delay costs nothing until `L + R` outruns `D`: a cue that has already aged through
+the network while the drone was still inbound arrives ready. Consequently the **critical
+latency**, beyond which every drone leaks however lethal the battery is, is
+
+```
+L* = W + D − R
+```
+
+and early warning raises it one second per second — early-warning range and comms latency
+trade *directly* against each other. For a gun `P(leak) = exp(−λ_k · W_eff)`; for a
+missile with `K = ⌊(W_eff − t_f)/(t_f + t_r)⌋ + 1` shot opportunities (0 if `W_eff < t_f`),
+`P(leak) = (1 − p)^K`.
+
+*(The `D = 0` case — acquired exactly as it enters the envelope — gives the simpler
+`W_eff = W − L − R` and `L* = W − R`. That special case is what the `air_raid` experiment
+isolates in sweep 1a by setting the radar's range equal to the gun's; sweep 1b sweeps `D`
+deliberately. The general form above was corrected after the first sweep read zero
+leakage everywhere: with a 5 km radar and a 2.5 km envelope the transit time absorbed the
+entire cue delay, which is the model behaving correctly and the earlier formula being an
+unstated special case.)*
+
+### 9.6 Determinism & the air-off identity
+
+Air adds phases to the §3.3 loop. They are **appended, and draw zero RNG values when the
+air and air-defence lists are empty**, so a drone-free scenario reproduces the pre-air
+event log bit-for-bit — the same identity posture EW takes in §8 (V40). Tick order:
+
+1. ground movement → 2. **air movement** (pure) → 3. sensors × enemy units →
+4. **sensors × enemy air** → 5. suppression recovery → 6. **air-defence resolution** →
+7. **strike release** → 8. epoch fires.
+
+A recce drone's sensor needs no phase of its own: **every sensor lives in one list**, and
+a carried one reports the position, height and facing of the airframe carrying it
+(`Sim::sensor_view`). For an uncarried sensor that resolves to exactly its own position
+and `mount_height_m`, so step 3 is unchanged — same draws, same order — whenever there is
+no air. Steps 4, 6 and 7 iterate empty lists in that case and draw nothing at all.
+
+Ground fires cannot accidentally engage air: target selection iterates the *unit* list, so
+the separation is structural rather than a gate that could be forgotten.
+`WeaponType.engages_air` (default false) exists as the opt-in seam for a future dual-role
+gun; it changes nothing today.
+
+### 9.7 Deliberate limitations (v1)
+
+Stated rather than hidden, each a clean later addition and none a refactor:
+
+- **Air-defence sites are not attritable** — they are standalone placed assets, so a
+  strike drone cannot yet conduct SEAD. `AirDefenceState.carrier` exists unused so that
+  mounting a launcher on a unit later is a small change.
+- **No autonomous target selection.** Strike targets are assigned (§9.3); a drone will
+  not opportunistically attack what its own sensor finds.
+- **No air-to-air.** Drones do not engage other drones.
+- **Acoustic detection of drones** is the natural modality and remains unimplemented —
+  §3.1's `Modality` tag is the seam.
+- **Detection of air is permanent**, as it is for ground units (§3.2): there is no track
+  loss, so a battery never has a cue go stale. The `seen_by` record makes adding decay a
+  contained change if it is ever wanted.
+
+### 9.8 Validation gates (V44–V52)
+
+| # | Property | Reference |
+|---|----------|-----------|
+| V44 | altitude & masking | an AMSL drone below a ridge crest is masked from a ground sensor while the same drone at AGL is not; visibility is monotone in altitude (extends V8) |
+| V45 | slant range | equals `√(horizontal² + Δz²)` exactly; a drone at altitude `A` directly overhead has range `A`, not 0; reduces to horizontal range when Δz = 0 (so V14–V18 stand unchanged) |
+| V46 | orbit kinematics | orbiting at radius `R` and speed `v` holds the radius to within ε and closes a lap in `2πR/v` (± one tick) |
+| V47 | transit & turn rate | straight-leg travel = `speed·t` (mirrors V37); under a turn-rate limit the achieved turn radius ≥ `v/ω_max` |
+| V48 | gun time-to-kill | MC mean TTK = `1/λ_k` and `P(kill by t) = 1 − e^{−λ_k t}` within binomial CI — the §9.4 exponential law, gated as V14/V15 |
+| V49 | missile time-to-kill | per-shot kill fraction = `ssk_p` within binomial CI; `E[shots] = 1/p` (geometric); `E[TTK] = t_f/p + (1/p − 1)t_r` |
+| V50 | cue latency & leakage | leakage rises monotonically in `cue_latency_s`, matches `exp(−λ_k·W_eff)`, and reaches 1 above the critical latency; warning lead `D` raises `L* = W + D − R` one second per second, and `D = 0` reproduces `W − L − R` |
+| V51 | envelope & magazine gating | exactly zero engagements outside the slant-range band, outside the altitude band, without LOS when `requires_los`, without a cue when `self_cue` is off, or with an empty magazine; concurrent engagements never exceed `channels` |
+| V52 | air-off identity | no air and no air defence ⇒ event log bit-identical to the pre-air build; with air, same `(scenario, seed)` reproduces exactly |

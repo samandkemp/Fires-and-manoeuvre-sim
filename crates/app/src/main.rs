@@ -1,13 +1,14 @@
 //! Bevy front-end: renders the tactical map and drives the `sim_core` simulation.
-//! Phase 2: the sensor-placement duel — place Blue sensors and Red units, run the
-//! clock, watch mutual detection unfold. The app reads sim state and issues placements;
-//! all modelling lives in `sim_core`.
+//! Place sensors, units, jammers, drones and air-defence batteries; run the clock; watch
+//! mutual detection, fires and the counter-air fight unfold. The app reads sim state and
+//! issues placements; all modelling lives in `sim_core`.
 
 use bevy::prelude::*;
 use bevy::render::view::screenshot::{save_to_disk, Screenshot};
 use bevy::window::PrimaryWindow;
 use bevy_egui::{egui, EguiContexts, EguiPlugin, EguiPrimaryContextPass};
 use bevy_pancam::{PanCam, PanCamPlugin};
+use sim_core::air::{AltitudeRef, FlightPlan, Terminal};
 use sim_core::sim::{Side, Sim};
 use sim_core::suppression::Suppression;
 use sim_core::{los, sensing};
@@ -27,7 +28,7 @@ struct SimRes {
 enum ClickMode {
     /// Set the LOS-probe observer.
     Probe,
-    /// Select the nearest unit (to move, route, or inspect it).
+    /// Select the nearest unit or air asset (to move, route, or inspect it).
     Select,
     /// Place a Blue sensor of the selected type.
     PlaceBlueSensor,
@@ -35,6 +36,14 @@ enum ClickMode {
     PlaceRedUnit,
     /// Place a Red jammer (EW bubble that hides nearby Red units).
     PlaceRedJammer,
+    /// Place a Red drone of the selected air type, at the panel's altitude/heading/speed.
+    PlaceRedAir,
+    /// Place a Blue air-defence battery of the selected type.
+    PlaceBlueAirDefence,
+    /// Append a flight-plan waypoint to the selected drone.
+    AirWaypoint,
+    /// Send the selected drone to orbit the click at the panel's radius.
+    AirOrbit,
     /// Append route waypoints to the currently selected unit.
     RouteSelected,
     /// Move the currently selected unit to the click (clearing its route).
@@ -57,12 +66,22 @@ struct UiState {
     mode: ClickMode,
     sensor_type_id: String,
     unit_type_id: String,
+    air_type_id: String,
+    air_defence_type_id: String,
     running: bool,
     ticks_per_frame: u32,
     /// The currently selected unit (for move/route/inspect), if any.
     selected: Option<usize>,
+    /// The currently selected air asset (for altitude/heading/plan edits), if any.
+    selected_air: Option<usize>,
     /// Exposure window (s) for the Pd coverage overlay — live-tweakable.
     coverage_exposure_s: f32,
+    /// Dials applied to the next placed drone, and to the selected one live.
+    air_altitude_m: f32,
+    air_altitude_amsl: bool,
+    air_heading_deg: f32,
+    air_speed_m_s: f32,
+    air_orbit_radius_m: f32,
 }
 
 /// Interactive LOS probe (right-click in Probe mode places the observer).
@@ -103,15 +122,8 @@ fn main() {
 
 fn setup(mut commands: Commands, mut images: ResMut<Assets<Image>>) {
     let data = terrain_view::load_default().expect("default scenario should load");
-    let mut sim = Sim::new(
-        &data.scenario,
-        &data.terrain_params,
-        &data.sensor_types,
-        &data.unit_types,
-        &data.weapon_types,
-        data.scenario.default_seed,
-    )
-    .expect("default scenario should resolve");
+    let mut sim = Sim::new(&data.scenario, &data.libs, data.scenario.default_seed)
+        .expect("default scenario should resolve");
 
     let terrain = sim.terrain();
     let handle = images.add(terrain_view::terrain_image(terrain));
@@ -157,14 +169,28 @@ fn setup(mut commands: Commands, mut images: ResMut<Assets<Image>>) {
     });
     commands.insert_resource(UiState {
         mode: ClickMode::Probe,
-        sensor_type_id: data.sensor_types.keys().next().cloned().unwrap_or_default(),
-        unit_type_id: data.unit_types.keys().next().cloned().unwrap_or_default(),
+        sensor_type_id: data.libs.sensors.keys().next().cloned().unwrap_or_default(),
+        unit_type_id: data.libs.units.keys().next().cloned().unwrap_or_default(),
+        air_type_id: data.libs.air.keys().next().cloned().unwrap_or_default(),
+        air_defence_type_id: data
+            .libs
+            .air_defence
+            .keys()
+            .next()
+            .cloned()
+            .unwrap_or_default(),
         running: screenshot_mode,
         // In screenshot mode, one tick/frame so the capture lands mid-bombardment
         // (suppression visible on the target) rather than in the aftermath.
         ticks_per_frame: 1,
         selected: None,
+        selected_air: None,
         coverage_exposure_s: COVERAGE_EXPOSURE_S,
+        air_altitude_m: 400.0,
+        air_altitude_amsl: false,
+        air_heading_deg: 180.0,
+        air_speed_m_s: 45.0,
+        air_orbit_radius_m: 600.0,
     });
     commands.insert_resource(SimRes {
         sim,
@@ -264,6 +290,26 @@ fn ui_panel(
                 ClickMode::PlaceRedJammer,
                 "Place Red jammer (EW)",
             );
+            ui.radio_value(
+                &mut ui_state.mode,
+                ClickMode::PlaceRedAir,
+                "Place Red drone",
+            );
+            ui.radio_value(
+                &mut ui_state.mode,
+                ClickMode::PlaceBlueAirDefence,
+                "Place Blue air defence",
+            );
+            ui.radio_value(
+                &mut ui_state.mode,
+                ClickMode::AirWaypoint,
+                "Drone waypoint (click to add)",
+            );
+            ui.radio_value(
+                &mut ui_state.mode,
+                ClickMode::AirOrbit,
+                "Drone orbit here (radius below)",
+            );
 
             // Selected-unit readout.
             if let Some(idx) = ui_state.selected {
@@ -280,17 +326,81 @@ fn ui_panel(
             egui::ComboBox::from_label("sensor type")
                 .selected_text(&ui_state.sensor_type_id)
                 .show_ui(ui, |ui| {
-                    for key in sim.data.sensor_types.keys() {
+                    for key in sim.data.libs.sensors.keys() {
                         ui.selectable_value(&mut ui_state.sensor_type_id, key.clone(), key);
                     }
                 });
             egui::ComboBox::from_label("unit type")
                 .selected_text(&ui_state.unit_type_id)
                 .show_ui(ui, |ui| {
-                    for key in sim.data.unit_types.keys() {
+                    for key in sim.data.libs.units.keys() {
                         ui.selectable_value(&mut ui_state.unit_type_id, key.clone(), key);
                     }
                 });
+
+            // --- Air (docs/DESIGN.md §9) ------------------------------------------
+            ui.separator();
+            ui.label("Air");
+            egui::ComboBox::from_label("drone type")
+                .selected_text(&ui_state.air_type_id)
+                .show_ui(ui, |ui| {
+                    for key in sim.data.libs.air.keys() {
+                        ui.selectable_value(&mut ui_state.air_type_id, key.clone(), key);
+                    }
+                });
+            egui::ComboBox::from_label("AD type")
+                .selected_text(&ui_state.air_defence_type_id)
+                .show_ui(ui, |ui| {
+                    for key in sim.data.libs.air_defence.keys() {
+                        ui.selectable_value(&mut ui_state.air_defence_type_id, key.clone(), key);
+                    }
+                });
+            ui.add(
+                egui::Slider::new(&mut ui_state.air_altitude_m, 0.0..=2000.0).text("altitude m"),
+            );
+            ui.checkbox(
+                &mut ui_state.air_altitude_amsl,
+                "altitude is AMSL (terrain can mask)",
+            );
+            ui.add(egui::Slider::new(&mut ui_state.air_heading_deg, 0.0..=359.0).text("heading °"));
+            ui.add(egui::Slider::new(&mut ui_state.air_speed_m_s, 0.0..=120.0).text("speed m/s"));
+            ui.add(
+                egui::Slider::new(&mut ui_state.air_orbit_radius_m, 100.0..=2000.0)
+                    .text("orbit radius m"),
+            );
+
+            // Selected drone: the dials above are applied live, so altitude and speed can
+            // be flown by hand while the clock runs.
+            if let Some(idx) = ui_state.selected_air {
+                match sim.sim.air().get(idx).filter(|a| a.alive) {
+                    Some(a) => {
+                        let (id, alt, spd, hdg) =
+                            (a.id.clone(), a.altitude_m, a.speed_m_s, a.heading_deg);
+                        let agl = a.actor_height(sim.sim.terrain());
+                        let munitions = a.munitions_left;
+                        let detected = a.detected;
+                        ui.label(format!(
+                            "Drone {id}: {alt:.0} m ({agl:.0} AGL), {spd:.0} m/s, hdg {hdg:.0}°"
+                        ));
+                        ui.small(format!(
+                            "munitions {munitions}  {}",
+                            if detected { "DETECTED" } else { "undetected" }
+                        ));
+                        if ui.button("Apply dials to selected drone").clicked() {
+                            let a = sim.sim.air_mut(idx);
+                            a.altitude_m = ui_state.air_altitude_m;
+                            a.altitude_ref = if ui_state.air_altitude_amsl {
+                                AltitudeRef::Amsl
+                            } else {
+                                AltitudeRef::Agl
+                            };
+                            a.heading_deg = ui_state.air_heading_deg;
+                            a.speed_m_s = ui_state.air_speed_m_s;
+                        }
+                    }
+                    None => ui_state.selected_air = None, // stale (cleared or shot down)
+                }
+            }
 
             ui.separator();
             ui.add(
@@ -387,16 +497,62 @@ fn ui_panel(
                 ));
             }
 
+            // Air activity feed (docs/DESIGN.md §9).
+            let air_alive = sim.sim.air().iter().filter(|a| a.alive).count();
+            let air_lost = sim.sim.air().len() - air_alive;
+            if !sim.sim.air().is_empty() || !sim.sim.air_defence().is_empty() {
+                ui.label(format!(
+                    "Air: {air_alive} flying / {air_lost} down   AD: {} batteries",
+                    sim.sim.air_defence().len()
+                ));
+                for ad in sim.sim.air_defence() {
+                    let mag = if ad.stats.magazine == 0 {
+                        "∞".to_owned()
+                    } else {
+                        ad.magazine_left.to_string()
+                    };
+                    ui.small(format!(
+                        "  {}: {} rounds, {} engaging{}",
+                        ad.id,
+                        mag,
+                        ad.engagements.len(),
+                        if ad.self_cue { "" } else { " (net-cued)" }
+                    ));
+                }
+                ui.label("Air events:");
+                for e in sim.sim.air_defence_events().iter().rev().take(4) {
+                    let ad = &sim.sim.air_defence()[e.battery];
+                    let a = &sim.sim.air()[e.air];
+                    ui.small(format!(
+                        "t={:>4.0}s  {} {} {}",
+                        e.time_s,
+                        ad.id,
+                        if e.killed { "DOWNED" } else { "missed" },
+                        a.id
+                    ));
+                }
+                for e in sim.sim.strike_events().iter().rev().take(4) {
+                    let a = &sim.sim.air()[e.air];
+                    ui.small(format!(
+                        "t={:>4.0}s  {} released \u{2013}{} elem",
+                        e.time_s, a.id, e.casualties
+                    ));
+                }
+            }
+
             ui.separator();
             ui.collapsing("Legend", |ui| {
-                ui.small("○ sensor   ◇ unit   ✕ destroyed");
+                ui.small("○ sensor   ◇ unit   ▷ drone   ✕ destroyed");
                 ui.small("blue = friendly, red = enemy");
                 ui.small("white ring = detected");
                 ui.small("amber ring = suppressed, red ring = pinned");
                 ui.small("green bar = remaining strength");
-                ui.small("faint line = movement route");
-                ui.small("yellow ring = selected unit");
+                ui.small("faint line = movement route / flight plan");
+                ui.small("yellow ring = selected unit or drone");
                 ui.small("magenta bubble = EW jammer");
+                ui.small("teal ring = air-defence envelope");
+                ui.small("yellow line = air-defence engagement");
+                ui.small("drone triangle grows with altitude");
             });
         });
 
@@ -404,18 +560,12 @@ fn ui_panel(
     match reset_pending {
         ResetKind::Scenario => {
             let d = &sim.data;
-            let fresh = Sim::new(
-                &d.scenario,
-                &d.terrain_params,
-                &d.sensor_types,
-                &d.unit_types,
-                &d.weapon_types,
-                d.scenario.default_seed,
-            )
-            .expect("default scenario resolves");
+            let fresh = Sim::new(&d.scenario, &d.libs, d.scenario.default_seed)
+                .expect("default scenario resolves");
             sim.sim = fresh;
             sim.placed = 0;
             ui_state.selected = None;
+            ui_state.selected_air = None;
             ui_state.running = false;
             probe.observer = None;
             if let Some(e) = overlay.0.take() {
@@ -426,6 +576,7 @@ fn ui_panel(
             sim.sim.reset(0);
             sim.placed = 0;
             ui_state.selected = None;
+            ui_state.selected_air = None;
             if let Some(e) = overlay.0.take() {
                 commands.entity(e).despawn();
             }
@@ -443,7 +594,98 @@ fn ui_panel(
         {
             match ui_state.mode {
                 ClickMode::Probe => probe.observer = Some(world),
-                ClickMode::Select => ui_state.selected = sim.sim.nearest_unit(world, 400.0),
+                ClickMode::Select => {
+                    // Pick whichever marker is nearer — ground or air.
+                    let unit = sim.sim.nearest_unit(world, 400.0);
+                    let air = sim.sim.nearest_air(world, 400.0);
+                    let unit_d = unit.map(|i| sim.sim.units()[i].pos.distance(world));
+                    let air_d = air.map(|i| sim.sim.air()[i].pos.distance(world));
+                    match (unit_d, air_d) {
+                        (Some(u), Some(a)) if a < u => {
+                            ui_state.selected_air = air;
+                            ui_state.selected = None;
+                        }
+                        (Some(_), _) => {
+                            ui_state.selected = unit;
+                            ui_state.selected_air = None;
+                        }
+                        (None, Some(_)) => {
+                            ui_state.selected_air = air;
+                            ui_state.selected = None;
+                        }
+                        (None, None) => {}
+                    }
+                }
+                ClickMode::PlaceRedAir => {
+                    if let Some(stats) = sim.data.libs.air.get(&ui_state.air_type_id).cloned() {
+                        sim.placed += 1;
+                        let id = format!("uas-p{}", sim.placed);
+                        let sensor = stats
+                            .sensor
+                            .as_ref()
+                            .and_then(|s| sim.data.libs.sensors.get(s).cloned());
+                        let payload = stats
+                            .payload
+                            .as_ref()
+                            .and_then(|w| sim.data.libs.weapons.get(w).cloned());
+                        let idx = sim.sim.add_air(
+                            &id,
+                            Side::Red,
+                            world,
+                            ui_state.air_altitude_m,
+                            if ui_state.air_altitude_amsl {
+                                AltitudeRef::Amsl
+                            } else {
+                                AltitudeRef::Agl
+                            },
+                            ui_state.air_heading_deg,
+                            stats,
+                            sensor,
+                            payload,
+                        );
+                        sim.sim.air_mut(idx).speed_m_s = ui_state.air_speed_m_s;
+                        // Auto-select so waypoints/orbit can be given immediately.
+                        ui_state.selected_air = Some(idx);
+                        ui_state.selected = None;
+                    }
+                }
+                ClickMode::PlaceBlueAirDefence => {
+                    if let Some(stats) = sim
+                        .data
+                        .libs
+                        .air_defence
+                        .get(&ui_state.air_defence_type_id)
+                        .cloned()
+                    {
+                        sim.placed += 1;
+                        let id = format!("ad-p{}", sim.placed);
+                        let sensor = stats
+                            .sensor
+                            .as_ref()
+                            .and_then(|s| sim.data.libs.sensors.get(s).cloned());
+                        sim.sim
+                            .add_air_defence(&id, Side::Blue, world, stats, true, sensor);
+                    }
+                }
+                ClickMode::AirWaypoint => {
+                    if let Some(idx) = ui_state.selected_air {
+                        let a = sim.sim.air_mut(idx);
+                        // Appending to a completed plan restarts it from the new leg.
+                        if a.plan_complete() {
+                            a.set_plan(FlightPlan::route(vec![world]));
+                        } else {
+                            a.plan.waypoints.push(world);
+                        }
+                    }
+                }
+                ClickMode::AirOrbit => {
+                    if let Some(idx) = ui_state.selected_air {
+                        let radius = ui_state.air_orbit_radius_m;
+                        sim.sim
+                            .air_mut(idx)
+                            .set_plan(FlightPlan::orbit(world, radius, false));
+                    }
+                }
                 ClickMode::MoveSelected => {
                     if let Some(idx) = ui_state.selected {
                         sim.sim.set_unit_pos(idx, world);
@@ -457,17 +699,17 @@ fn ui_panel(
                 ClickMode::PlaceBlueSensor => {
                     sim.placed += 1;
                     let id = format!("obs-p{}", sim.placed);
-                    let stats = sim.data.sensor_types[&ui_state.sensor_type_id].clone();
+                    let stats = sim.data.libs.sensors[&ui_state.sensor_type_id].clone();
                     sim.sim.add_sensor(&id, Side::Blue, world, 0.0, stats);
                 }
                 ClickMode::PlaceRedUnit => {
                     sim.placed += 1;
                     let id = format!("tgt-p{}", sim.placed);
-                    let stats = sim.data.unit_types[&ui_state.unit_type_id].clone();
+                    let stats = sim.data.libs.units[&ui_state.unit_type_id].clone();
                     let weapon = stats
                         .weapon
                         .as_ref()
-                        .and_then(|w| sim.data.weapon_types.get(w).cloned());
+                        .and_then(|w| sim.data.libs.weapons.get(w).cloned());
                     sim.sim.add_unit(&id, Side::Red, world, stats, weapon);
                     // Auto-select the new unit so it can be routed/moved immediately.
                     ui_state.selected = Some(sim.sim.units().len() - 1);
@@ -502,9 +744,10 @@ fn rebuild_coverage_overlay(
     };
     let reference = sim
         .data
-        .unit_types
+        .libs
+        .units
         .get("afv")
-        .or_else(|| sim.data.unit_types.values().next())
+        .or_else(|| sim.data.libs.units.values().next())
         .expect("at least one unit type");
 
     let terrain = sim.sim.terrain();
@@ -571,9 +814,10 @@ fn rebuild_belief_overlay(
     }
     let reference = sim
         .data
-        .unit_types
+        .libs
+        .units
         .get("afv")
-        .or_else(|| sim.data.unit_types.values().next())
+        .or_else(|| sim.data.libs.units.values().next())
         .expect("a unit type");
     let red_jammers: Vec<sim_core::ew::Jammer> = sim
         .sim
@@ -691,7 +935,87 @@ fn draw_markers(
         gizmos.circle_2d(Isometry2d::from_translation(j.jammer.pos), 6.0 * px, c);
     }
 
+    // Air defence: the engagement envelope as a ring, plus a live line to whatever it is
+    // currently engaging — the counter-air fight made visible.
+    for ad in sim.sim.air_defence() {
+        let c = Color::srgb(0.2, 0.85, 0.75);
+        gizmos.circle_2d(
+            Isometry2d::from_translation(ad.pos),
+            ad.stats.max_range_m,
+            c.with_alpha(0.30),
+        );
+        if ad.stats.min_range_m > 0.0 {
+            gizmos.circle_2d(
+                Isometry2d::from_translation(ad.pos),
+                ad.stats.min_range_m,
+                c.with_alpha(0.20),
+            );
+        }
+        gizmos.circle_2d(Isometry2d::from_translation(ad.pos), 9.0 * px, c);
+        gizmos.circle_2d(Isometry2d::from_translation(ad.pos), 5.0 * px, c);
+        for e in &ad.engagements {
+            if let Some(target) = sim.sim.air().get(e.target).filter(|a| a.alive) {
+                gizmos.line_2d(ad.pos, target.pos, Color::srgb(1.0, 0.85, 0.2));
+            }
+        }
+    }
+
+    // Air assets: a triangle pointing along the heading, so course is readable at a
+    // glance; an orbit plan draws its circle.
+    for (i, a) in sim.sim.air().iter().enumerate() {
+        let c = side_color(a.side);
+        if !a.alive {
+            let g = Color::srgb(0.45, 0.45, 0.45);
+            let d = 7.0 * px;
+            gizmos.line_2d(a.pos + Vec2::new(-d, -d), a.pos + Vec2::new(d, d), g);
+            gizmos.line_2d(a.pos + Vec2::new(-d, d), a.pos + Vec2::new(d, -d), g);
+            continue;
+        }
+        // Remaining flight plan.
+        let mut prev = a.pos;
+        for &wp in a.plan.waypoints.iter().skip(a.route_idx) {
+            gizmos.line_2d(prev, wp, c.with_alpha(0.4));
+            prev = wp;
+        }
+        if let (Terminal::Orbit { radius_m, .. }, Some(centre)) =
+            (a.plan.terminal, a.plan.destination())
+        {
+            gizmos.circle_2d(
+                Isometry2d::from_translation(centre),
+                radius_m,
+                c.with_alpha(0.35),
+            );
+        }
+
+        // Nose-forward triangle. Size grows a little with altitude so height reads on
+        // the map without needing a label.
+        let scale = (9.0 + a.altitude_m / 250.0) * px;
+        let fwd = Vec2::from_angle(a.heading_deg.to_radians());
+        let side = Vec2::new(-fwd.y, fwd.x);
+        let nose = a.pos + fwd * scale * 1.6;
+        let left = a.pos - fwd * scale * 0.7 + side * scale * 0.9;
+        let right = a.pos - fwd * scale * 0.7 - side * scale * 0.9;
+        gizmos.line_2d(nose, left, c);
+        gizmos.line_2d(left, right, c);
+        gizmos.line_2d(right, nose, c);
+
+        if a.detected {
+            gizmos.circle_2d(Isometry2d::from_translation(a.pos), 15.0 * px, Color::WHITE);
+        }
+        if ui_state.selected_air == Some(i) {
+            gizmos.circle_2d(
+                Isometry2d::from_translation(a.pos),
+                20.0 * px,
+                Color::srgb(1.0, 0.9, 0.2),
+            );
+        }
+    }
+
     for s in sim.sim.sensors() {
+        // A carried sensor rides its airframe, which already has a marker.
+        if s.carrier.is_some() {
+            continue;
+        }
         let c = side_color(s.side);
         gizmos.circle_2d(Isometry2d::from_translation(s.pos), 8.0 * px, c);
         gizmos.circle_2d(Isometry2d::from_translation(s.pos), 3.0 * px, c);

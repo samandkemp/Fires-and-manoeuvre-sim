@@ -1,0 +1,115 @@
+# An air raid on the Blue gun line, and the counter-air fight over it (DESIGN §9).
+#
+# Red pushes three strike drones west onto a Blue battery. Blue defends with two very
+# different systems, which is the point of the scenario:
+#
+#   ciws-1  — self-cueing (its own radar), lethal, but only out to 2 km and 1.5 km up.
+#             It closes the loop itself, so it pays no comms delay.
+#   sam-1   — reaches 12 km, but has *no organic sensor*. Every track reaches it over the
+#             net, so it always pays `cue_latency_s` (12 s) plus 5 s to react. Whether it
+#             fires at all depends on the sensor-to-shooter timeline, not its range.
+#
+# The Red drones release at 1200 m — outside the CIWS envelope. Blue's answer has to be
+# the SAM, and the SAM's answer depends on the cue arriving in time. Sweep the latency
+# with `cargo run -p experiments --bin air_raid`.
+
+name = "air_raid"
+default_seed = 17
+
+[sim]
+dt_s = 1.0
+epoch_s = 10.0
+
+[terrain]
+cell_size_m = 10.0
+width_cells = 1000
+height_cells = 1000
+
+[terrain.source.hills]
+count = 24
+max_height_m = 120.0
+base_radius_m = 600.0
+woods_fraction = 0.28
+urban_blocks = 4
+
+# --- Blue: the battery being raided, plus its defences ------------------------------
+
+[[blue.units]]
+id = "arty-1"
+type = "sp_gun"
+pos = [3000.0, 5000.0]
+
+[[blue.units]]
+id = "arty-2"
+type = "sp_gun"
+pos = [3220.0, 5150.0]
+
+[[blue.units]]
+id = "escort-1"
+type = "afv"
+pos = [3400.0, 4850.0]
+
+# The early-warning sensor: this is what cues the SAM, and the whole timeline hangs on it.
+[[blue.sensors]]
+id = "ew-mast"
+type = "mast_optical"
+pos = [4600.0, 5400.0]
+
+[[blue.air_defence]]
+id = "ciws-1"
+type = "ciws"
+pos = [3100.0, 5050.0]
+self_cue = true          # its own radar: no comms delay
+
+[[blue.air_defence]]
+id = "sam-1"
+type = "sam"
+pos = [3600.0, 5200.0]
+self_cue = false         # no organic sensor anyway — always cued over the net
+
+# --- Red: the raid -------------------------------------------------------------------
+# Three drones on slightly different axes, all AMSL so the relief between them and Blue
+# can mask them on the way in — low ones use the ground, the high one trades cover for
+# reach.
+
+[[red.air]]
+id = "strike-1"
+type = "strike_uas"
+pos = [8600.0, 5000.0]
+altitude_m = 400.0
+altitude_ref = "amsl"
+heading_deg = 180.0
+waypoints = [[6000.0, 5000.0], [3000.0, 5000.0]]
+target = { unit = "arty-1" }
+
+[[red.air]]
+id = "strike-2"
+type = "strike_uas"
+pos = [8600.0, 6200.0]
+altitude_m = 250.0
+altitude_ref = "amsl"
+heading_deg = 200.0
+waypoints = [[6000.0, 5800.0], [3220.0, 5150.0]]
+target = { unit = "arty-2" }
+
+[[red.air]]
+id = "strike-3"
+type = "strike_uas"
+pos = [8600.0, 3900.0]
+altitude_m = 700.0
+altitude_ref = "amsl"
+heading_deg = 160.0
+waypoints = [[6000.0, 4300.0], [3400.0, 4850.0]]
+target = { unit = "escort-1" }
+
+# A recce drone orbiting off to the flank: it finds Blue for the raid, and is itself a
+# target the CIWS can reach only if it strays inside 2 km.
+[[red.air]]
+id = "recce-1"
+type = "recce_uas"
+pos = [8000.0, 5500.0]
+altitude_m = 900.0
+altitude_ref = "amsl"
+heading_deg = 180.0
+waypoints = [[5500.0, 5400.0]]
+terminal = { orbit = { radius_m = 800.0, clockwise = true } }

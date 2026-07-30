@@ -87,15 +87,31 @@ impl Default for UnitType {
     }
 }
 
+/// The `signature` table key a modality reads. One match arm, in one place, so adding
+/// `Acoustic` later cannot leave a signature table silently unread by one caller.
+#[must_use]
+pub fn modality_key(modality: Modality) -> &'static str {
+    match modality {
+        Modality::Optical => "optical",
+    }
+}
+
+/// A per-modality signature lookup: 0 when the table has no entry for the modality — a
+/// unit with no `acoustic` key is silent to acoustic sensors.
+#[must_use]
+pub fn signature_in(signature: &BTreeMap<String, f32>, modality: Modality) -> f32 {
+    signature
+        .get(modality_key(modality))
+        .copied()
+        .unwrap_or(0.0)
+}
+
 impl UnitType {
     /// The unit's signature in a modality (0 if the table has no entry — a unit with
     /// no `acoustic` entry is silent to acoustic sensors).
     #[must_use]
     pub fn signature_in(&self, modality: Modality) -> f32 {
-        let key = match modality {
-            Modality::Optical => "optical",
-        };
-        self.signature.get(key).copied().unwrap_or(0.0)
+        signature_in(&self.signature, modality)
     }
 }
 
@@ -112,14 +128,72 @@ pub fn detection_rate(
     unit_type: &UnitType,
     unit_pos: Vec2,
 ) -> f32 {
-    let r = sensor_pos.distance(unit_pos);
+    // A ground unit's concealment is the terrain it stands in (§3.2). Airborne targets
+    // take the general form below with `concealment = 0` — they are not in the cell.
+    let concealment = concealment_at(terrain, unit_pos);
+    detection_rate_against(
+        terrain,
+        sensor,
+        sensor_pos,
+        sensor.mount_height_m,
+        facing_deg,
+        unit_pos,
+        unit_type.height_m,
+        unit_type.signature_in(sensor.modality),
+        concealment,
+    )
+}
+
+/// The terrain concealment `∈ [0, 1]` at a world position (0 outside the grid).
+#[must_use]
+pub fn concealment_at(terrain: &TerrainGrid, pos: Vec2) -> f32 {
+    match terrain.transform().world_to_cell(pos) {
+        Some((ix, iy)) => terrain.concealment()[[iy, ix]],
+        None => 0.0,
+    }
+}
+
+/// The general glimpse rate (`docs/DESIGN.md` §3.2), with every target property passed
+/// explicitly rather than read from a [`UnitType`].
+///
+/// This is the form air assets use: a drone has its own signature and altitude-derived
+/// actor height, and contributes `concealment = 0` because an airborne target is not
+/// standing in the cell below it (§9.1). `sensor_height_m` is explicit too — a sensor
+/// carried by a drone sits at the airframe's height, not at its own `mount_height_m`.
+// Nine arguments is past clippy's taste threshold, but they are the model's actual
+// parameters and bundling them into a struct would only move the noise.
+#[allow(clippy::too_many_arguments)]
+#[must_use]
+pub fn detection_rate_against(
+    terrain: &TerrainGrid,
+    sensor: &SensorType,
+    sensor_pos: Vec2,
+    sensor_height_m: f32,
+    facing_deg: f32,
+    target_pos: Vec2,
+    target_height_m: f32,
+    signature: f32,
+    concealment: f32,
+) -> f32 {
+    if signature <= 0.0 {
+        return 0.0;
+    }
+
+    // Slant range, not horizontal (§9.1): overhead is not point blank.
+    let r = los::slant_range(
+        terrain,
+        sensor_pos,
+        sensor_height_m,
+        target_pos,
+        target_height_m,
+    );
     if r > sensor.max_range_m {
         return 0.0;
     }
 
     // Field of regard: bearing to target within ±width/2 of facing.
     if let Some(width) = sensor.for_width_deg {
-        let to = unit_pos - sensor_pos;
+        let to = target_pos - sensor_pos;
         let bearing = to.y.atan2(to.x).to_degrees();
         let mut off = (bearing - facing_deg) % 360.0;
         if off > 180.0 {
@@ -132,29 +206,19 @@ pub fn detection_rate(
         }
     }
 
-    let sig = unit_type.signature_in(sensor.modality);
-    if sig <= 0.0 {
-        return 0.0;
-    }
-
     let l = los::line_of_sight(
         terrain,
         sensor_pos,
-        sensor.mount_height_m,
-        unit_pos,
-        unit_type.height_m,
+        sensor_height_m,
+        target_pos,
+        target_height_m,
     );
     if !l.clear {
         return 0.0;
     }
 
-    let concealment = match terrain.transform().world_to_cell(unit_pos) {
-        Some((ix, iy)) => terrain.concealment()[[iy, ix]],
-        None => 0.0,
-    };
-
     let falloff = 1.0 / (1.0 + (r / sensor.range_half_m).powf(sensor.range_exponent));
-    sensor.lambda0_per_s * falloff * sig * l.transmittance * (1.0 - concealment)
+    sensor.lambda0_per_s * falloff * signature * l.transmittance * (1.0 - concealment)
 }
 
 /// Probability of at least one detection in a tick of length `dt_s` at rate
