@@ -1,10 +1,9 @@
-//! Air assets: drones as a first-class class alongside units and sensors.
-//! Specified in `docs/DESIGN.md` §9; validated by V44, V46, V47.
+//! Drones: a third asset class beside units and sensors.
+//! Spec: `docs/DESIGN.md` §9. Gates: V44, V46, V47.
 //!
-//! An airframe flies at a chosen altitude (AGL or AMSL), heading and speed, following a
-//! flight plan that is either a path or a transit-then-orbit. It may carry a sensor (a
-//! recce drone — a mobile elevated observer) and/or a payload (a strike drone). Flight
-//! itself is **pure and RNG-free**: all air stochasticity lives in detection (§3) and
+//! An airframe has an altitude (AGL or AMSL), a heading and a speed, and flies either a
+//! waypoint path or a transit-then-orbit. It can carry a sensor, a strike payload, or
+//! both. Flight is pure and draws no randomness — that lives in detection (§3) and
 //! air-defence engagement (§9.4).
 
 use crate::fires::WeaponType;
@@ -84,8 +83,8 @@ impl FlightPlan {
     }
 }
 
-/// What a strike drone is sent to attack (`docs/DESIGN.md` §9.3). Assigned only —
-/// autonomous target selection is deliberately deferred as its own kill-chain piece.
+/// What a strike drone is sent to attack (§9.3). Assigned targets only; autonomous
+/// selection is deferred to the kill-chain work.
 #[derive(Clone, Debug, PartialEq)]
 pub enum TargetSpec {
     /// A named unit (matched against [`crate::sim::UnitState::id`]); the aim point
@@ -105,9 +104,9 @@ pub struct AirType {
     pub silhouette_width_m: f32,
     /// Default cruise speed, metres/second (an instance may override it).
     pub cruise_speed_m_s: f32,
-    /// Maximum rate of turn, degrees/second. Implies a minimum turn radius `v / ω`; the
-    /// large default makes turns effectively instant, so a plan flown by a type that
-    /// doesn't care tracks its waypoints exactly.
+    /// Maximum turn rate, degrees/second. Implies a minimum turn radius `v / ω`. The
+    /// large default makes turns near-instant, so a type that doesn't care about turn
+    /// performance tracks its waypoints exactly.
     #[serde(default = "default_turn_rate")]
     pub max_turn_rate_deg_s: f32,
     /// Time aloft before the airframe is removed, seconds (`0` = unlimited).
@@ -145,9 +144,9 @@ fn default_release_range() -> f32 {
     200.0
 }
 
-// Manual `Default` for the same reason `UnitType` and `WeaponType` have one: the derive
-// would zero the silhouette width, the turn rate (freezing the heading forever) and the
-// release range, all of which fail silently rather than loudly.
+// Hand-written for the same reason as `UnitType` and `WeaponType`: deriving would zero
+// the silhouette width, the turn rate (freezing the heading) and the release range — all
+// silent failures.
 impl Default for AirType {
     fn default() -> Self {
         Self {
@@ -217,11 +216,11 @@ pub struct AirState {
     pub detected_at_s: Option<f64>,
     /// Index into [`crate::sim::Sim::sensors`] of the sensor that first detected it.
     pub detected_by: Option<usize>,
-    /// When **each** sensor first saw this airframe, keyed by sensor index. An
-    /// air-defence battery reads its own entry to know whether its organic radar has
-    /// closed the loop, rather than inferring it from who happened to detect first —
-    /// which is what makes the §9.5 timeline exact for a self-cueing battery.
-    /// `BTreeMap` (not `HashMap`) so iteration order is deterministic.
+    /// When each sensor first saw this airframe, by sensor index.
+    ///
+    /// A battery checks its own entry to know whether its radar has the target, instead
+    /// of guessing from whoever detected first, which is what keeps the §9.5 timeline
+    /// exact when self-cueing. `BTreeMap` for deterministic iteration order.
     pub seen_by: BTreeMap<usize, f64>,
     /// Resolved stat block.
     pub stats: AirType,
@@ -277,13 +276,12 @@ impl AirState {
         }
     }
 
-    /// Height above the ground directly beneath — the actor height `h` of
-    /// `docs/DESIGN.md` §1.2 that LOS, viewshed and sensing all take.
+    /// Height above the ground beneath — the actor height `h` from §1.2 that LOS,
+    /// viewshed and sensing all take.
     ///
-    /// This one function is the whole of the AGL/AMSL distinction: an AGL airframe
-    /// carries its height with it, an AMSL one has the terrain eat into it. The clamp
-    /// means an AMSL altitude below local ground is an airframe on the deck — degenerate
-    /// but well-defined, never negative.
+    /// The AGL/AMSL distinction lives entirely here: AGL carries its height along, AMSL
+    /// has terrain eat into it. Clamping at zero puts an AMSL airframe below local ground
+    /// on the deck rather than underground.
     #[must_use]
     pub fn actor_height(&self, terrain: &TerrainGrid) -> f32 {
         match self.altitude_ref {
@@ -458,8 +456,7 @@ pub fn wrap360(deg: f32) -> f32 {
     deg.rem_euclid(360.0)
 }
 
-/// Wrap an angle difference to `(-180, 180]` — the signed short way round, which is what
-/// makes "how far off heading am I?" answerable without a sign convention argument.
+/// Wrap an angle difference to `(-180, 180]`: the signed short way round.
 #[must_use]
 pub fn wrap180(deg: f32) -> f32 {
     let d = deg.rem_euclid(360.0);

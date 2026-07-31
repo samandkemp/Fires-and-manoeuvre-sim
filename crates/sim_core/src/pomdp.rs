@@ -1,10 +1,11 @@
-//! Partial observability: belief-state estimation over enemy position (`docs/DESIGN.md`
-//! §8). With EW degrading detection, an observer never knows the truth — it maintains a
-//! probability distribution and updates it by Bayes' rule. Validated on the canonical
-//! Tiger problem (V41) and on spatial "negative information" (V42–V43).
+//! Belief-state estimation over enemy position. Spec: `docs/DESIGN.md` §8.
+//! Gates: V41 (Tiger problem), V42–V43 (spatial negative information).
 //!
-//! The belief is an *inference layer* over the sim, not sim state — so it lives here as a
-//! standalone tool the app/experiments drive from detection events and their absence.
+//! Once EW degrades detection an observer never knows the truth, so it keeps a
+//! probability distribution and updates it by Bayes' rule.
+//!
+//! This is an inference layer *over* the sim, not sim state: a standalone tool the app
+//! and experiments drive from detection events and their absence.
 
 use crate::ew::{jamming_factor, Jammer};
 use crate::sensing::{detection_rate, p_detect_tick, SensorType, UnitType};

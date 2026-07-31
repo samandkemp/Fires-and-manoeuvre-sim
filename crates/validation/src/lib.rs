@@ -5,10 +5,9 @@
 //! terrain dial table alone, which meant a dial could be changed in one gate's world and
 //! not another's. They live here once.
 //!
-//! Fixtures are **deliberately explicit rather than loaded from `scenarios/`**: a gate
-//! that checks a closed form must not change its answer because someone retuned a
-//! placeholder dial. The one exception is [`scenario_params`], used by the gates that
-//! test scenario loading itself.
+//! Fixtures are spelled out here rather than loaded from `scenarios/`: a gate checking a
+//! closed form must not change its answer because someone retuned a placeholder dial.
+//! [`scenario_params`] is the exception, for the gates that test loading itself.
 
 pub mod gates;
 

@@ -1,7 +1,8 @@
-//! Electronic warfare: a modifier on the sensing channel (`docs/DESIGN.md` §8).
-//! A jammer protects its own side's units by degrading the enemy's detection of them —
-//! a multiplicative factor on the glimpse rate λ. With no jammers the factor is exactly
-//! 1, so EW-off reduces the sensing model bit-for-bit to Phase 2 (validated V40).
+//! Jamming as a modifier on the sensing channel. Spec: `docs/DESIGN.md` §8. Gate: V40.
+//!
+//! A jammer protects its own side by degrading enemy detection of it: a multiplicative
+//! factor on the glimpse rate λ. With no jammers the factor is exactly 1, so EW-off is
+//! bit-for-bit identical to the plain sensing model.
 
 use glam::Vec2;
 

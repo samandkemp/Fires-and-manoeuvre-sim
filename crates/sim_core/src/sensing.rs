@@ -1,8 +1,7 @@
-//! Sensing & detection: the glimpse-rate probability-of-detection model.
-//! Specified in `docs/DESIGN.md` §3; validated by V14–V18.
+//! The glimpse-rate detection model. Spec: `docs/DESIGN.md` §3. Gates: V14–V18.
 //!
-//! One generic LOS (`optical`) modality for now; the `Modality` tag and per-modality
-//! signature tables are the seam acoustic and EO/IR sensing slot into later.
+//! Only `optical` exists so far. `Modality` and the per-modality signature tables are
+//! the seam for acoustic and EO/IR later.
 
 use crate::los;
 use crate::terrain::TerrainGrid;

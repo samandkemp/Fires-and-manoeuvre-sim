@@ -1,22 +1,15 @@
-//! The counter-air sweep (Phase 9): how much of a drone raid **leaks** through an air
-//! defence, as a function of the levers that actually decide it.
+//! How much of a drone raid leaks through an air defence, and what decides it.
+//! Model: `docs/DESIGN.md` §9.5.
 //!
-//! The headline is the sensor-to-shooter timeline (`docs/DESIGN.md` §9.5). A battery
-//! cannot fire on a track until
-//!
-//! ```text
-//! actionable_at = detected_at + (0 if self-cued else cue_latency_s) + reaction_time_s
-//! ```
-//!
-//! The clock starts at **detection**, not at envelope entry, so for a drone detected `D`
+//! The cueing clock starts at *detection*, not envelope entry. For a drone detected `D`
 //! seconds before it enters and spending `W` seconds inside,
-//! `W_eff = max(0, W − max(0, L + R − D))` and the critical latency is `L* = W + D − R`.
-//! Early warning and comms latency therefore trade one-for-one. Sweep 1a pins `D = 0`
-//! (radar range = gun range) to isolate the simple form; 1b sweeps `D` deliberately.
-//! Both print the closed form beside the measurement.
+//! `W_eff = max(0, W − max(0, L + R − D))`, so the critical latency is `L* = W + D − R`
+//! and early warning trades one-for-one against comms delay. Sweep 1a pins `D = 0`
+//! (radar range = gun range) to isolate the simple form; 1b sweeps `D`. Both print the
+//! closed form next to the measurement.
 //!
-//! It also sweeps the two saturation levers — magazine depth and engagement channels —
-//! against raid size, which is the classic air-defence trade-off.
+//! Sweeps 2 and 3 cover the saturation levers: magazine depth and engagement channels
+//! against raid size.
 //!
 //! Run: `cargo run -p experiments --release --bin air_raid`
 

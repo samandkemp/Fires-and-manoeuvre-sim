@@ -1,10 +1,9 @@
-//! `sim_core` — the headless operational-research engine.
+//! `sim_core` — the headless OR engine.
 //!
 //! Pure Rust, no Bevy, no I/O beyond scenario loading. Deterministic given
-//! `(scenario, seed)`: all randomness comes from a seeded [`SimRng`] threaded in by the
-//! caller. Subsystems (terrain, sensing, fires, …) live here as separate modules with
-//! clean interfaces. See `docs/DESIGN.md` for each model's specification and the
-//! analytical result its tests validate against.
+//! `(scenario, seed)`: every random draw comes from a seeded [`SimRng`] the caller
+//! threads in. Each subsystem is its own module. `docs/DESIGN.md` has the spec for every
+//! model and the analytical result its gate checks against.
 
 // A pure OR engine has no need for `unsafe`; forbidding it documents that and is free.
 #![forbid(unsafe_code)]

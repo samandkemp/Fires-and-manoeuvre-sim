@@ -1,5 +1,4 @@
-//! Movement as dynamic programming: least-risk pathing over the terrain grid.
-//! Specified in `docs/DESIGN.md` §5; validated by V25–V27.
+//! Least-risk pathing as dynamic programming. Spec: `docs/DESIGN.md` §5. Gates: V25–V27.
 //!
 //! The value function is a shortest path over the 8-connected cell graph with edge cost
 //! `move_cost(from,to) + risk_weight·risk(to)`, so Dijkstra *is* the DP solution.

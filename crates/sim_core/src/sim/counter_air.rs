@@ -1,13 +1,12 @@
-//! The air and counter-air phases of the simulation tick (`docs/DESIGN.md` §9):
-//! detection of airborne targets, air-defence engagement, and strike release.
+//! The air phases of the tick (`docs/DESIGN.md` §9): detecting airborne targets,
+//! air-defence engagement, and strike release.
 //!
-//! Split out of the main loop because Phase 9 roughly doubled its length. These are the
-//! phases §9.6 *appends* to the tick, and they draw **no** RNG values when the air and
-//! air-defence lists are empty — which is what keeps a drone-free scenario bit-identical
+//! These are appended to the tick per §9.6 and draw no RNG at all when the air and
+//! air-defence lists are empty, which is what keeps a drone-free scenario bit-identical
 //! to the pre-air engine (V52).
 //!
-//! A child module of `sim`, so it reaches `Sim`'s private fields directly: splitting the
-//! file costs nothing in encapsulation.
+//! A child module of `sim`, so it still reaches `Sim`'s private fields — splitting the
+//! file cost nothing in encapsulation.
 
 use super::{AirDefenceEvent, AirDetectionEvent, GlimpseTarget, Side, Sim, StrikeEvent};
 use crate::air::TargetSpec;
@@ -17,11 +16,10 @@ use glam::Vec2;
 use rand::Rng;
 
 impl Sim {
-    /// The glimpse process against airborne targets (`docs/DESIGN.md` §9.1): identical
-    /// to the ground loop except that an airborne target takes its actor height from its
-    /// altitude and contributes **no terrain concealment** — it is not standing in the
-    /// cell below it. Canopy transmittance still applies, because that is a property of
-    /// the sightline, not the target.
+    /// The glimpse process against airborne targets (§9.1). Same as the ground loop
+    /// except the target's actor height comes from its altitude and it contributes no
+    /// terrain concealment — it isn't standing in the cell below it. Canopy transmittance
+    /// still applies, being a property of the sightline rather than the target.
     pub(super) fn detect_air(&mut self) {
         if self.air.is_empty() {
             return;
@@ -33,10 +31,9 @@ impl Sim {
             let view = self.sensor_view(s_idx);
             for a_idx in 0..self.air.len() {
                 let (sensor, air) = (&self.sensors[s_idx], &self.air[a_idx]);
-                // Note the gate is per *sensor*, not the global `detected` flag the
-                // ground loop uses: air defence needs to know when each battery's own
-                // radar saw the target, so every sensor runs its own glimpse process
-                // until it has (§9.5).
+                // Gated per *sensor*, not on the global `detected` flag the ground loop
+                // uses: air defence needs to know when each battery's own radar saw the
+                // target, so every sensor keeps glimpsing until it has (§9.5).
                 if air.side == sensor.side || !air.alive || air.seen_by.contains_key(&s_idx) {
                     continue;
                 }
@@ -75,10 +72,10 @@ impl Sim {
         }
     }
 
-    /// One tick of air defence (`docs/DESIGN.md` §9.4–§9.5): drop engagements whose
-    /// target has left the envelope or died, resolve shots that are due, then commit new
-    /// engagements on the nearest actionable targets while channels and magazine last.
-    /// Batteries and targets are visited in fixed index order — the determinism unit.
+    /// One tick of air defence (§9.4–§9.5): drop engagements whose target died or left
+    /// the envelope, resolve shots that are due, then open new ones on the nearest
+    /// actionable targets while channels and magazine last. Fixed index order throughout,
+    /// which is the determinism unit.
     pub(super) fn resolve_air_defence(&mut self) {
         if self.air_defence.is_empty() || self.air.is_empty() {
             return;

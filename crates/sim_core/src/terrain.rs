@@ -1,6 +1,5 @@
-//! Terrain: the elevation raster, terrain-type layer, and the derived cover /
-//! concealment / mobility layers, plus the world↔grid transform. See `docs/DESIGN.md`
-//! §1. Line of sight (which reads this) arrives in plan step 1.3.
+//! The elevation raster, terrain types, the derived cover/concealment/mobility layers,
+//! and the world↔grid transform. Spec: `docs/DESIGN.md` §1.
 
 use crate::SimRng;
 use glam::Vec2;

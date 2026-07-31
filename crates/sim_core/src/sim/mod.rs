@@ -1,6 +1,7 @@
-//! The simulation loop (`docs/DESIGN.md` §3.3): fixed-dt ticks integrating the
-//! stochastic sensing process, with decision epochs every `epoch_s` (an empty hook
-//! until the fires/tasking phases fill it). Deterministic given `(scenario, seed)`.
+//! The simulation loop. Spec: `docs/DESIGN.md` §3.3.
+//!
+//! Fixed-dt ticks integrate the stochastic sensing process; every `epoch_s` a decision
+//! epoch maintains tracks and resolves fires. Deterministic given `(scenario, seed)`.
 
 use crate::air::{AirState, AirType, FlightPlan, TargetSpec};
 use crate::air_defence::{AirDefenceState, AirDefenceType};
@@ -306,12 +307,12 @@ impl Sim {
     /// Clear every placed asset and re-place the scenario, **keeping the terrain** and
     /// reseeding the RNG (`docs/DESIGN.md` §1.3).
     ///
-    /// This is what makes a batch Monte-Carlo honest as well as fast. `Sim::new` derives
-    /// *both* the terrain and the RNG stream from one seed, so looping it over seeds
-    /// varies the map and the dice together — averaging over two sources of variance at
-    /// once, when the usual question is "what happens on *this* map, on average". Building
-    /// the terrain once and resetting per trial separates them, and skips regenerating a
-    /// 1000x1000 raster for every run.
+    /// Batch Monte-Carlo needs this to be honest as well as fast. `Sim::new` derives both
+    /// the terrain and the RNG stream from one seed, so looping it over seeds varies the
+    /// map and the dice together — two sources of variance averaged at once, when the
+    /// question is usually "what happens on *this* map, on average". Building terrain once
+    /// and resetting per trial separates them, and skips regenerating a 1000x1000 raster
+    /// every run.
     ///
     /// # Errors
     /// As [`Sim::new`], for an unknown type id.
@@ -482,9 +483,8 @@ impl Sim {
     }
 
     /// Place an air-defence battery, returning its index in [`Sim::air_defence`]. An
-    /// organic sensor is registered in the ordinary sensor list and remembered by index,
-    /// which is what lets the battery tell "my own radar saw it" from "it came over the
-    /// net" (`docs/DESIGN.md` §9.5).
+    /// organic sensor goes in the ordinary sensor list and is remembered by index, which
+    /// is how the battery tells "my own radar saw it" from "it came over the net" (§9.5).
     pub fn add_air_defence(
         &mut self,
         id: &str,
@@ -547,9 +547,8 @@ impl Sim {
     }
 
     /// Where a sensor effectively is: `(position, height above its own ground, facing)`.
-    /// For a ground sensor this is exactly its own position and mount height; for a
-    /// carried one it is the airframe's, which is the whole of what makes a recce drone
-    /// a moving sensor.
+    /// A ground sensor reports its own position and mount height; a carried one reports
+    /// its airframe's. That is all a recce drone is.
     #[must_use]
     pub fn sensor_view(&self, sensor_idx: usize) -> (Vec2, f32, f32) {
         let s = &self.sensors[sensor_idx];
@@ -562,15 +561,13 @@ impl Sim {
         }
     }
 
-    /// Write each carried sensor's position and facing back from its airframe.
+    /// Copy each carried sensor's position and facing back from its airframe.
     ///
-    /// The airframe is the source of truth, and [`Sim::sensor_view`] reads through to it —
-    /// but `SensorState.pos` is a public field, and leaving it frozen at the placement
-    /// point made every consumer that reasonably reads `sensor.pos` (overlays, the
-    /// `duel_probe` experiment) silently plot a recce drone's sensor at its take-off
-    /// point. Syncing once per tick makes the obvious thing correct instead. Costs one
-    /// pass over the sensor list, draws no randomness, and does nothing at all when
-    /// nothing is carried.
+    /// The airframe is the source of truth and [`Sim::sensor_view`] reads through to it,
+    /// but `SensorState.pos` is public, and leaving it frozen at the placement point made
+    /// overlays and `duel_probe` plot a recce drone's sensor at its take-off point.
+    /// Syncing once per tick makes the obvious thing correct. One pass over the sensor
+    /// list, no randomness, and a no-op when nothing is carried.
     fn sync_carried_sensors(&mut self) {
         for s_idx in 0..self.sensors.len() {
             let Some(carrier) = self.sensors[s_idx].carrier else {
@@ -586,16 +583,15 @@ impl Sim {
         }
     }
 
-    /// One candidate (sensor, target) glimpse (`docs/DESIGN.md` §3.2): the rate, the EW
-    /// modifier, and the single seeded draw. `true` means this tick detected the target.
+    /// One (sensor, target) glimpse (§3.2): the rate, the EW modifier, and a single
+    /// seeded draw. `true` if this tick detected the target.
     ///
-    /// Both detection passes — ground units and airborne targets — go through here, so
-    /// the rate model, the jamming modifier and the draw accounting cannot drift apart
-    /// between them. The passes differ only in what they put in [`GlimpseTarget`] and in
-    /// what they record afterwards.
+    /// Both passes — ground and air — come through here so the rate model, jamming and
+    /// draw accounting can't drift apart. They differ only in what they put in
+    /// [`GlimpseTarget`] and what they record afterwards.
     ///
-    /// **One RNG draw per eligible pair per tick, in fixed index order** — the
-    /// determinism contract's accounting unit.
+    /// One draw per eligible pair per tick, in fixed index order. That is the unit the
+    /// determinism contract counts.
     fn glimpse(
         &mut self,
         sensor_idx: usize,
@@ -738,11 +734,11 @@ impl Sim {
 
     /// Remove a unit from the fight.
     ///
-    /// A **tombstone**, not a `Vec::remove`: every entry in the detection, fire, strike
-    /// and air-defence logs holds an index into these lists, as does
-    /// `SensorState.carrier`, so shifting the vectors would silently repoint the whole
-    /// recorded history at the wrong assets. Setting `elements = 0` is exactly the state
-    /// a killed unit already reaches, so nothing downstream needs a new case.
+    /// A tombstone, not a `Vec::remove`: the detection, fire, strike and air-defence logs
+    /// all hold indices into these lists, as does `SensorState.carrier`, so shifting the
+    /// vectors would repoint the whole recorded history at the wrong assets. Setting
+    /// `elements = 0` is the state a killed unit already reaches, so nothing downstream
+    /// needs a new case.
     pub fn remove_unit(&mut self, unit_idx: usize) {
         self.units[unit_idx].elements = 0;
         self.units[unit_idx].route.clear();
@@ -974,11 +970,11 @@ impl Sim {
     /// expect to re-glimpse the target this epoch:
     /// `P(>=1 glimpse in epoch_s) = 1 - exp(-lambda_eff * epoch_s) >= track_maintain_p`.
     ///
-    /// Using the full effective rate is the whole point: jamming, concealment, range and
-    /// canopy all feed `lambda_eff`, so degrading a sensor far enough **breaks** an
-    /// existing track rather than merely preventing a new one. A geometric "can it be
-    /// seen" test would leave EW unable to break a track — the very gap this phase
-    /// exists to close. It stays deterministic: the *rate* decides, no draw is made.
+    /// The full effective rate matters here: jamming, concealment, range and canopy all
+    /// feed `lambda_eff`, so degrading a sensor enough *breaks* an existing track instead
+    /// of only preventing a new one. A plain "can it be seen" test would leave EW unable
+    /// to break anything, which is the gap this closes. Still deterministic — the rate
+    /// decides, nothing is drawn.
     fn holds_track(&self, views: &[(usize, Vec2, f32, f32)], target: GlimpseTarget) -> bool {
         views.iter().any(|&(i, s_pos, s_height, s_facing)| {
             let sensor = &self.sensors[i];
@@ -1096,7 +1092,7 @@ impl Sim {
     ) -> (u32, u32) {
         match weapon.class {
             WeaponClass::Direct => {
-                // The round flies the slant distance, so that is what sets dispersion.
+                // The round flies the slant distance, so dispersion scales with that.
                 let range = los::slant_range(
                     &self.terrain,
                     shooter_pos,

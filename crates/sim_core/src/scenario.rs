@@ -1,5 +1,5 @@
-//! Scenario loading: TOML → structs → a deterministic [`TerrainGrid`]. The only I/O the
-//! engine performs. See `docs/DESIGN.md` §1.
+//! Scenario loading: TOML to structs to a deterministic [`TerrainGrid`]. The only I/O
+//! the engine does. Spec: `docs/DESIGN.md` §1.
 
 use crate::air::{AirType, AltitudeRef, Terminal};
 use crate::air_defence::AirDefenceType;

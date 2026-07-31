@@ -1,35 +1,35 @@
-//! Fires: direct-fire hit probability and indirect-fire dispersion + area effect.
-//! Specified in `docs/DESIGN.md` §2; validated by V19–V24. Pure model functions here;
-//! the sim loop (`sim.rs`) drives them into a battle.
+//! Direct-fire hit probability, indirect-fire dispersion and area effect.
+//! Spec: `docs/DESIGN.md` §2. Gates: V19–V24.
+//!
+//! Pure functions only — `sim` drives them into a battle.
 
-// The erf and CEP constants below are the canonical full-precision mathematical values
-// (Abramowitz & Stegun 7.1.26; √(2 ln 2)); keep them recognisable and f64-ready even
-// though f32 rounds them.
+// Constants are written at full mathematical precision (A&S 7.1.26, √(2 ln 2)) so they
+// stay recognisable, even though f32 rounds them.
 #![allow(clippy::excessive_precision)]
 
 use glam::Vec2;
 use rand::Rng;
 use rand_distr::{Distribution, Normal};
 
-/// √(2·ln 2): the circular-Gaussian CEP factor, `CEP = σ · CEP_FACTOR`.
+/// √(2·ln 2), where `CEP = σ · CEP_FACTOR` for a circular Gaussian.
 pub const CEP_FACTOR: f32 = 1.177_410_0;
 
-/// What a weapon is and how it delivers effect.
+/// How a weapon delivers effect.
 #[derive(Clone, Copy, PartialEq, Eq, Debug, serde::Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum WeaponClass {
-    /// Flat-trajectory, LOS-gated, hit against a target silhouette.
+    /// Flat trajectory, needs LOS, hits against a silhouette.
     Direct,
-    /// Ballistic, dispersion + area effect around an aim point.
+    /// Ballistic arc, dispersion and area effect around an aim point.
     Indirect,
 }
 
-/// A weapon type's stat block (`scenarios/weapons.toml`) — placeholder dials.
+/// Weapon stat block (`scenarios/weapons.toml`). Placeholder dials.
 #[derive(Clone, Debug, serde::Deserialize)]
 pub struct WeaponType {
     /// Direct or indirect.
     pub class: WeaponClass,
-    /// Rounds per minute (converted to per-tick expectations by the sim).
+    /// Rounds per minute; the sim converts this to a per-epoch count.
     pub rof_rounds_per_min: f32,
     /// Maximum engagement range, metres.
     pub max_range_m: f32,
@@ -42,7 +42,7 @@ pub struct WeaponType {
     /// Direct: probability of a kill given the round strikes the silhouette.
     #[serde(default = "one")]
     pub p_kill_given_hit: f32,
-    /// Direct: σ-inflation factor against a moving target (dormant until movement).
+    /// Direct: σ multiplier against a moving target. Unused so far.
     #[serde(default = "one")]
     pub moving_target_penalty: f32,
     /// Indirect: circular error probable, metres.
@@ -51,10 +51,9 @@ pub struct WeaponType {
     /// Indirect: Carleton lethal-radius scale `R_L`, metres.
     #[serde(default)]
     pub lethal_radius_m: f32,
-    /// May this weapon engage air targets (`docs/DESIGN.md` §9.6)? Dormant seam: air
-    /// defence is its own class, and ground target selection iterates only the unit
-    /// list, so a ground weapon structurally cannot pick a drone today. This is the
-    /// opt-in a future dual-role autocannon would flip.
+    /// Can this engage air targets (§9.6)? Unused: target selection only iterates the
+    /// unit list, so a ground weapon can't pick a drone anyway. Here for a future
+    /// dual-role autocannon.
     #[serde(default)]
     pub engages_air: bool,
 }
@@ -63,11 +62,9 @@ fn one() -> f32 {
     1.0
 }
 
-// Manual `Default` (not derived), for the same reason `UnitType` has one: the derive
-// would zero `p_kill_given_hit` and `moving_target_penalty`, silently making any
-// code-built weapon incapable of killing anything. This keeps a
-// `WeaponType { .., ..Default::default() }` literal agreeing with what the TOML defaults
-// would have given.
+// Hand-written Default, not derived: deriving would zero `p_kill_given_hit` and
+// `moving_target_penalty`, quietly making every code-built weapon harmless. This matches
+// what the TOML defaults give.
 impl Default for WeaponType {
     fn default() -> Self {
         Self {
@@ -85,7 +82,7 @@ impl Default for WeaponType {
     }
 }
 
-/// Error function, Abramowitz & Stegun 7.1.26 (max abs error ~1.5e-7). std has no `erf`.
+/// Error function (A&S 7.1.26, max error ~1.5e-7). std has no `erf`.
 #[must_use]
 pub fn erf(x: f32) -> f32 {
     let sign = x.signum();
@@ -98,10 +95,10 @@ pub fn erf(x: f32) -> f32 {
     sign * (1.0 - poly * (-x * x).exp())
 }
 
-/// Direct-fire single-shot hit probability against a `width × height` metre silhouette
-/// at `range_m`, with 1σ dispersion `dispersion_mrad`. The impact scatters as an
-/// isotropic 2-D Gaussian about the target centre; deflection and elevation hits are
-/// independent, so `P_hit = erf(W / 2σ√2) · erf(H / 2σ√2)` (V19).
+/// Single-shot hit probability against a `width × height` silhouette at `range_m`.
+///
+/// Impacts scatter as an isotropic 2-D Gaussian about the target centre. Deflection and
+/// elevation are independent, hence the product: `erf(W/2σ√2) · erf(H/2σ√2)` (V19).
 #[must_use]
 pub fn direct_p_hit(dispersion_mrad: f32, range_m: f32, width_m: f32, height_m: f32) -> f32 {
     let sigma = (dispersion_mrad * range_m / 1000.0).max(1e-6);
@@ -109,29 +106,28 @@ pub fn direct_p_hit(dispersion_mrad: f32, range_m: f32, width_m: f32, height_m: 
     erf(width_m * k) * erf(height_m * k)
 }
 
-/// The dispersion σ (metres) implied by a circular error probable.
+/// The σ implied by a circular error probable, metres.
 #[must_use]
 pub fn sigma_from_cep(cep_m: f32) -> f32 {
     cep_m / CEP_FACTOR
 }
 
-/// Carleton damage kernel: probability of incapacitation at distance `rho_m` from a
-/// burst with lethal-radius scale `r_l_m`, `exp(−ρ² / 2R_L²)`.
+/// Carleton kernel: `exp(−ρ²/2R_L²)`, the chance of incapacitation `rho_m` from a burst.
 #[must_use]
 pub fn carleton_damage(rho_m: f32, r_l_m: f32) -> f32 {
     (-rho_m * rho_m / (2.0 * r_l_m * r_l_m)).exp()
 }
 
-/// Expected Carleton damage to a point target from a single round aimed with offset
-/// `offset_m` from it, marginalised over a σ-dispersion Gaussian burst — the closed-form
-/// Gaussian convolution `R_L²/(σ²+R_L²) · exp(−d²/2(σ²+R_L²))` (V22).
+/// Expected Carleton damage from one round aimed `offset_m` off a point target,
+/// averaged over the burst dispersion. Gaussian convolution, so it has a closed form:
+/// `R_L²/(σ²+R_L²) · exp(−d²/2(σ²+R_L²))` (V22).
 #[must_use]
 pub fn expected_area_damage(offset_m: f32, sigma_m: f32, r_l_m: f32) -> f32 {
     let s2 = sigma_m * sigma_m + r_l_m * r_l_m;
     (r_l_m * r_l_m / s2) * (-offset_m * offset_m / (2.0 * s2)).exp()
 }
 
-/// Sample a dispersed burst point about `aim` with per-axis dispersion `sigma_m`.
+/// Draw a burst point about `aim` with per-axis dispersion `sigma_m`.
 #[must_use]
 pub fn sample_burst(aim: Vec2, sigma_m: f32, rng: &mut impl Rng) -> Vec2 {
     let n = Normal::new(0.0f32, sigma_m.max(1e-6)).expect("sigma is finite and positive");

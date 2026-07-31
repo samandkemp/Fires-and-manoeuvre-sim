@@ -1,26 +1,23 @@
-//! Run a folder of scenarios headlessly, many seeds each, and write the results as CSV.
+//! Run a folder of scenarios headlessly over many seeds and write the results as CSV.
 //!
-//! The app answers "what happens in this battle"; this answers "what happens *on
-//! average*, and how much does it vary" — which is the question an OR study actually
-//! asks. Every metric comes from the existing event logs, so nothing here is a special
-//! measurement path that could drift from what the sim really did.
+//! The app shows one battle; this shows the average and the spread, which is what a study
+//! needs. Every metric is read back from the sim's own event logs, so there is no separate
+//! measurement path to drift.
 //!
 //! ```text
 //! cargo run -p experiments --release --bin batch -- scenarios/ --seeds 50
 //! cargo run -p experiments --release --bin batch -- scenarios/ --seeds 20 --until 900 --out out/
 //! ```
 //!
-//! Writes `<out>/<scenario>.csv` (one row per seed) and `<out>/summary.csv` (one row per
-//! scenario: mean and standard error of each metric). `.gitignore` already excludes
-//! `out/` and `*.csv`.
+//! Writes `<out>/<scenario>.csv` (a row per seed) and `<out>/summary.csv` (a row per
+//! scenario, mean and standard error). `.gitignore` covers `out/` and `*.csv`.
 
 use sim_core::scenario::{Libraries, Scenario};
 use sim_core::sim::{Side, Sim};
 use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 
-/// What one run of one scenario produced. Every field is read back from the sim's own
-/// logs and final state — there is no separate bookkeeping to fall out of step.
+/// What one run produced. Every field comes from the sim's own logs and final state.
 #[derive(Default, Clone, Copy)]
 struct Outcome {
     blue_losses: f64,
@@ -246,10 +243,9 @@ fn run_one(sim: &mut Sim, until_s: f64) -> Outcome {
 
 /// Collapse `-0.0` to `0.0` for output.
 ///
-/// Rust's `Sum` for `f64` folds from **`-0.0`**, not `0.0` — deliberately, because
-/// `-0.0 + x == x` for every `x` while `0.0 + (-0.0) == 0.0` would discard a sign. So a
-/// metric summed over an empty log comes out as `-0.0` and prints as `-0`, which in a
-/// results file reads like a bug rather than "nothing happened".
+/// Rust's `f64` sum folds from `-0.0`, not `0.0`, because `-0.0 + x == x` for every `x`
+/// whereas `0.0 + (-0.0)` would drop the sign. So a metric summed over an empty log comes
+/// out `-0.0` and prints as `-0`, which in a results file reads like a bug.
 fn tidy(v: f64) -> f64 {
     if v == 0.0 {
         0.0
@@ -258,8 +254,8 @@ fn tidy(v: f64) -> f64 {
     }
 }
 
-/// Mean and standard error of the mean. The SE is what says whether a difference between
-/// two scenarios means anything, so it belongs beside every mean rather than nowhere.
+/// Mean and standard error. The SE says whether a difference between two scenarios means
+/// anything, so it sits beside every mean.
 fn mean_and_se(xs: &[f64]) -> (f64, f64) {
     let n = xs.len() as f64;
     if n == 0.0 {

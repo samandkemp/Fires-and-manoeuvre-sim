@@ -1,10 +1,10 @@
-//! Line of sight over the terrain grid — the load-bearing primitive every fires and
-//! sensing calculation reads. Specified in `docs/DESIGN.md` §1.4; validated by V5–V11.
+//! Line of sight. Every fires and sensing calculation goes through here.
+//! Spec: `docs/DESIGN.md` §1.4. Gates: V5–V11.
 //!
-//! Semantics: the sightline runs between two actors at `z(endpoint) + h`. Bare ground
-//! masks hard; Urban feature height masks hard; Trees attenuate — canopy path length
-//! `L` gives transmittance `τ = exp(−Σ κ·L)`. Endpoint cells never contribute feature
-//! blocking (an actor in woods looks out from under its own canopy).
+//! The sightline runs between two actors at `z(endpoint) + h`. Ground and urban feature
+//! height block hard; trees attenuate, with canopy path length `L` giving transmittance
+//! `τ = exp(−Σ κ·L)`. An endpoint's own cell never blocks — someone in woods can see out
+//! from under their own canopy.
 
 use crate::terrain::{TerrainGrid, TerrainType};
 use glam::Vec2;
@@ -63,9 +63,8 @@ pub fn line_of_sight(terrain: &TerrainGrid, a: Vec2, h_a: f32, b: Vec2, h_b: f32
         };
     }
 
-    // Canonicalise the endpoint order so both query directions execute identical float
-    // arithmetic — this is what makes the symmetry invariant exact rather than
-    // approximate. (Lexicographic order on (x, y).)
+    // Order the endpoints lexicographically so both query directions run identical float
+    // arithmetic. That is what makes the symmetry invariant exact, not just approximate.
     let swapped = (b.x, b.y) < (a.x, a.y);
     let (p0, h0, p1, h1) = if swapped {
         (b, h_b, a, h_a)
@@ -331,9 +330,9 @@ fn fill_breakpoints(scratch: &mut Scratch, p0: Vec2, p1: Vec2, span: f32, step: 
 /// Push the path distances at which the segment crosses gridlines of spacing `step` on
 /// one axis, **in ascending path-distance order**.
 ///
-/// Walking `k` upward gives ascending `t` when the segment runs in +axis, and descending
-/// `t` when it runs in −axis — so the loop walks `k` in whichever direction makes the
-/// output ascending, which is what lets the caller merge instead of sort.
+/// Walking `k` upward gives ascending `t` for a +axis run and descending `t` for a −axis
+/// one, so the loop picks the direction that yields ascending output. That is what lets
+/// the caller merge instead of sort.
 fn axis_crossings(out: &mut Vec<f32>, c0: f32, c1: f32, span: f32, step: f32) {
     let d = c1 - c0;
     if d.abs() <= 1e-9 {

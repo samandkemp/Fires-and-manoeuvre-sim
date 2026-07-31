@@ -119,13 +119,12 @@ fn main() {
     report("ground-ground (h=2 m)", 2.0, 20_000, &mut rnd);
     report("ground-air    (h=400 m)", 400.0, 20_000, &mut rnd);
 
-    // The simulation tick itself — the path every batch run and every frame of the app
-    // pays, and the one the rasters above do *not* cover.
+    // The simulation tick: what every batch run and every app frame pays, and what the
+    // rasters above don't cover.
     //
-    // Read the tick figure with care: it is sub-millisecond and swings by 2-3x run to run
-    // on a busy machine, so it is a sanity check ("still cheap?") rather than something to
-    // optimise against. `build` is the number that matters — it is paid per scenario load
-    // and, before terrain reuse, was paid per batch trial.
+    // Treat the tick figure as a sanity check, not an optimisation target — it is
+    // sub-millisecond and swings 2-3x run to run on a busy machine. `build` is the number
+    // that matters, paid on every scenario load.
     println!(
         "
 simulation tick (shipped scenarios):"

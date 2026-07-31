@@ -1,10 +1,9 @@
-//! Zero-sum matrix games solved by fictitious play. Specified in `docs/DESIGN.md` §6.2;
-//! validated by V32–V36 against hand-solvable games.
+//! Zero-sum matrix games by fictitious play. Spec: `docs/DESIGN.md` §6.2.
+//! Gates: V32–V36, against hand-solvable games.
 //!
-//! Fictitious play alternates best responses to the opponent's empirical play. For a
-//! two-player zero-sum game the time-average strategies converge to a Nash equilibrium
-//! and the value converges (Robinson 1951) — a pure algorithm needing no LP dependency,
-//! and the convergence is itself an OR demonstration.
+//! Each round both players best-respond to the opponent's empirical play. For two-player
+//! zero-sum games the time-average strategies converge to a Nash equilibrium (Robinson
+//! 1951). No LP dependency needed, and watching it converge is itself instructive.
 
 use ndarray::Array2;
 

@@ -925,9 +925,9 @@ fn ui_panel(
     }
 
     // ---- Map interaction -------------------------------------------------------
-    // Left-click selects (shift adds, drag box-selects); right-click commands whatever is
-    // selected. Placement is the only thing still modal, which is what removes the old
-    // Select/Move/Route toggling from the common loop.
+    // Left-click selects (shift adds, drag box-selects); right-click commands the
+    // selection. Only placement is still modal, which is what removed the old
+    // Select/Move/Route toggling.
     let world_cursor = || -> Option<Vec2> {
         let window = window.single().ok()?;
         let (cam, cam_tf) = camera.single().ok()?;

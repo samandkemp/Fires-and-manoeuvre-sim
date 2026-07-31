@@ -1,19 +1,16 @@
-//! Air defence: the counter-drone half of `docs/DESIGN.md` §9. Validated by V48–V51.
+//! Air defence, the counter-drone half of `docs/DESIGN.md` §9. Gates: V48-V51.
 //!
-//! Two engagement models, because the point is that **time-to-kill has a different
-//! distribution** in each — that is what makes a gun and a missile trade off differently
-//! against a raid:
+//! Two engagement models. Time-to-kill is distributed differently in each, which is what
+//! makes guns and missiles trade off against a raid:
 //!
-//! - [`AdEngagement::Gun`] — a Poisson kill process while the target is in the envelope,
-//!   structurally the same maths as the §3.2 glimpse model. `TTK ~ Exp(λ)`.
-//! - [`AdEngagement::Missile`] — discrete shoot-look-shoot: a shot takes `range/speed`
-//!   to arrive, then resolves as a Bernoulli trial; a miss costs a reload. Shots-to-kill
-//!   is Geometric(p).
+//! - [`AdEngagement::Gun`] — Poisson kill process while the target is in the envelope.
+//!   Same maths as the §3.2 glimpse model. `TTK ~ Exp(λ)`.
+//! - [`AdEngagement::Missile`] — shoot-look-shoot. A shot takes `range/speed` to arrive
+//!   then resolves as a Bernoulli trial; a miss costs a reload. Shots-to-kill ~ Geom(p).
 //!
-//! The other half of the model is the **cueing timeline** (§9.5): a battery may cue
-//! itself from an organic sensor or wait for a track over the net, paying
-//! `cue_latency_s` — the Tx/Rx lever that decides whether the engagement window ever
-//! opens at all.
+//! The other half is the cueing timeline (§9.5): a battery either cues itself from its
+//! own radar or waits for a track over the net, paying `cue_latency_s`. That delay often
+//! decides whether it gets to shoot at all.
 
 use crate::los;
 use crate::sim::Side;
@@ -184,9 +181,8 @@ impl AirDefenceState {
         }
     }
 
-    /// Time at which a track becomes actionable to this battery
-    /// (`docs/DESIGN.md` §9.5). The battery acts on whichever route to the track arrives
-    /// first — its own radar, or the network:
+    /// When a track becomes actionable to this battery (§9.5). Whichever route arrives
+    /// first wins — its own radar, or the network:
     ///
     /// ```text
     /// actionable_at = min( own_sensor_seen_s,                  // organic: no comms hop
@@ -194,10 +190,9 @@ impl AirDefenceState {
     ///                + reaction_time_s
     /// ```
     ///
-    /// Taking the minimum is what makes a self-cueing battery correct even when someone
-    /// else's sensor saw the target first: its own radar still closes the loop without
-    /// paying the comms delay. A battery with `self_cue = false`, or none of its own,
-    /// only ever has the network route.
+    /// The `min` matters: a self-cueing battery whose radar acquires *after* someone
+    /// else detected should still engage off its radar, not wait out a comms hop it does
+    /// not need. With `self_cue = false`, or no radar, only the net route exists.
     #[must_use]
     pub fn actionable_at(
         &self,
@@ -260,11 +255,11 @@ impl AirDefenceState {
         self.engagements.retain(|e| still_valid(e.target));
     }
 
-    /// Resolve engagements that are due this tick, appending `(target, killed)` to `out`.
+    /// Resolve engagements due this tick, appending `(target, killed)` to `out`.
     ///
-    /// A gun rolls `1 − e^{−λ·dt}` every tick the engagement is open (memoryless, so the
-    /// result is independent of the tick size). A missile resolves once, when its shot
-    /// arrives; a miss frees the channel and starts the reload.
+    /// A gun rolls `1 − e^{−λ·dt}` every tick it is engaging; memoryless, so tick size
+    /// does not change the distribution. A missile resolves once when its shot arrives,
+    /// and a miss frees the channel and starts the reload.
     pub fn resolve_due(
         &mut self,
         now_s: f64,
@@ -312,13 +307,12 @@ impl AirDefenceState {
     }
 }
 
-/// The slant range at which this battery can engage `target`, or `None` if the target is
-/// outside its envelope (`docs/DESIGN.md` §9.4).
+/// Slant range at which this battery can engage `target`, or `None` if it is outside the
+/// envelope (§9.4).
 ///
-/// Returns the range rather than a bare bool because every caller that asks "can I engage
-/// this?" immediately needs "at what range?" — the missile flight time is
-/// `range / missile_speed`. Checks are ordered cheapest-first: the altitude band, then
-/// slant range, then (only if `requires_los`) the sightline, which is the expensive one.
+/// Returns the range, not a bool: every caller asking "can I engage?" next needs "at what
+/// range?" for the missile flight time. Checks run cheapest-first — altitude band, slant
+/// range, then the sightline if `requires_los`.
 #[must_use]
 pub fn engagement_range(
     stats: &AirDefenceType,
@@ -405,20 +399,18 @@ pub fn expected_ttk_missile(ssk_p: f32, flight_time_s: f32, reload_s: f32) -> f3
     flight_time_s / ssk_p + (1.0 / ssk_p - 1.0) * reload_s
 }
 
-/// The effective engagement window (`docs/DESIGN.md` §9.5).
+/// The effective engagement window (§9.5).
 ///
-/// The cueing clock starts at **detection**, not at envelope entry, so early warning and
-/// comms latency trade directly against one another. For a target detected
-/// `warning_lead_s` before it enters the envelope and in the envelope for
-/// `in_envelope_s`:
+/// The cueing clock starts at *detection*, not envelope entry, so early warning and comms
+/// latency trade off against each other. For a target detected `warning_lead_s` before it
+/// enters and in the envelope for `in_envelope_s`:
 ///
 /// ```text
 /// W_eff = max(0, W − max(0, L + R − D))
 /// ```
 ///
-/// The delay only costs anything once `L + R` outruns the warning lead `D`: a cue that
-/// has already aged through the network by the time the target arrives is free. With
-/// `D = 0` (detected as it enters) this reduces to the familiar `W − L − R`.
+/// The delay costs nothing until `L + R` outruns the warning lead `D` — a cue that aged
+/// in flight arrives ready. At `D = 0` this is just `W − L − R`.
 #[must_use]
 pub fn effective_window_s(
     in_envelope_s: f32,
