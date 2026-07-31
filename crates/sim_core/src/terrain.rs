@@ -424,22 +424,13 @@ impl TerrainSource {
                 let mut rng = SimRng::seed_from_u64(seed);
 
                 let hills = place_hills(count, max_height_m, base_radius_m, &transform, &mut rng);
-                let elevation_m = Array2::from_shape_fn((height, width), |(iy, ix)| {
-                    let p = transform.cell_center(ix, iy);
-                    hills.iter().map(|hill| hill.elevation_at(p)).sum()
-                });
+                let elevation_m = hill_sum_field(&hills, &transform, width, height);
 
                 // Woods: an independent hill-sum field, thresholded at the quantile that
                 // paints the requested fraction of cells.
                 let woods_hills =
                     place_hills(count * 3, 1.0, base_radius_m * 0.5, &transform, &mut rng);
-                let woods_field = Array2::from_shape_fn((height, width), |(iy, ix)| {
-                    let p = transform.cell_center(ix, iy);
-                    woods_hills
-                        .iter()
-                        .map(|hill| hill.elevation_at(p))
-                        .sum::<f32>()
-                });
+                let woods_field = hill_sum_field(&woods_hills, &transform, width, height);
                 let mut terrain_type = Array2::from_elem((height, width), TerrainType::Open);
                 let frac = woods_fraction.clamp(0.0, 0.95);
                 if frac > 0.0 {
@@ -567,6 +558,11 @@ pub enum TerrainLayer {
         max_size_m: f32,
     },
 }
+
+/// Ceiling on hills in a generated field. Terrain generation is `O(cells x hills)`, and
+/// the woodland count scales with map area, so without a cap a large map silently costs
+/// seconds. See [`TerrainLayer::Woodland`].
+const MAX_FIELD_HILLS: u32 = 256;
 
 fn default_patch_scale() -> f32 {
     300.0
@@ -703,10 +699,7 @@ impl TerrainRecipe {
                 base_radius_m,
             } => {
                 let hills = place_hills(count, max_height_m, base_radius_m, &transform, &mut rng);
-                Array2::from_shape_fn((height, width), |(iy, ix)| {
-                    let p = transform.cell_center(ix, iy);
-                    hills.iter().map(|hill| hill.elevation_at(p)).sum()
-                })
+                hill_sum_field(&hills, &transform, width, height)
             }
         };
         let mut terrain_type = Array2::from_elem((height, width), TerrainType::Open);
@@ -769,16 +762,15 @@ impl TerrainLayer {
                 if frac <= 0.0 {
                     return;
                 }
-                let count = ((extent_x * extent_y) / (patch_scale_m * patch_scale_m)).max(1.0);
-                let field_hills =
-                    place_hills(count as u32, 1.0, patch_scale_m * 0.5, transform, rng);
-                let field = Array2::from_shape_fn((height, width), |(iy, ix)| {
-                    let p = transform.cell_center(ix, iy);
-                    field_hills
-                        .iter()
-                        .map(|hill| hill.elevation_at(p))
-                        .sum::<f32>()
-                });
+                // One field hill per patch-sized area, **capped**: the count scales with
+                // map area, so a 10 km map at a 300 m patch scale would ask for 1111
+                // hills and the O(cells x hills) evaluation becomes a billion operations.
+                // Past a few hundred the extra hills only average each other out — the
+                // coverage is set by the quantile below, not by the count.
+                let wanted = ((extent_x * extent_y) / (patch_scale_m * patch_scale_m)).max(1.0);
+                let count = (wanted as u32).min(MAX_FIELD_HILLS);
+                let field_hills = place_hills(count, 1.0, patch_scale_m * 0.5, transform, rng);
+                let field = hill_sum_field(&field_hills, transform, width, height);
                 let mut sorted: Vec<f32> = field.iter().copied().collect();
                 sorted.sort_by(f32::total_cmp);
                 let idx = ((1.0 - frac) * (sorted.len() - 1) as f32).round() as usize;
@@ -821,6 +813,22 @@ impl TerrainLayer {
             }
         }
     }
+}
+
+/// Evaluate a hill-sum field over every cell, in parallel.
+///
+/// This is the dominant cost of terrain generation: `O(cells x hills)`, and both the
+/// relief and the woodland field pay it. The hills are *placed* sequentially from the
+/// seeded RNG before this runs, and each cell writes only its own slot, so the result is
+/// bit-identical to the serial version — the same reasoning that makes `los::viewshed`
+/// parallel and deterministic.
+fn hill_sum_field(hills: &[Hill], transform: &GridTransform, w: usize, h: usize) -> Array2<f32> {
+    let mut out = Array2::<f32>::zeros((h, w));
+    ndarray::Zip::indexed(&mut out).par_for_each(|(iy, ix), v| {
+        let p = transform.cell_center(ix, iy);
+        *v = hills.iter().map(|hill| hill.elevation_at(p)).sum();
+    });
+    out
 }
 
 /// One Gaussian hill: `height · exp(−d² / 2σ²)`.

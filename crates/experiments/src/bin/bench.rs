@@ -118,4 +118,46 @@ fn main() {
     println!("slant vs horizontal range on 120 m relief:");
     report("ground-ground (h=2 m)", 2.0, 20_000, &mut rnd);
     report("ground-air    (h=400 m)", 400.0, 20_000, &mut rnd);
+
+    // The simulation tick itself — the path every batch run and every frame of the app
+    // pays, and the one the rasters above do *not* cover.
+    //
+    // Read the tick figure with care: it is sub-millisecond and swings by 2-3x run to run
+    // on a busy machine, so it is a sanity check ("still cheap?") rather than something to
+    // optimise against. `build` is the number that matters — it is paid per scenario load
+    // and, before terrain reuse, was paid per batch trial.
+    println!(
+        "
+simulation tick (shipped scenarios):"
+    );
+    let libs = sim_core::scenario::Libraries::load_dir(&dir).unwrap();
+    for name in ["default", "air_raid", "mountain_pass"] {
+        let Ok(scn) = sim_core::scenario::Scenario::load(&dir.join(format!("{name}.toml"))) else {
+            continue;
+        };
+        let t = Instant::now();
+        let Ok(mut sim) = sim_core::sim::Sim::new(&scn, &libs, scn.default_seed) else {
+            continue;
+        };
+        let build = t.elapsed();
+
+        // Reset cost matters too: it is what a batch run pays per trial.
+        let t = Instant::now();
+        sim.reset_to_scenario(&scn, &libs, 1).unwrap();
+        let reset = t.elapsed();
+
+        let ticks = 2000u32;
+        let t = Instant::now();
+        for _ in 0..ticks {
+            sim.step_one();
+        }
+        let el = t.elapsed();
+        println!(
+            "  {name:<14} build {:>7.1?}  reset {:>7.1?}  tick {:>6.1} us  ({ticks} ticks in {:.2?})",
+            build,
+            reset,
+            el.as_secs_f64() * 1e6 / f64::from(ticks),
+            el
+        );
+    }
 }
