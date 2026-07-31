@@ -207,8 +207,11 @@ pub struct AirState {
     pub time_alive_s: f32,
     /// Munitions remaining.
     pub munitions_left: u32,
-    /// Whether the *opposing* side has detected this airframe.
+    /// Whether the *opposing* side currently holds a track on this airframe. Derived
+    /// from [`AirState::last_seen_s`], refreshed each decision epoch (§10.1).
     pub detected: bool,
+    /// Sim time this airframe was last observed by the opposing side, if ever.
+    pub last_seen_s: Option<f64>,
     /// Sim time of the *first* detection by any sensor — the moment a track enters the
     /// cueing network (§9.5).
     pub detected_at_s: Option<f64>,
@@ -264,6 +267,7 @@ impl AirState {
             time_alive_s: 0.0,
             munitions_left,
             detected: false,
+            last_seen_s: None,
             detected_at_s: None,
             detected_by: None,
             seen_by: BTreeMap::new(),

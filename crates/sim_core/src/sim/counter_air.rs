@@ -52,6 +52,7 @@ impl Sim {
                 if self.glimpse(s_idx, view, target) {
                     let air = &mut self.air[a_idx];
                     air.seen_by.insert(s_idx, self.time_s);
+                    air.last_seen_s = Some(self.time_s);
                     let first = !air.detected;
                     if first {
                         air.detected = true;

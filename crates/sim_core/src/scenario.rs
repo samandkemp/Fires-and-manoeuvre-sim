@@ -73,6 +73,17 @@ pub struct SimConfig {
     /// Outgoing-fire effectiveness multiplier while Suppressed (`< 1`).
     #[serde(default = "default_suppressed_fire_factor")]
     pub suppressed_fire_factor: f32,
+    /// How long a track survives without being re-observed, seconds
+    /// (`docs/DESIGN.md` §10.1). This is what lets EW *break* a track rather than only
+    /// prevent one: jam a tracked unit, nobody re-observes it, and the track lapses.
+    #[serde(default = "default_track_hold")]
+    pub track_hold_s: f32,
+    /// How readily a sensor must still be able to see a target to *hold* its track:
+    /// the track refreshes when `P(at least one glimpse this epoch) >= this`
+    /// (`docs/DESIGN.md` §10.1). Jamming, concealment, range and LOS all feed the rate,
+    /// so this is what lets EW degrade a sensor enough to break an existing track.
+    #[serde(default = "default_track_maintain_p")]
+    pub track_maintain_p: f32,
 }
 
 fn default_dt_s() -> f32 {
@@ -99,6 +110,14 @@ fn default_suppressed_fire_factor() -> f32 {
     0.4
 }
 
+fn default_track_hold() -> f32 {
+    45.0
+}
+
+fn default_track_maintain_p() -> f32 {
+    0.5
+}
+
 impl Default for SimConfig {
     fn default() -> Self {
         Self {
@@ -108,6 +127,8 @@ impl Default for SimConfig {
             p_suppress: default_p_suppress(),
             recover_per_s: default_recover_per_s(),
             suppressed_fire_factor: default_suppressed_fire_factor(),
+            track_hold_s: default_track_hold(),
+            track_maintain_p: default_track_maintain_p(),
         }
     }
 }

@@ -109,8 +109,14 @@ pub struct UnitState {
     pub stats: UnitType,
     /// Resolved weapon, if the unit carries one.
     pub weapon: Option<WeaponType>,
-    /// Whether the *opposing* side has detected this unit (permanent this phase).
+    /// Whether the *opposing* side currently holds a track on this unit.
+    ///
+    /// Derived from [`UnitState::last_seen_s`] and refreshed at each decision epoch, so
+    /// every reader keeps working while the underlying model is now a decaying track
+    /// rather than a permanent flag (`docs/DESIGN.md` §10.1).
     pub detected: bool,
+    /// Sim time this unit was last observed by the opposing side, if ever.
+    pub last_seen_s: Option<f64>,
     /// Sub-elements remaining (attrition removes them one at a time).
     pub elements: u32,
     /// Sub-elements the unit started with.
@@ -242,6 +248,8 @@ pub struct Sim {
     p_suppress: f32,
     recover_per_s: f32,
     suppressed_fire_factor: f32,
+    track_hold_s: f32,
+    track_maintain_p: f32,
     time_s: f64,
     epochs_run: u64,
     sensors: Vec<SensorState>,
@@ -275,6 +283,8 @@ impl Sim {
             p_suppress: cfg.p_suppress,
             recover_per_s: cfg.recover_per_s,
             suppressed_fire_factor: cfg.suppressed_fire_factor,
+            track_hold_s: cfg.track_hold_s,
+            track_maintain_p: cfg.track_maintain_p,
             time_s: 0.0,
             epochs_run: 0,
             sensors: Vec::new(),
@@ -676,6 +686,7 @@ impl Sim {
             stats,
             weapon,
             detected: false,
+            last_seen_s: None,
             elements,
             initial_elements: elements,
             suppression: Suppression::Free,
@@ -833,6 +844,7 @@ impl Sim {
                 };
                 if self.glimpse(s_idx, view, target) {
                     self.units[u_idx].detected = true;
+                    self.units[u_idx].last_seen_s = Some(self.time_s);
                     self.events.push(DetectionEvent {
                         time_s: self.time_s,
                         sensor: s_idx,
@@ -860,12 +872,132 @@ impl Sim {
         self.resolve_air_defence();
         self.resolve_strikes();
 
-        // 8. Decision epoch: resolve one epoch of fires per boundary crossed.
+        // 8. Decision epoch: maintain tracks, then resolve one epoch of fires per
+        // boundary crossed. Track maintenance leads because fires are gated on tracks.
         let epochs_due = (self.time_s / f64::from(self.epoch_s)).floor() as u64;
         while self.epochs_run < epochs_due {
             self.epochs_run += 1;
+            self.maintain_tracks();
             self.resolve_fires();
         }
+    }
+
+    /// Refresh and expire tracks (`docs/DESIGN.md` §10.1).
+    ///
+    /// Runs at the **decision epoch, not the tick**, for two reasons. Conceptually,
+    /// holding a track is a decision-layer concern. Practically, the glimpse loop skips
+    /// already-detected targets, so refreshing means looking again — measured at 4 sensors
+    /// x 6 units that is ~2.3 ms per tick, up to 20x the whole tick; at epoch cadence it
+    /// amortises to ~0.23 ms, and tracks decay over tens of seconds so a 10 s cadence is
+    /// ample.
+    ///
+    /// Refresh is **deterministic and draws no randomness**: acquiring a target is a
+    /// stochastic glimpse, but keeping eyes on something already found is not a coin
+    /// flip. That also leaves the per-tick RNG stream untouched.
+    fn maintain_tracks(&mut self) {
+        let (now, hold) = (self.time_s, f64::from(self.track_hold_s));
+
+        // Which sensors can still see what, right now.
+        let views: Vec<(usize, Vec2, f32, f32)> = (0..self.sensors.len())
+            .filter(|&i| self.sensor_active(i))
+            .map(|i| {
+                let (pos, height, facing) = self.sensor_view(i);
+                (i, pos, height, facing)
+            })
+            .collect();
+
+        for u_idx in 0..self.units.len() {
+            let unit = &self.units[u_idx];
+            if unit.last_seen_s.is_none() || !unit.alive() {
+                continue;
+            }
+            // Modality is per sensor, but every sensor is Optical today; take the
+            // signature from the first view so the rate reflects the real target.
+            let target = GlimpseTarget {
+                pos: unit.pos,
+                height_m: unit.stats.height_m,
+                signature: views.first().map_or(0.0, |&(i, ..)| {
+                    unit.stats.signature_in(self.sensors[i].stats.modality)
+                }),
+                concealment: sensing::concealment_at(&self.terrain, unit.pos),
+                side: unit.side,
+            };
+            if self.holds_track(&views, target) {
+                self.units[u_idx].last_seen_s = Some(now);
+            }
+            // Expire: a track not re-observed within the hold time is lost, and the
+            // target must be reacquired from scratch.
+            let fresh = self.units[u_idx]
+                .last_seen_s
+                .is_some_and(|t| now - t < hold);
+            self.units[u_idx].detected = fresh;
+            if !fresh {
+                self.units[u_idx].last_seen_s = None;
+            }
+        }
+
+        for a_idx in 0..self.air.len() {
+            let air = &self.air[a_idx];
+            if air.last_seen_s.is_none() || !air.alive {
+                continue;
+            }
+            let target = GlimpseTarget {
+                pos: air.pos,
+                height_m: air.actor_height(&self.terrain),
+                signature: views.first().map_or(0.0, |&(i, ..)| {
+                    air.stats.signature_in(self.sensors[i].stats.modality)
+                }),
+                concealment: 0.0, // airborne: not standing in the cell below it (§9.1)
+                side: air.side,
+            };
+            if self.holds_track(&views, target) {
+                self.air[a_idx].last_seen_s = Some(now);
+            }
+            let fresh = self.air[a_idx].last_seen_s.is_some_and(|t| now - t < hold);
+            self.air[a_idx].detected = fresh;
+            if !fresh {
+                // A lapsed track is *gone*: clear the cueing record too, so reacquisition
+                // restarts the §9.5 timeline instead of a battery firing instantly off a
+                // stale cue.
+                let air = &mut self.air[a_idx];
+                air.last_seen_s = None;
+                air.detected_at_s = None;
+                air.detected_by = None;
+                air.seen_by.clear();
+            }
+        }
+    }
+
+    /// Is any enemy sensor still seeing a target well enough to *hold* a track on it?
+    ///
+    /// Deliberately **not** a bare geometry test. A track is held when a sensor would
+    /// expect to re-glimpse the target this epoch:
+    /// `P(>=1 glimpse in epoch_s) = 1 - exp(-lambda_eff * epoch_s) >= track_maintain_p`.
+    ///
+    /// Using the full effective rate is the whole point: jamming, concealment, range and
+    /// canopy all feed `lambda_eff`, so degrading a sensor far enough **breaks** an
+    /// existing track rather than merely preventing a new one. A geometric "can it be
+    /// seen" test would leave EW unable to break a track — the very gap this phase
+    /// exists to close. It stays deterministic: the *rate* decides, no draw is made.
+    fn holds_track(&self, views: &[(usize, Vec2, f32, f32)], target: GlimpseTarget) -> bool {
+        views.iter().any(|&(i, s_pos, s_height, s_facing)| {
+            let sensor = &self.sensors[i];
+            if sensor.side == target.side {
+                return false;
+            }
+            let lambda = sensing::detection_rate_against(
+                &self.terrain,
+                &sensor.stats,
+                s_pos,
+                s_height,
+                s_facing,
+                target.pos,
+                target.height_m,
+                target.signature,
+                target.concealment,
+            ) * self.jamming_at(target.pos, target.side);
+            p_detect_tick(lambda, self.epoch_s) >= self.track_maintain_p
+        })
     }
 
     /// One epoch of fires. Each live, unpinned, weapon-carrying unit engages a target:

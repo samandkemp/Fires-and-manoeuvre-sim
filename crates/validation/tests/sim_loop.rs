@@ -1139,3 +1139,125 @@ fn v54_removal_tombstones_keep_logged_indices_valid() {
     // The sim keeps running without them.
     sim.run_until(200.0);
 }
+
+// ---- V55: track lifecycle (docs/DESIGN.md §10.1) ------------------------------------
+// Detection used to be permanent, which quietly meant EW could *prevent* a track but
+// never *break* one — jamming a unit already seen did nothing at all. A track now lapses
+// `track_hold_s` after its last observation, and whether a sensor still "observes" is
+// judged on the effective glimpse rate, so degrading a sensor loses the track.
+
+/// A watcher and a target on flat ground. `sensor_range` and the target's `route` are
+/// parameterised so the same fixture covers "stays in view" and "drives out of view".
+fn track_fixture(sensor_range: f32, route: &str) -> (Scenario, Libraries) {
+    let text = format!(
+        r#"
+        name = "track"
+        default_seed = 4
+        [sim]
+        dt_s = 1.0
+        epoch_s = 10.0
+        track_hold_s = 30.0
+        [terrain]
+        cell_size_m = 10.0
+        width_cells = 400
+        height_cells = 40
+        [terrain.source.flat]
+        elevation_m = 0.0
+        [[blue.sensors]]
+        id = "obs"
+        type = "s"
+        pos = [100.0, 200.0]
+        [[red.units]]
+        id = "tgt"
+        type = "u"
+        pos = [600.0, 200.0]
+        {route}
+    "#
+    );
+    let scn = Scenario::from_toml_str(&text).unwrap();
+    let libs = Libraries {
+        sensors: BTreeMap::from([(
+            "s".to_owned(),
+            SensorType {
+                modality: Modality::Optical,
+                mount_height_m: 2.0,
+                max_range_m: sensor_range,
+                lambda0_per_s: 1.5, // acquires fast, so the test is about *holding*
+                range_half_m: 2000.0,
+                range_exponent: 2.0,
+                for_width_deg: None,
+            },
+        )]),
+        units: BTreeMap::from([(
+            "u".to_owned(),
+            UnitType {
+                height_m: 2.0,
+                speed_m_s: 20.0,
+                signature: BTreeMap::from([("optical".to_owned(), 0.9)]),
+                ..Default::default()
+            },
+        )]),
+        ..Libraries::with_terrain(scenario_params())
+    };
+    (scn, libs)
+}
+
+#[test]
+fn v55_tracks_decay_and_ew_can_break_them() {
+    // 1. Under continuous observation the track never lapses, however long the run.
+    let (scn, libs) = track_fixture(4000.0, "");
+    let mut sim = Sim::new(&scn, &libs, 1).unwrap();
+    sim.run_until(200.0);
+    assert!(
+        sim.units()[0].detected,
+        "a target in plain view must stay tracked"
+    );
+    let seen = sim.units()[0].last_seen_s.expect("a live track");
+    assert!(
+        sim.time_s() - seen < 30.0,
+        "an observed track should keep being refreshed (last seen {seen})"
+    );
+
+    // 2. Drive the target out of sensor range and the track lapses within the hold time.
+    let (scn, libs) = track_fixture(1500.0, "route = [[3800.0, 200.0]]");
+    let mut sim = Sim::new(&scn, &libs, 1).unwrap();
+    sim.run_until(30.0);
+    assert!(sim.units()[0].detected, "acquired while still close");
+    // At 20 m/s it clears the 1500 m envelope well before t = 120 s; then hold + slack.
+    sim.run_until(200.0);
+    assert!(
+        !sim.units()[0].detected,
+        "a target that has driven out of range must lose its track"
+    );
+    assert_eq!(
+        sim.units()[0].last_seen_s,
+        None,
+        "a lapsed track is cleared, so reacquisition starts afresh"
+    );
+
+    // 3. The headline, and the thing permanent detection made impossible: jam a unit that
+    //    is *already tracked* and the track breaks. Note the jammer arrives mid-run —
+    //    testing that EW *breaks* a track, not merely that it prevents one forming.
+    let (scn, libs) = track_fixture(4000.0, "");
+    let mut sim = Sim::new(&scn, &libs, 1).unwrap();
+    sim.run_until(30.0);
+    assert!(
+        sim.units()[0].detected,
+        "sanity: the track is established before jamming starts"
+    );
+    sim.add_jammer(Side::Red, Vec2::new(600.0, 200.0), 0.99, 600.0);
+    sim.run_until(30.0 + 30.0 + 20.0); // hold time plus slack
+    assert!(
+        !sim.units()[0].detected,
+        "jamming an already-tracked unit must break the track"
+    );
+
+    // And without the jammer the identical run keeps its track — so it was the EW, not
+    // the passage of time.
+    let mut clear = Sim::new(&scn, &libs, 1).unwrap();
+    clear.run_until(80.0);
+    assert!(
+        clear.units()[0].detected,
+        "control: unjammed, the same geometry holds its track"
+    );
+}
