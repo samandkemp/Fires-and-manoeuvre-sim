@@ -66,6 +66,8 @@ enum ResetKind {
     Clear,
     /// Load a different scenario by name, rebuilding terrain and all assets.
     Load(String),
+    /// Replay the current scenario at the panel's seed, keeping the terrain.
+    Reseed,
 }
 
 /// Panel state: interaction mode, selected types, clock control.
@@ -82,6 +84,9 @@ struct UiState {
     selected: Vec<Selected>,
     /// Where a left-drag box-select started, in world metres.
     drag_start: Option<Vec2>,
+    /// Seed for "Re-run at seed" — reproducing a specific run is a first-class need for
+    /// an OR tool, and was previously only reachable by editing the scenario file.
+    seed: u64,
     /// Exposure window (s) for the Pd coverage overlay — live-tweakable.
     coverage_exposure_s: f32,
     /// Dials applied to the next placed drone, and to the selected one live.
@@ -240,6 +245,7 @@ fn setup(mut commands: Commands, mut images: ResMut<Assets<Image>>) {
         ticks_per_frame: 1,
         selected: Vec::new(),
         drag_start: None,
+        seed: data.scenario.default_seed,
         coverage_exposure_s: COVERAGE_EXPOSURE_S,
         air_altitude_m: 400.0,
         air_altitude_amsl: false,
@@ -337,6 +343,25 @@ fn nearest_asset(sim: &Sim, pos: Vec2, max_dist_m: f32) -> Option<Selected> {
         (None, Some(a)) => Some(a.0),
         (None, None) => None,
     }
+}
+
+/// Every live asset on the map, for select-all.
+fn all_live_assets(sim: &Sim) -> Vec<Selected> {
+    let mut out: Vec<Selected> = sim
+        .units()
+        .iter()
+        .enumerate()
+        .filter(|(_, u)| u.alive())
+        .map(|(i, _)| Selected::Unit(i))
+        .collect();
+    out.extend(
+        sim.air()
+            .iter()
+            .enumerate()
+            .filter(|(_, a)| a.alive)
+            .map(|(i, _)| Selected::Air(i)),
+    );
+    out
 }
 
 /// Every live asset inside the rectangle spanned by two world corners.
@@ -487,6 +512,16 @@ fn ui_panel(
                     reset_pending = ResetKind::Clear;
                 }
             });
+            ui.horizontal(|ui| {
+                ui.add(
+                    egui::DragValue::new(&mut ui_state.seed)
+                        .speed(1.0)
+                        .prefix("seed "),
+                );
+                if ui.button("Re-run at seed").clicked() {
+                    reset_pending = ResetKind::Reseed;
+                }
+            });
             // Scenario picker: every *.toml in scenarios/ that parses as a scenario.
             let current = sim.data.scenario_name.clone();
             egui::ComboBox::from_label("scenario")
@@ -501,9 +536,12 @@ fn ui_panel(
                 });
 
             ui.separator();
-            ui.label("Left-click select | shift add | drag box-select");
-            ui.label("Right-click move here | shift append waypoint");
-            ui.label("Del remove | Esc clear | middle-drag pan");
+            ui.collapsing("Controls", |ui| {
+                ui.small("Left-click select \u{b7} shift add \u{b7} drag box-select");
+                ui.small("Right-click move here \u{b7} shift append waypoint");
+                ui.small("Ctrl+A select all \u{b7} Del remove \u{b7} Esc clear");
+                ui.small("Middle-drag pan \u{b7} scroll zoom");
+            });
             ui.separator();
             ui.label("Right-click places:");
             ui.radio_value(&mut ui_state.mode, ClickMode::Probe, "nothing (move/route)");
@@ -594,77 +632,91 @@ fn ui_panel(
 
             // --- Air (docs/DESIGN.md §9) ------------------------------------------
             ui.separator();
-            ui.label("Air");
-            egui::ComboBox::from_label("drone type")
-                .selected_text(&ui_state.air_type_id)
-                .show_ui(ui, |ui| {
-                    for key in sim.data.libs.air.keys() {
-                        ui.selectable_value(&mut ui_state.air_type_id, key.clone(), key);
-                    }
-                });
-            egui::ComboBox::from_label("AD type")
-                .selected_text(&ui_state.air_defence_type_id)
-                .show_ui(ui, |ui| {
-                    for key in sim.data.libs.air_defence.keys() {
-                        ui.selectable_value(&mut ui_state.air_defence_type_id, key.clone(), key);
-                    }
-                });
-            ui.add(
-                egui::Slider::new(&mut ui_state.air_altitude_m, 0.0..=2000.0).text("altitude m"),
-            );
-            ui.checkbox(
-                &mut ui_state.air_altitude_amsl,
-                "altitude is AMSL (terrain can mask)",
-            );
-            ui.add(egui::Slider::new(&mut ui_state.air_heading_deg, 0.0..=359.0).text("heading °"));
-            ui.add(egui::Slider::new(&mut ui_state.air_speed_m_s, 0.0..=120.0).text("speed m/s"));
-            ui.add(
-                egui::Slider::new(&mut ui_state.air_orbit_radius_m, 100.0..=2000.0)
-                    .text("orbit radius m"),
-            );
+            egui::CollapsingHeader::new("Air")
+                .default_open(true)
+                .show(ui, |ui| {
+                    egui::ComboBox::from_label("drone type")
+                        .selected_text(&ui_state.air_type_id)
+                        .show_ui(ui, |ui| {
+                            for key in sim.data.libs.air.keys() {
+                                ui.selectable_value(&mut ui_state.air_type_id, key.clone(), key);
+                            }
+                        });
+                    egui::ComboBox::from_label("AD type")
+                        .selected_text(&ui_state.air_defence_type_id)
+                        .show_ui(ui, |ui| {
+                            for key in sim.data.libs.air_defence.keys() {
+                                ui.selectable_value(
+                                    &mut ui_state.air_defence_type_id,
+                                    key.clone(),
+                                    key,
+                                );
+                            }
+                        });
+                    ui.add(
+                        egui::Slider::new(&mut ui_state.air_altitude_m, 0.0..=2000.0)
+                            .text("altitude m"),
+                    );
+                    ui.checkbox(
+                        &mut ui_state.air_altitude_amsl,
+                        "altitude is AMSL (terrain can mask)",
+                    );
+                    ui.add(
+                        egui::Slider::new(&mut ui_state.air_heading_deg, 0.0..=359.0)
+                            .text("heading °"),
+                    );
+                    ui.add(
+                        egui::Slider::new(&mut ui_state.air_speed_m_s, 0.0..=120.0)
+                            .text("speed m/s"),
+                    );
+                    ui.add(
+                        egui::Slider::new(&mut ui_state.air_orbit_radius_m, 100.0..=2000.0)
+                            .text("orbit radius m"),
+                    );
 
-            // Selected drone: the dials above are applied live, so altitude and speed can
-            // be flown by hand while the clock runs.
-            let selected_air: Vec<usize> = ui_state
-                .selected
-                .iter()
-                .filter_map(|s| match s {
-                    Selected::Air(i) => Some(*i),
-                    Selected::Unit(_) => None,
-                })
-                .collect();
-            if let [only] = selected_air[..] {
-                let a = &sim.sim.air()[only];
-                let agl = a.actor_height(sim.sim.terrain());
-                ui.label(format!(
-                    "Drone {}: {:.0} m ({agl:.0} AGL), {:.0} m/s, hdg {:.0}°",
-                    a.id, a.altitude_m, a.speed_m_s, a.heading_deg
-                ));
-                ui.small(format!(
-                    "munitions {}  {}",
-                    a.munitions_left,
-                    if a.detected { "DETECTED" } else { "undetected" }
-                ));
-            }
-            // The dials apply to the whole air selection, so a formation can be re-tasked
-            // in one go rather than drone by drone.
-            if !selected_air.is_empty()
-                && ui
-                    .button(format!("Apply dials to {} drone(s)", selected_air.len()))
-                    .clicked()
-            {
-                for i in selected_air {
-                    let a = sim.sim.air_mut(i);
-                    a.altitude_m = ui_state.air_altitude_m;
-                    a.altitude_ref = if ui_state.air_altitude_amsl {
-                        AltitudeRef::Amsl
-                    } else {
-                        AltitudeRef::Agl
-                    };
-                    a.heading_deg = ui_state.air_heading_deg;
-                    a.speed_m_s = ui_state.air_speed_m_s;
-                }
-            }
+                    // Selected drone: the dials above are applied live, so altitude and speed can
+                    // be flown by hand while the clock runs.
+                    let selected_air: Vec<usize> = ui_state
+                        .selected
+                        .iter()
+                        .filter_map(|s| match s {
+                            Selected::Air(i) => Some(*i),
+                            Selected::Unit(_) => None,
+                        })
+                        .collect();
+                    if let [only] = selected_air[..] {
+                        let a = &sim.sim.air()[only];
+                        let agl = a.actor_height(sim.sim.terrain());
+                        ui.label(format!(
+                            "Drone {}: {:.0} m ({agl:.0} AGL), {:.0} m/s, hdg {:.0}°",
+                            a.id, a.altitude_m, a.speed_m_s, a.heading_deg
+                        ));
+                        ui.small(format!(
+                            "munitions {}  {}",
+                            a.munitions_left,
+                            if a.detected { "DETECTED" } else { "undetected" }
+                        ));
+                    }
+                    // The dials apply to the whole air selection, so a formation can be re-tasked
+                    // in one go rather than drone by drone.
+                    if !selected_air.is_empty()
+                        && ui
+                            .button(format!("Apply dials to {} drone(s)", selected_air.len()))
+                            .clicked()
+                    {
+                        for i in selected_air {
+                            let a = sim.sim.air_mut(i);
+                            a.altitude_m = ui_state.air_altitude_m;
+                            a.altitude_ref = if ui_state.air_altitude_amsl {
+                                AltitudeRef::Amsl
+                            } else {
+                                AltitudeRef::Agl
+                            };
+                            a.heading_deg = ui_state.air_heading_deg;
+                            a.speed_m_s = ui_state.air_speed_m_s;
+                        }
+                    }
+                });
 
             ui.separator();
             ui.add(
@@ -843,6 +895,26 @@ fn ui_panel(
                 commands.entity(e).despawn();
             }
         }
+        ResetKind::Reseed => {
+            // Terrain is kept: only the stochastic stream changes, which is the same
+            // separation the batch runner makes (docs/PROGRESS.md).
+            let seed = ui_state.seed;
+            // Split the borrow: `data` and `sim` are disjoint fields of the resource, so
+            // reach them as fields rather than through `&sim.data` while `sim.sim` is
+            // borrowed mutably.
+            let SimRes {
+                sim: engine, data, ..
+            } = &mut *sim;
+            if let Err(e) = engine.reset_to_scenario(&data.scenario, &data.libs, seed) {
+                error!("could not replay at seed {seed}: {e}");
+            }
+            sim.placed = 0;
+            ui_state.selected.clear();
+            ui_state.running = false;
+            if let Some(e) = overlay.0.take() {
+                commands.entity(e).despawn();
+            }
+        }
         ResetKind::Load(name) => {
             pending_load.0 = Some(name);
             if let Some(e) = overlay.0.take() {
@@ -868,6 +940,10 @@ fn ui_panel(
 
     if keys.just_pressed(KeyCode::Escape) {
         ui_state.selected.clear();
+    }
+    let ctrl = keys.pressed(KeyCode::ControlLeft) || keys.pressed(KeyCode::ControlRight);
+    if ctrl && keys.just_pressed(KeyCode::KeyA) {
+        ui_state.selected = all_live_assets(&sim.sim);
     }
     if keys.just_pressed(KeyCode::Delete) {
         for sel in std::mem::take(&mut ui_state.selected) {
