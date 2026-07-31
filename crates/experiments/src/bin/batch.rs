@@ -138,12 +138,20 @@ fn main() {
         }
         rows.push('\n');
 
+        // Build the map **once** at the scenario's own seed, then reset per trial. That
+        // keeps the terrain fixed while the dice vary, which is the question being asked
+        // ("what happens on this map, on average") rather than averaging over maps too —
+        // and it skips regenerating a 1000x1000 raster for every seed.
+        let Ok(mut sim) = Sim::new(&scn, &libs, scn.default_seed) else {
+            eprintln!("  {name}: does not resolve; skipped");
+            continue;
+        };
         let mut outcomes = Vec::with_capacity(seeds as usize);
         for seed in 0..seeds {
-            let Ok(mut sim) = Sim::new(&scn, &libs, seed) else {
+            if sim.reset_to_scenario(&scn, &libs, seed).is_err() {
                 eprintln!("  {name}: does not resolve; skipped");
                 break;
-            };
+            }
             let outcome = run_one(&mut sim, until_s);
             let _ = write!(rows, "{seed}");
             for v in outcome.values() {

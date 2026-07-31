@@ -29,7 +29,11 @@ endurance_s = 2400.0
 payload = "guided_bomb"
 munitions = 2
 expendable = false             # a carrier: releases and flies on
-release_range_m = 1200.0       # glide release, well outside a CIWS envelope
+# Standoff release, deliberately **outside** a CIWS envelope (`ciws` reaches 2000 m).
+# This dial and the CIWS's max_range are a matched pair: set it inside that bubble and the
+# drone must fly through the gun to reach its release point, so the long-range SAM — and
+# the cueing chain feeding it — stop mattering at all.
+release_range_m = 2500.0
 [strike_uas.signature]
 optical = 0.35
 

@@ -795,13 +795,22 @@ impl TerrainLayer {
                 max_size_m,
             } => {
                 let (lo, hi) = (min_size_m.max(1.0), max_size_m.max(min_size_m + 1.0));
+                let cell = transform.cell_size_m();
                 for _ in 0..blocks {
                     let cx = rng.random_range(0.0..extent_x);
                     let cy = rng.random_range(0.0..extent_y);
                     let half_x = rng.random_range(lo..hi) * 0.5;
                     let half_y = rng.random_range(lo..hi) * 0.5;
-                    for iy in 0..height {
-                        for ix in 0..width {
+                    // Walk only the block's own cell range. Scanning the whole grid per
+                    // block is O(blocks x cells) — 5 blocks on a 1000x1000 map is 5M
+                    // visits to paint a few thousand. Bounds are clamped, and the RNG
+                    // draws above are untouched, so the map is unchanged.
+                    let ix0 = (((cx - half_x) / cell).floor().max(0.0)) as usize;
+                    let iy0 = (((cy - half_y) / cell).floor().max(0.0)) as usize;
+                    let ix1 = (((cx + half_x) / cell).ceil().max(0.0) as usize).min(width);
+                    let iy1 = (((cy + half_y) / cell).ceil().max(0.0) as usize).min(height);
+                    for iy in iy0..iy1 {
+                        for ix in ix0..ix1 {
                             let p = transform.cell_center(ix, iy);
                             if (p.x - cx).abs() < half_x && (p.y - cy).abs() < half_y {
                                 terrain_type[[iy, ix]] = TerrainType::Urban;

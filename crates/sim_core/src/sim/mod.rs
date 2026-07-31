@@ -289,6 +289,40 @@ impl Sim {
             strike_events: Vec::new(),
             rng: SimRng::seed_from_u64(seed ^ 0x5EED_5EED_5EED_5EED),
         };
+        sim.place_from_scenario(scenario, libs)?;
+        Ok(sim)
+    }
+
+    /// Clear every placed asset and re-place the scenario, **keeping the terrain** and
+    /// reseeding the RNG (`docs/DESIGN.md` §1.3).
+    ///
+    /// This is what makes a batch Monte-Carlo honest as well as fast. `Sim::new` derives
+    /// *both* the terrain and the RNG stream from one seed, so looping it over seeds
+    /// varies the map and the dice together — averaging over two sources of variance at
+    /// once, when the usual question is "what happens on *this* map, on average". Building
+    /// the terrain once and resetting per trial separates them, and skips regenerating a
+    /// 1000x1000 raster for every run.
+    ///
+    /// # Errors
+    /// As [`Sim::new`], for an unknown type id.
+    pub fn reset_to_scenario(
+        &mut self,
+        scenario: &Scenario,
+        libs: &Libraries,
+        seed: u64,
+    ) -> Result<(), ScenarioError> {
+        self.reset(seed);
+        self.place_from_scenario(scenario, libs)
+    }
+
+    /// Resolve and place every asset a scenario declares, in a fixed side-then-list order
+    /// (the determinism contract's placement half).
+    fn place_from_scenario(
+        &mut self,
+        scenario: &Scenario,
+        libs: &Libraries,
+    ) -> Result<(), ScenarioError> {
+        let sim = self;
         for (side, force) in [(Side::Blue, &scenario.blue), (Side::Red, &scenario.red)] {
             for j in &force.jammers {
                 sim.add_jammer(side, Vec2::from(j.pos), j.power, j.radius_m);
@@ -374,7 +408,7 @@ impl Sim {
                 );
             }
         }
-        Ok(sim)
+        Ok(())
     }
 
     /// Place a sensor (scenario load or interactive placement).
