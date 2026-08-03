@@ -78,9 +78,16 @@ from the one seeded stream, so a recipe plus a seed always gives the same map. `
 | Block | Meaning |
 |---|---|
 | `name`, `default_seed` | Identity, and the seed used unless a run overrides it |
-| `[sim]` | Tick and epoch length, plus the suppression dials (DESIGN §3.3, §4.3) |
+| `[sim]` | Tick and epoch length, the suppression dials, and the track-decay dials (DESIGN §3.3, §4.3, §10.1) |
 | `[terrain]` | Grid size and cell size, and a `source` describing how to generate it |
 | `[[blue.*]]` / `[[red.*]]` | Placed `units`, `sensors`, `jammers`, `air`, `air_defence` |
 
 Every placed asset names a `type` from the libraries above, so a scenario says *where*
 things are and the libraries say *what they are*.
+
+Every dial in `[sim]` has a default, so a scenario only states what it wants to change.
+`dt_s` and `epoch_s` set the continuous and discrete cadences; `track_hold_s` and
+`track_maintain_p` set how long a track survives without a fresh observation and how good
+a look has to be to count as one. Turning `track_hold_s` up towards the run length
+recovers the old permanent-detection behaviour, which is a useful thing to be able to
+switch off when isolating another model.

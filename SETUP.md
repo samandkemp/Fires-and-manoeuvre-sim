@@ -156,8 +156,9 @@ the Cranelift backend). Skip it for now — stable is the right call while learn
 ## 5. Structure the project as a workspace (core vs app)
 
 This mirrors the architecture in the README: a **pure, headless OR core** that never
-touches Bevy, and a **Bevy app** that renders it. Setting this boundary up now is what
+touches Bevy, and a **Bevy app** that renders it. Set the boundary up now — it is what
 keeps the maths independently testable and lets you run batch experiments with no window.
+Retrofitting it later means untangling Bevy types out of every model.
 
 Create this layout (rename `hello_bevy` or start fresh):
 ```
@@ -165,19 +166,25 @@ fires-sim/
 ├── Cargo.toml            # workspace manifest
 ├── .cargo/config.toml    # linker settings from step 4
 └── crates/
-    ├── core/             # pure Rust: terrain, fires, sensing, DP, game theory. NO bevy.
+    ├── sim_core/         # pure Rust: terrain, fires, sensing, DP, game theory. NO bevy.
     │   ├── Cargo.toml
     │   └── src/lib.rs
-    └── app/              # Bevy front-end. Depends on core.
+    └── app/              # Bevy front-end. Depends on sim_core.
         ├── Cargo.toml
         └── src/main.rs
 ```
+
+> **Do not call it `core`.** A dependency named `core` shadows Rust's own built-in
+> `core` crate inside anything that depends on it, which breaks every proc macro that
+> emits `::core::` paths — `thiserror`'s derive stops compiling, with an error message
+> that points nowhere near the real cause. `sim_core` costs five characters and avoids
+> the whole problem. (Learned the hard way; the crate manifests still carry a note.)
 
 Root `Cargo.toml`:
 ```toml
 [workspace]
 resolver = "2"
-members = ["crates/core", "crates/app"]
+members = ["crates/sim_core", "crates/app"]
 
 [profile.dev]
 opt-level = 1
@@ -185,19 +192,28 @@ opt-level = 1
 opt-level = 3
 ```
 
-`crates/core/Cargo.toml` (no Bevy — this is the OR engine):
+`crates/sim_core/Cargo.toml` (no Bevy — this is the OR engine):
 ```toml
 [package]
-name = "core"
+name = "sim_core"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-glam = "0.29"        # vectors/matrices; same lib Bevy uses, so types interop cleanly
+glam = "0.32"        # vectors/matrices; same lib Bevy uses, so types interop cleanly
 ndarray = "0.16"     # terrain rasters / grids
-rand = "0.8"         # seeded RNG
-rand_distr = "0.4"   # normal/other distributions for dispersion & stochastic models
+rand = "0.9"         # seeded RNG
+rand_chacha = "0.9"  # ChaCha8Rng: a stream that stays stable across rand versions
+rand_distr = "0.5"   # normal/other distributions for dispersion & stochastic models
 ```
+
+> **Match glam to Bevy's.** Bevy 0.19 resolves glam 0.32; pin the same version or the
+> "types interop cleanly" promise breaks silently — you get two incompatible `Vec2`
+> types and a wall of confusing errors. Check `Cargo.lock` before bumping either side.
+>
+> **Prefer `ChaCha8Rng` to `StdRng`.** `StdRng` explicitly does not promise a stable
+> stream across `rand` versions, so an archived `(scenario, seed)` result would quietly
+> stop reproducing after a routine dependency bump. ChaCha8 does promise it.
 
 `crates/app/Cargo.toml` (the Bevy side):
 ```toml
@@ -207,7 +223,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-core = { path = "../core" }
+sim_core = { path = "../sim_core" }
 bevy = { version = "0.19", features = ["dynamic_linking"] }
 ```
 
@@ -217,10 +233,10 @@ cargo run -p app
 ```
 Run only the core's tests (headless, no window) with:
 ```
-cargo test -p core
+cargo test -p sim_core
 ```
 
-**Check it worked:** `cargo run -p app` opens the window; `cargo test -p core` runs
+**Check it worked:** `cargo run -p app` opens the window; `cargo test -p sim_core` runs
 (even with zero tests) and reports success.
 
 ---
@@ -236,10 +252,11 @@ specific Bevy releases and lag a week or two behind a new Bevy.
   stats live. This is your main tool-UI workhorse.
 - **bevy_pancam** — click-drag pan and scroll-zoom for a 2D camera. Near-essential for a
   tactical map. (Check its Bevy-0.19 compatibility on crates.io.)
-- **nalgebra** *(core, if needed)* — heavier linear algebra than glam, for control/DP
+- **nalgebra** *(sim_core, if needed)* — heavier linear algebra than glam, for control/DP
   maths where you want matrix decompositions etc.
-- **argmin** or **good_lp** *(core, later)* — optimisation / LP solving for the
-  game-theoretic equilibria.
+- **argmin** or **good_lp** *(sim_core, later)* — optimisation / LP solving for the
+  game-theoretic equilibria. Not needed yet: the zero-sum solver uses fictitious play,
+  which converges without an LP dependency.
 
 ---
 
@@ -267,7 +284,7 @@ on fundamentals alongside the early phases:
 - [ ] rust-analyzer installed; hovering a variable shows its type
 - [ ] `cargo run` on the hello window opens a blank window
 - [ ] fast-compile config in place; a one-line edit rebuilds in seconds
-- [ ] workspace builds: `cargo run -p app` (window) and `cargo test -p core` (headless)
+- [ ] workspace builds: `cargo run -p app` (window) and `cargo test -p sim_core` (headless)
 - [ ] started the Rust Book / Rustlings
 
 ## Common first-time gotchas

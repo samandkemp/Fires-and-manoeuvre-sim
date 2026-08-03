@@ -23,23 +23,267 @@ munition or sensor performance data.** The models are the product; the numbers a
 - **Data-driven.** Unit, weapon, and sensor stats live in TOML, never hard-coded, so
   they are tweakable at runtime.
 - **Composable subsystems.** Terrain, fires, sensing, suppression, movement, and
-  decision-making are separate modules with clean interfaces — which is why electronic
-  warfare could slot in as a modifier on the sensing channel rather than a rewrite.
+  decision-making are separate modules with clean interfaces, so electronic warfare
+  slotted in as a modifier on the sensing channel rather than a rewrite.
 
-## OR strands → subsystems
+---
 
-| Strand | Where it lives |
-|---|---|
-| **Optimal control** | Projectile ballistics and unit movement dynamics between decision epochs |
-| **Dynamic programming** | Movement as least-risk pathing over the terrain grid (risk-weighted Dijkstra) |
-| **Stochastic processes** | Probability of detection; hit/miss and impact dispersion (CEP); suppression as a Markov state; stochastic attrition |
-| **Game theory** | Blue vs Red fires allocation and sensing vs counter-sensing, solved as a zero-sum game via fictitious play |
-| **Partial observability** | A POMDP belief filter over enemy positions once electronic warfare degrades sensing |
+# The OR strands
 
-The simulation loop is hybrid continuous/discrete: continuous state is integrated
-between decision epochs, and discrete decisions (fire allocation, movement, sensor
-tasking) are set at each epoch. That split is the optimal-control-plus-DP structure made
-concrete.
+Five bodies of theory, each doing a job the others cannot. This section states each one
+in its own symbols, says what it buys, and points at the code and the gate that holds it
+honest. `docs/DESIGN.md` carries the per-subsystem depth; this is the argument for why
+each tool is the right one.
+
+The simulation loop is **hybrid continuous/discrete**. Between decision epochs the state
+integrates continuously; at each epoch the discrete decisions are set — what to shoot,
+where to move, where to look. That split is not a convenience, it is the structure:
+continuous dynamics are an optimal-control problem, the epoch-to-epoch choices are a
+dynamic program, and the two only compose cleanly if they are kept apart.
+
+## 1. Optimal control — the continuous dynamics
+
+State evolves under a control you may choose but not violate:
+
+```
+ẋ = f(x, u),        u ∈ U(x)
+```
+
+For an airframe the state is `x = (p, ψ, v)` — position, heading, speed — and the
+binding constraint is a **turn rate**, not a position:
+
+```
+|ψ̇| ≤ ω_max     ⟹     r_min = v / ω_max
+```
+
+A rate limit is what separates a flight path from a polyline. Ask a drone to fly a
+90° corner and it cannot; it flies an arc of radius `r_min`, arriving late and displaced.
+That error is exactly what an air defence's engagement window is made of, so modelling
+heading as a state with a bounded derivative is load-bearing rather than decorative.
+
+Orbits integrate the **phase** rather than steering toward the circle:
+
+```
+θ(t + Δt) = θ(t) ± (v/R)·Δt,     p = c + R·(cos θ, sin θ)
+```
+
+Steering would accumulate radius drift over a long loiter; integrating phase holds
+`‖p − c‖ = R` exactly and gives the lap time `T = 2πR/v` in closed form to test against.
+
+*Lives in* [`air.rs`](crates/sim_core/src/air.rs) *·  gates V46, V47*
+
+## 2. Dynamic programming — movement as a least-risk value function
+
+A mover choosing a route is solving Bellman's equation over the terrain grid:
+
+```
+J*(x) = min  [ c(x, u) + J*(f(x, u)) ]
+      u ∈ U(x)
+```
+
+with `x` a cell, `u` one of its eight neighbours, and the edge cost
+
+```
+c(x, u) = move_cost(x, u) + w · risk(u)
+```
+
+`move_cost` is mobility × slope × distance (∞ for impassable); `risk ∈ [0,1]` is a
+supplied exposure raster. Because every cost is non-negative there are no negative
+cycles, so Dijkstra returns `J*` exactly — label-setting value iteration, not an
+approximation of it. Full value iteration is held in reserve for when risk becomes
+time-varying and the one-sweep ordering no longer holds.
+
+The interesting object is `w`. It is an **exchange rate**: the metres of mobility cost
+a commander will spend to avoid one unit of exposure. Sweeping `w` from 0 upward traces
+the Pareto frontier between arriving quickly and arriving alive, which is a far more
+useful answer than any single "optimal" route. Additive costs were chosen over
+maximising survival `Π(1 − p_death)` because the logarithm turns that into the same
+additive problem anyway, and additive keeps the Dijkstra gate clean.
+
+Risk defaults to **enemy observation coverage** — for each cell, the detection rate a
+reference mover would suffer from the best-placed enemy sensor. So "least-risk path"
+literally means "the route that stays hardest to see", and the see-without-being-seen
+idea becomes navigable.
+
+*Lives in* [`movement.rs`](crates/sim_core/src/movement.rs) *·  gates V25–V27*
+
+## 3. Stochastic processes — detection, fires, suppression, attrition
+
+Four processes, chosen so that each has a closed form to test against.
+
+### Detection is a rate, never a per-tick probability
+
+Sensor `s` detects unit `u` as a Poisson process of rate
+
+```
+λ(s,u) = λ₀ · f(r) · σ_m(u) · τ(s,u) · (1 − c(u)),      f(r) = 1 / (1 + (r/r_½)ⁿ)
+```
+
+where `σ_m` is signature in the sensor's modality, `τ = exp(−κL)` the canopy
+transmittance along the sightline, `c` the target's terrain concealment, and `r` slant
+range. The rate is zero when LOS is blocked, range exceeds the cutoff, or the target
+falls outside the field of regard.
+
+```
+P(detected by t) = 1 − e^{−λt}          per tick:  p = 1 − e^{−λΔt}
+```
+
+Modelling a **rate** rather than a per-tick probability is what makes the answer
+independent of the tick size. Memorylessness gives the exact identity
+
+```
+Π_k e^{−λΔt_k} = e^{−λ Σ Δt_k}
+```
+
+for any subdivision of the interval, so halving `dt` cannot change the detection
+statistics. A per-tick probability would silently make the physics a function of the
+integrator — a class of bug that is very hard to see and very easy to ship. V17 checks
+the identity to float tolerance.
+
+### Fires: two Gaussians, two closed forms
+
+Direct fire scatters isotropically about the aim point with `σ(r) = δ·r/1000` for an
+angular dispersion `δ` mrad. Deflection and elevation errors are independent, so hitting
+a `W × H` silhouette is a product of two one-dimensional Gaussian integrals:
+
+```
+P_hit(r) = erf( W / (2σ(r)√2) ) · erf( H / (2σ(r)√2) )
+```
+
+Indirect fire samples a burst `b ~ N(aim, σ²I)` with `σ = CEP / √(2 ln 2)` — the
+circular-Gaussian CEP identity — and delivers the **Carleton** incapacitation kernel
+`D(ρ) = exp(−ρ² / 2R_L²)` at burst-to-target distance `ρ`. Marginalising the kernel over
+the burst distribution is a Gaussian convolving a Gaussian, so the expected damage at
+aim offset `d` is exact:
+
+```
+E[D](d) = R_L² / (σ² + R_L²) · exp( −d² / (2(σ² + R_L²)) )
+```
+
+That closed form is the reason for this kernel. A cookie-cutter lethality disc is
+simpler and cheaper, but it has no analytical expectation, so the Monte Carlo sampler
+would have nothing to be checked against — and an unvalidated sampler is exactly what
+this project is trying not to build.
+
+### Suppression is a birth–death chain
+
+Per-unit state `S ∈ {Free, Suppressed, Pinned}`, stepping up on near-misses at rate `β`
+and decaying at rate `μ`:
+
+```
+Free ⇌ Suppressed ⇌ Pinned          π_k ∝ (β/μ)^k,   k = 0,1,2
+```
+
+The birth–death structure hands over its stationary distribution for free, and the mean
+time Pinned → Free is `2/μ` — two exponential steps in series. Suppression is a *state*
+rather than a scalar multiplier because it gates behaviour discontinuously: Pinned units
+neither fire nor move, which is what lets fires shape manoeuvre without killing anybody.
+
+### Attrition against Lanchester
+
+Fire volume scales with a unit's surviving elements, so an aimed-fire duel obeys
+
+```
+dA/dt = −βB,   dB/dt = −αA     ⟹     α(A₀² − A²) = β(B₀² − B²)
+```
+
+Lanchester's **square law**: combat power goes as the square of numbers under aimed
+fire. Reproducing it is the strongest single check on the attrition chain, because it
+is an emergent property of the whole loop — element counts, rate of fire, hit
+probability, removal — rather than of any one function.
+
+### Air defence: same target, two distributions
+
+```
+gun      TTK ~ Exp(λ_k)          E[TTK] = 1/λ_k
+missile  shots ~ Geometric(p)    E[TTK] = t_f/p + (1/p − 1)·t_r
+```
+
+A gun grinds continuously; a missile is discrete shoot-look-shoot with flight time `t_f`
+and reload `t_r`. The distributions differ in shape, not just in mean, so guns and
+missiles fail differently against a saturating raid — which is the whole reason to model
+both rather than tune one "effectiveness" number.
+
+*Lives in* [`sensing.rs`](crates/sim_core/src/sensing.rs), [`fires.rs`](crates/sim_core/src/fires.rs),
+[`suppression.rs`](crates/sim_core/src/suppression.rs), [`air_defence.rs`](crates/sim_core/src/air_defence.rs)
+*·  gates V14–V24, V28–V31, V48–V49*
+
+## 4. Game theory — sensing against counter-sensing
+
+Where to put a sensor has no best answer, only a best answer *against a thinking
+opponent*. That is a zero-sum matrix game. Blue mixes over positions `x ∈ Δ_m`, Red over
+routes `y ∈ Δ_n`, and von Neumann's minimax theorem says the game has a value:
+
+```
+v = max min xᵀA y = min max xᵀA y
+     x    y          y    x
+```
+
+Solved by **fictitious play** — each side repeatedly best-responds to the opponent's
+empirical distribution of past play:
+
+```
+i* = argmaxᵢ Σⱼ A[i][j]·col_counts[j]
+j* = argminⱼ Σᵢ A[i][j]·row_counts[i]
+```
+
+The time-averaged strategies converge to equilibrium for zero-sum games (Robinson, 1951)
+with no LP dependency, and convergence is self-certifying: the value is bracketed by
+
+```
+v_low = minⱼ (xᵀA)ⱼ  ≤  v  ≤  maxᵢ (Ay)ᵢ = v_high
+```
+
+and the gap `v_high − v_low` shrinks to zero. You can watch the bracket close.
+
+The payoff `A[b][r]` is expected Red attrition when Red traverses route `r` while Blue
+observes and bombards from position `b`, estimated by short headless Monte Carlo
+battles. So the matrix is built by the simulation itself, and the equilibrium is a
+statement about *this* terrain and *these* sensors — not an abstract game.
+
+*Lives in* [`game.rs`](crates/sim_core/src/game.rs) *·  gates V32–V39*
+
+## 5. Partial observability — belief, and the value of not seeing
+
+Once electronic warfare degrades sensing, the tracked quantity is no longer enemy
+position but a **belief** over it: `b_t(s) = P(enemy at s | z_{1:t})`, maintained by the
+two standard steps,
+
+```
+update   b_t(s)  ∝  P(z_t | s) · b_{t−1}(s)
+predict  b⁻_t(s') = Σ_s T(s'|s) · b_{t−1}(s)
+```
+
+The load-bearing observation is the **negative** one. Not seeing something is evidence:
+
+```
+P(no detection | enemy at s) = exp( −λ(s)·Δt )
+```
+
+A cell your sensor covers well has a low likelihood of producing no detection, so
+belief drains out of it; dead ground and jammed cells sit near 1 and keep their mass.
+Stare at open ground long enough and the belief mass migrates, unprompted, into the
+folds and the woodline — which is what a competent staff officer does with the same
+information, and it falls straight out of Bayes rather than being scripted.
+
+EW enters the *rate*, not the geometry:
+
+```
+λ_eff = λ · Π_j g_j(target),     g_j = 1 − power_j·(1 − d/radius_j)
+```
+
+so a jammer raises belief entropy `H(b) = −Σ_s b(s) log b(s)` without moving anything.
+With no jammers every `g_j = 1` and the product is exactly 1, so EW-off reduces to the
+sensing model bit-for-bit (V40) — an identity, not an approximation.
+
+Entropy is also the control objective for the sensor-tasking layer: point sensors where
+the *expected* reduction in `H(b)` is greatest. That closes the loop
+sensing → belief → decision → action, and it is the piece currently being built.
+
+*Lives in* [`ew.rs`](crates/sim_core/src/ew.rs), [`pomdp.rs`](crates/sim_core/src/pomdp.rs)
+*·  gates V40–V43*
+
+---
 
 ## Layout
 
@@ -48,7 +292,7 @@ concrete.
 | `crates/sim_core/` | Headless, deterministic OR engine — pure Rust, no Bevy. Where all the maths lives |
 | `crates/app/` | Bevy front-end: tactical map, pan/zoom, egui control panel |
 | `crates/experiments/` | Headless batch runs: sweeps, Monte Carlo, equilibria. Depends on `sim_core` only |
-| `crates/validation/` | The V1–V52 gates: every model checked against a closed form or a stated invariant |
+| `crates/validation/` | The V1–V55 gates: every model checked against a closed form or a stated invariant |
 | `scenarios/` | TOML scenarios and the unit/weapon/sensor stat blocks |
 | `docs/DESIGN.md` | The deep spec: equations, state machines, and the validation gate for every model |
 | `SETUP.md` | Environment setup (Rust + Bevy + VSCode), written for a Rust beginner |
@@ -96,61 +340,66 @@ difference between two scenarios means anything.
 ## Subsystems
 
 - **Terrain** — an elevation raster plus a terrain-type layer (open / trees / urban),
-  with derived cover, concealment, LOS-blocking, and mobility-cost layers. Terrain is
-  generated procedurally from a seed.
-- **Line of sight** — DDA traversal returning a rich result (blocked or clear, plus the
-  accumulated concealment along the ray), with viewshed rasterisation over the grid.
-- **Sensing & detection** — glimpse-rate detection: probability of detection as a
-  stochastic function of LOS, range, target signature, and terrain-dependent
-  concealment. Detection is mutual and asymmetric, so positioning to see without being
-  seen is a real tactical decision.
+  with derived cover, concealment, LOS-blocking, and mobility-cost layers. Maps are
+  generated from a seed, either as rolling relief or from a composable recipe (a base
+  surface plus ordered ridge / woodland / urban layers).
+- **Line of sight** — DDA traversal returning a rich result: blocked or clear, canopy
+  transmittance, the height needed to clear the worst mask, and where the block occurred.
+  Viewsheds rasterise the same query over the grid.
+- **Sensing & detection** — glimpse-rate detection over LOS, slant range, target
+  signature, and terrain concealment. Detection is mutual and asymmetric, so positioning
+  to see without being seen is a real tactical decision. Tracks decay when observation
+  lapses.
 - **Fires** — direct fire gated on LOS and range with an error-function hit model;
-  indirect fire as a ballistic arc to an aim point with CEP dispersion and Carleton
-  area damage, with terrain shielding impacts.
+  indirect fire as a ballistic arc to an aim point with CEP dispersion and Carleton area
+  damage, with terrain shielding impacts.
 - **Suppression & attrition** — units are N sub-elements with a discrete Free /
   Suppressed / Pinned Markov state driven by near misses, gating movement and fire.
-  Attrition is validated against Lanchester's square law.
 - **Movement** — least-risk pathing over the terrain grid, trading exposure against time.
-- **Game theory** — a zero-sum solver (fictitious play) over fires and sensing postures.
+- **Air & counter-air** — drones as a third asset class: per-instance altitude above
+  ground or sea level, turn-rate-limited flight, path or transit-then-orbit plans, and
+  recce or strike payloads. Air defence answers with gun or missile engagement, gated by
+  an envelope and by the sensor-to-shooter timeline.
 - **Electronic warfare** — jamming as a modifier on the sensing channel, with a Bayesian
-  belief filter that also folds in spatial negative information ("I looked there and saw
-  nothing").
+  belief filter that folds in spatial negative information.
 
 ## Validation
 
 Every model ships with a test checking it against a closed-form result or a documented
-invariant. The gates are numbered **V1–V52**, live in the `validation` crate, and each is
+invariant. The gates are numbered **V1–V55**, live in the `validation` crate, and each is
 stated in `docs/DESIGN.md` next to the model it constrains, for example:
 
 - **V14/V15** — the exponential detection law, Monte Carlo against `1 − e^(−λT)`
+- **V22** — expected area damage against the Carleton–Gaussian convolution
 - **V28** — the stationary distribution of the suppression Markov chain
 - **V30** — attrition against Lanchester's square law
 - **V40** — EW degrades detection, and EW switched off is exactly the identity
 - **V48/V49** — air-defence time-to-kill: exponential for a gun, geometric for a missile
+- **V55** — a track lapses without observation, so jamming can break one
 
 `cargo run -p validation --bin validation_report` prints every gate beside the closed form
-it is checked against, which is the question the project actually cares about — not "are
+it is checked against. That is the question the project actually cares about — not "are
 the tests green" but *is the maths still right, and right against what*. A catalogue test
-keeps that table from drifting out of step with the suite in either direction.
+keeps the table from drifting out of step with the suite in either direction.
 
 Rasterised layers (viewshed, coverage, belief, risk) are computed in parallel and remain
 deterministic: no result depends on thread scheduling.
 
 ## Status
 
-All eight roadmap phases are implemented — terrain and LOS, sensing, fires, suppression
-and attrition, movement as DP, game-theoretic decisions, visualisation, and electronic
-warfare with partial observability — plus a ninth on air: drones as a third asset class
-(altitude above ground or sea level, turn-rate-limited flight, path or transit-then-orbit
-plans, reconnaissance and strike payloads) answered by air defence (gun or missile, each
-with its own time-to-kill law, gated by an engagement envelope and by the sensor-to-shooter
-timeline).
+Roadmap phases 1–9 are implemented — terrain and LOS, sensing, fires, suppression and
+attrition, movement as DP, game-theoretic decisions, visualisation, electronic warfare
+with partial observability, and air with counter-air.
 
-Possible next steps: kill-chain modelling (autonomous target selection and sensor-to-shooter
-pairing), suppression of enemy air defence, ingesting real-world elevation data, live
-playback and state scrubbing, full-resolution interactive path-planning and belief
-(currently coarse for interactivity), further sensor modalities such as acoustic and
-EO/IR, and a dynamic stochastic game using DP value functions as payoffs.
+Phase 10, the decision layer, is under way. It closes the loop that the phases above
+leave open: the simulation models everything except anyone *deciding* anything. Tracks
+now decay (so jamming can break one, which permanent detection made impossible); optimal
+side-wide fire allocation and belief-driven sensor tasking follow.
+
+Beyond that: suppression of enemy air defence, air-to-air, acoustic detection of drones,
+ingesting real-world elevation data, live playback and state scrubbing, full-resolution
+interactive path-planning and belief (currently coarse for interactivity), and a dynamic
+stochastic game using DP value functions as payoffs.
 
 ## A note on scope
 

@@ -1,13 +1,40 @@
 # Design spec
 
 The deep, quantitative spec: model formulations, equations, state machines, and the
-validation reference for each subsystem. The README stays operational; this file holds
-the maths. A section is written **before** its subsystem is implemented, and every model
-states the analytical result or invariant its tests check against.
+validation reference for each subsystem. The README argues *why* each OR strand is the
+right tool and states it in its own symbols; this file works each one out in full. A
+section is written **before** its subsystem is implemented, and every model states the
+analytical result or invariant its tests check against.
 
-Sections are filled in roadmap order. §§1–6, §8 and §9 are written and implemented; §7
+Sections are filled in roadmap order. §§1–6 and §§8–10 are written and implemented; §7
 (the simulation loop) is a placeholder — the loop is documented alongside the code it
 lives in.
+
+---
+
+## 0. The strand index
+
+Each body of theory, the object it contributes, and where that object is worked out.
+The README carries the rationale; this table is the map.
+
+| Strand | Canonical object | Realised as | Section | Gates |
+|---|---|---|---|---|
+| Optimal control | `ẋ = f(x,u)`, `u ∈ U(x)` | turn-rate-limited flight; phase-integrated orbits | §9.2 | V46, V47 |
+| Dynamic programming | `J*(x) = min_u [c(x,u) + J*(f(x,u))]` | least-risk pathing; Dijkstra as label-setting value iteration | §5 | V25–V27 |
+| Stochastic processes | Poisson rates, Gaussian dispersion, Markov chains | detection `λ`; CEP and Carleton damage; suppression chain; time-to-kill | §§2–4, §9.4 | V14–V24, V28–V31, V48–V49 |
+| Game theory | `v = max_x min_y xᵀAy` | zero-sum interdiction game by fictitious play | §6 | V32–V39 |
+| Partial observability | belief `b_t(s)`, the posterior over enemy position given `z_{1:t}` | belief filter with negative information; EW on the rate | §8 | V40–V43 |
+
+Two structural properties cut across all five and are treated as first-class:
+
+- **Determinism.** Same binary, same `(scenario, seed)` → bit-identical output. Every
+  phase added since has been *appended* to the loop and draws zero RNG when its inputs
+  are empty, so each new subsystem reduces to an exact identity when switched off
+  (§8 for EW, §9.6 for air). Cross-platform bit-equality is not chased; float tests use
+  explicit tolerances.
+- **Validated before optimised.** No model is made fast until it has a gate against a
+  closed form. Where that meant keeping a slow reference (the brute-force viewshed, the
+  fixed-step LOS oracle, the greedy allocator), the reference is kept.
 
 ---
 
@@ -138,25 +165,31 @@ target-height increase is `Δ(s) = (T − E_a)·S/s − (E_b − E_a)`, and
 
 ### 1.5 Viewshed  *(plan step 1.4)*
 
-One primitive, two uses (sensor-coverage display; risk rasters for DP later).
-**Brute force first (D6):** run `los` from the observer to every in-range cell. Correct
-by construction once `los` is validated; it is the reference oracle any later fast
-sweep must match. *Performance pass (2026-07-29): the LOS primitive is now
-allocation-free (thread-local scratch, incremental `mask_height`, cached endpoint
-elevation) and `viewshed` is parallel over cells (`ndarray` `Zip::par_for_each`, rayon)
-— deterministic (each cell writes its own slot; scratch is thread-local). A 3 km-range
-viewshed dropped ~9.3 s → 1.8 s, results bit-identical. Brute force stands; no
-approximate sweep was needed.* *Second pass (2026-07-30): the breakpoint **sort** is gone
-— each axis's gridline crossings are generated already ascending in path distance, so the
-two streams are combined by an O(n) merge instead of `sort_unstable_by`. Measured, not
-guessed: this was flagged as "marginal" but is worth **at least 10%** on long rays (LOS
-96.8 → 86.7 µs/query; 12 km viewshed 11.5 → 10.4 s — later runs measured 80.6 µs, so
-run-to-run variance on this machine is a few percent and 10% is the conservative read),
-because a multi-kilometre ray carries ~2000 breakpoints. Shorter rays gain little (a 3 km viewshed is unchanged), and output is
-bit-identical — V5–V13 and the V11 oracle are the check.* Mobility is
-exposed to Phase 5 as `move_cost(from_cell, to_cell)` on cell **edges** (slope
-direction matters; uphill penalised harder than downhill; constants are placeholder
-dials pending the Phase 5 movement TOML), not a baked isotropic raster.
+One primitive, two uses: sensor-coverage display now, risk rasters for the DP layer
+later.
+
+**Brute force first (D6)** — run `los` from the observer to every in-range cell. Correct
+by construction once `los` is validated, and it stays as the reference oracle any faster
+sweep must match. It has not needed replacing: two optimisation passes made brute force
+fast enough, both bit-identical in output, with V5–V13 and the V11 oracle as the check.
+
+| Pass | Change | Measured |
+|---|---|---|
+| 2026-07-29 | LOS made allocation-free (thread-local scratch, incremental `mask_height`, cached endpoint elevation); `viewshed` parallel over cells (`ndarray` `Zip::par_for_each`, rayon) | 3 km viewshed 9.3 → 1.8 s |
+| 2026-07-30 | Breakpoint **sort** removed: each axis's gridline crossings are already ascending in path distance, so the two streams merge in O(n) rather than `sort_unstable_by` | LOS 96.8 → 86.7 µs/query; 12 km viewshed 11.5 → 10.4 s |
+
+Parallelism is deterministic: each cell writes its own slot and the scratch is
+thread-local, so nothing depends on scheduling.
+
+The second pass had been flagged as marginal and was worth **at least 10%** on long rays,
+because a multi-kilometre ray carries ~2000 breakpoints. Short rays gain nothing (a 3 km
+viewshed is unchanged). Later runs measured 80.6 µs, so run-to-run variance on this
+machine is a few percent and 10% is the conservative read — the figure was measured, not
+predicted, which was the point of taking the change at all.
+
+**Mobility** is exposed to Phase 5 as `move_cost(from_cell, to_cell)` on cell **edges**,
+not as a baked isotropic raster: slope direction matters, and uphill is penalised harder
+than downhill. The constants are placeholder dials pending the Phase 5 movement TOML.
 
 ### 1.6 Validation matrix (the contract — each test names its analytical reference)
 
@@ -183,6 +216,11 @@ dials pending the Phase 5 movement TOML), not a baked isotropic raster.
 | V11 | DDA vs oracle | DDA result agrees with the fixed-step sampler within a step-driven tolerance | 1.3 |
 | V12 | flat viewshed = disc | on a flat plane, the viewshed is exactly the in-range cell set | 1.4 |
 | V13 | ridge shadow | single infinite ridge: per-column shadow matches the V6 wall closed form | 1.4 |
+| V53 | terrain recipes | a recipe + seed reproduces bit-identically; each layer meets its own invariant (woodland paints its `fraction`; a ridge lifts its crest line by `crest_m`); layer order is significant; presets differ as their names claim | 1.3 |
+
+*(V53 is numbered out of sequence because composable recipes were added after Phase 9.
+It is a terrain gate and belongs here, not with the air gates it was first written
+beside.)*
 
 ---
 
@@ -309,10 +347,12 @@ for. `P(detect by t) = 1 − e^{−λt}`; per tick of length `dt`, `p = 1 − e^
 Memoryless ⇒ results are **independent of the tick size** in distribution (V17 checks
 the compounding identity exactly).
 
-Detections are permanent in this phase (no track loss — that arrives with EW). Each
-detection emits an event `{time, sensor_id, unit_id, unit_pos}` into an append-only log
-(the POMDP-ready observation channel, PLAN §5-S3), and flips the unit's
-detected-by-the-sensor's-side flag.
+Detections were permanent in this phase, with track loss deferred to EW. **§10.1 replaced
+that**: a track is held only while it is re-observed, and ages out `track_hold_s` after
+its last observation. Acquisition is still the stochastic glimpse described here; only
+maintenance was added. Each detection emits an event
+`{time, sensor_id, unit_id, unit_pos}` into an append-only log (the POMDP-ready
+observation channel, PLAN §5-S3) and marks the unit detected by the sensor's side.
 
 ### 3.3 The simulation loop (first appearance — DESIGN §7 made concrete)
 
@@ -643,8 +683,8 @@ attack. Together they span the modern spectrum — a reusable guided-bomb carrie
 
 ### 9.4 Air defence — two engagement models, two closed forms
 
-The point of two models is that **time-to-kill has a different distribution** in each,
-which is what makes gun and missile defences trade off differently against a raid.
+Two models, because **time-to-kill is distributed differently** in each — differing in
+shape, not just in mean, so guns and missiles fail differently against a saturating raid.
 
 **Gun / CIWS — a Poisson kill process.** While the target sits in the envelope, kills
 arrive at rate `λ_k`; per tick `p = 1 − e^{−λ_k·dt}`. This is structurally identical to
@@ -699,8 +739,8 @@ own radar instead of waiting out a comms hop it never needed. *(An earlier versi
 replaced it. Consequence: the air detection loop runs each sensor's glimpse process until
 **that sensor** has seen the target, rather than stopping at the first global detection.)*
 
-This yields the phase's headline closed form. Note carefully **what the clock starts on**:
-the cueing chain begins at *detection*, not at envelope entry. Let a drone be detected
+This yields the phase's headline closed form, and it turns on **what the clock starts
+on**: the cueing chain begins at *detection*, not at envelope entry. Let a drone be detected
 `D` seconds before it enters the envelope (its **warning lead**) and spend `W` seconds
 inside the envelope before reaching its release point. The battery is actionable from
 `t_entry − D + L + R`, so the effective engagement window is
@@ -772,9 +812,10 @@ Stated rather than hidden, each a clean later addition and none a refactor:
 - **No air-to-air.** Drones do not engage other drones.
 - **Acoustic detection of drones** is the natural modality and remains unimplemented —
   §3.1's `Modality` tag is the seam.
-- **Detection of air is permanent**, as it is for ground units (§3.2): there is no track
-  loss, so a battery never has a cue go stale. The `seen_by` record makes adding decay a
-  contained change if it is ever wanted.
+- ~~**Detection of air is permanent.**~~ **Lifted by §10.1.** Air tracks now decay like
+  ground tracks, and a lapsed one clears the cueing record so reacquisition restarts the
+  §9.5 timeline. The `seen_by` design anticipated this, and the change was contained as
+  predicted.
 
 ### 9.8 Validation gates (V44–V52)
 
@@ -788,5 +829,118 @@ Stated rather than hidden, each a clean later addition and none a refactor:
 | V49 | missile time-to-kill | per-shot kill fraction = `ssk_p` within binomial CI; `E[shots] = 1/p` (geometric); `E[TTK] = t_f/p + (1/p − 1)t_r` |
 | V50 | cue latency & leakage | leakage rises monotonically in `cue_latency_s`, matches `exp(−λ_k·W_eff)`, and reaches 1 above the critical latency; warning lead `D` raises `L* = W + D − R` one second per second, and `D = 0` reproduces `W − L − R` |
 | V51 | envelope & magazine gating | exactly zero engagements outside the slant-range band, outside the altitude band, without LOS when `requires_los`, without a cue when `self_cue` is off, or with an empty magazine; concurrent engagements never exceed `channels` |
-| V53 | terrain recipes | a recipe + seed reproduces bit-identically; each layer meets its own invariant (woodland paints its `fraction`; a ridge lifts its crest line by `crest_m`); layer order is significant; presets differ as their names claim |
 | V52 | air-off identity | no air and no air defence ⇒ event log bit-identical to the pre-air build; with air, same `(scenario, seed)` reproduces exactly |
+
+## 10. The decision layer *(Phase 10 — in progress)*
+
+Phases 1–9 model everything except anyone *deciding* anything. Fires pick the nearest
+enemy, routes are drawn by hand, sensors stare where they were placed, and the belief
+filter of §8.2 is computed for a UI overlay that no sim code reads. Two of the five
+strands — DP and game theory — therefore sit *beside* the simulation rather than inside
+it. This phase closes the loop **sensing → belief → decision → action**.
+
+The decision epoch of §3.3 was designed as the hook for exactly this. It currently calls
+only `resolve_fires()`.
+
+Decisions (user, 2026-07-31): tracks decay by **hold time**; fire allocation is
+**side-wide and optimal**, with a greedy allocator kept alongside so the optimality gap
+is measured rather than assumed; target value is an **optional dial** over a derived
+default; sensor tasking maximises **expected information gain**.
+
+### 10.1 Track lifecycle *(landed)*
+
+§3.2 made detection permanent, with track loss deferred to EW. That deferral turned out
+to have teeth: a unit once seen stays seen forever, so **jamming a tracked unit does
+nothing at all**. EW could prevent a track but never break one, which is half the model
+missing rather than a simplification.
+
+Detection is now derived from a last-observation time. `UnitState` and `AirState` carry
+`last_seen_s: Option<f64>`, and at each epoch
+
+```
+detected  ⟺  now − last_seen_s  <  track_hold_s
+```
+
+`detected` stays the field everything else reads, so indirect-fire gating (§4.2) and the
+§9.5 cueing timeline needed no change. `track_hold_s` is a scenario dial. Air keeps its
+per-sensor `seen_by` record as well, because §9.5 needs to know *which* battery saw the
+target.
+
+A lapsed air track clears the whole cueing record — `detected_at_s`, `detected_by` and
+`seen_by` — not just the flag. Otherwise reacquisition would find a stale `detected_at_s`
+already aged past `cue_latency_s + reaction_time_s` and a battery would fire the instant
+the target reappeared, skipping the §9.5 timeline the scenario exists to exercise.
+
+**Maintenance runs at the decision epoch, not the tick.** The glimpse loop skips
+already-detected targets, so refreshing a track means looking again — measured at
+4 sensors × 6 units × 97 µs ≈ 2.3 ms/tick, up to 20× the whole tick budget. At a 10 s
+epoch that amortises to 0.23 ms/tick. The cadence is also right on its own terms: tracks
+decay over tens of seconds, and maintaining one is a decision-layer concern.
+
+**Maintenance is deterministic, not a fresh glimpse.** Acquisition stays stochastic;
+keeping eyes on something already found is not a coin flip. A track refreshes when the
+sensor's *effective* rate `λ_eff` — the §8.1 jammed rate, with concealment, range and
+canopy folded in — clears a `track_maintain_p` threshold:
+
+```
+refresh  ⟺  1 − e^{−λ_eff·Δt_epoch}  ≥  track_maintain_p
+```
+
+Using the effective rate rather than bare geometry is what lets EW break a track:
+a jammer that drives `λ_eff` below the threshold ages the track out even with clean LOS.
+A pure "can it still be seen?" test would have re-opened the exact gap this closes.
+Drawing nothing also leaves the per-tick RNG stream unperturbed.
+
+### 10.2 Fire allocation *(next)*
+
+Replaces the nearest-enemy rule with a side-wide assignment. For shooter `i` and target
+`j`,
+
+```
+payoff[i][j] = P(kill this epoch) · value(j)
+```
+
+with `P(kill)` from the existing fires model — `direct_p_hit` or `expected_area_damage`,
+times cover, suppression factor and round count, exactly as a round already resolves.
+Ineligible pairings (out of range, no LOS, undetected for indirect) are `−∞`.
+
+`value(j)` is an optional dial on the stat block, defaulting to
+`elements × rof × p_kill_given_hit × max_range` normalised — so an unscored stat block is
+still ranked sensibly, and doctrine ("kill the radar first") can be stated when wanted.
+
+Each target offers `min(elements, cap)` **slots**, each worth the marginal value of one
+more shooter on it. That turns allocation-with-diminishing-returns into a clean
+assignment problem instead of needing a bespoke solver, and stops shooters idling once
+targets run out. Solved by Hungarian (Kuhn–Munkres) over shooters × slots, with a greedy
+allocator kept alongside as the baseline that makes the optimal solver's benefit a
+number.
+
+### 10.3 Belief-driven sensor tasking *(next)*
+
+The sim gains a per-side `SpatialBelief` on a coarse (~128×128) grid, updated each epoch
+with `pomdp::no_detection_likelihood` and diffused by `predict`. Sensors with a finite
+`for_width_deg` choose among candidate facings to maximise expected reduction in
+`H(b) = −Σ_s b(s) log b(s)` — the POMDP control objective, against an API that already
+exists.
+
+### 10.4 Validation gates (V54–V58)
+
+| # | Property | Reference |
+|---|----------|-----------|
+| V54 | removal preserves history | removal tombstones rather than shifting: every index already in an event log still resolves to the same asset |
+| V55 | track lifecycle & EW | a track lapses `track_hold_s` after its last observation and is cleared; continuous observation refreshes it indefinitely; jamming drives `λ_eff` below the maintenance threshold and so *breaks* a track, which permanent detection made impossible |
+| V56 | allocation optimality | Hungarian matches an exhaustive brute-force optimum for n ≤ 7; its total payoff is never below greedy's; no target draws more shooters than it has slots; an ineligible pairing is never chosen |
+| V57 | tasking beats staring | against a hidden mover, belief-directed tasking has a shorter mean time-to-detect than a fixed facing over seeded Monte Carlo; belief stays normalised throughout (extends V42) |
+| V58 | decision-layer identity | same `(scenario, seed)` reproduces every log; one shooter against one target gives the identical fire log to the pre-Phase-10 build, allocation degenerating to the old choice |
+
+**Regression risk, stated up front.** Allocation changes what units shoot at, so V24, V30
+(Lanchester), V31 and V39 could move. All four are single-shooter or homogeneous-line
+scenarios where allocation degenerates to today's choice, so they *should* be untouched —
+but that is a prediction to verify, not an assumption. If one moves, understand why
+before re-baselining.
+
+### 10.5 Deferred
+
+**Movement decisions in-loop** — re-pathing with `least_risk_path` against a live risk
+raster. Out of scope for this phase: it needs a per-epoch risk raster, and the coarse-grid
+machinery built for §10.3 is what makes that affordable later.
