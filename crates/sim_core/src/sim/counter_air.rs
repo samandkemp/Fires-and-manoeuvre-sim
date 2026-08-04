@@ -38,6 +38,8 @@ impl Sim {
                     continue;
                 }
                 let target = GlimpseTarget {
+                    kind: super::los_cache::TargetKind::Air,
+                    idx: a_idx,
                     pos: air.pos,
                     height_m: air.actor_height(&self.terrain),
                     signature: air.stats.signature_in(sensor.stats.modality),

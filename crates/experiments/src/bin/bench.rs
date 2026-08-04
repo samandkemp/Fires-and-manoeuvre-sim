@@ -151,12 +151,22 @@ simulation tick (shipped scenarios):"
             sim.step_one();
         }
         let el = t.elapsed();
+        // The LOS memo is what took the tick from ~100 us to ~10 us: a sensor re-testing
+        // a target that has not moved re-walks the same terrain for the same answer. A
+        // low hit rate is the signal to look at (everything is moving, or the cache is
+        // being invalidated), not a high one.
+        let (hits, misses) = sim.los_cache_stats();
+        let rate = if hits + misses == 0 {
+            0.0
+        } else {
+            hits as f64 * 100.0 / (hits + misses) as f64
+        };
         println!(
-            "  {name:<14} build {:>7.1?}  reset {:>7.1?}  tick {:>6.1} us  ({ticks} ticks in {:.2?})",
+            "  {name:<14} build {:>7.1?}  reset {:>7.1?}  tick {:>6.1} us  (LOS memo {rate:.0}% of {} lookups)",
             build,
             reset,
             el.as_secs_f64() * 1e6 / f64::from(ticks),
-            el
+            hits + misses
         );
     }
 }

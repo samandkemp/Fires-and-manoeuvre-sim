@@ -32,6 +32,7 @@ mod counter_air;
 mod detection;
 mod engagement;
 mod events;
+mod los_cache;
 mod setup;
 mod state;
 
@@ -70,6 +71,9 @@ pub struct Sim {
     // They carry no state between epochs — each user clears before filling.
     near_misses: Vec<u32>,
     views: Vec<(usize, SensorView)>,
+    /// Memoised line-of-sight for (sensor, target) pairs whose endpoints have not moved.
+    /// Purely a speed-up: a hit is exactly the value a miss would have computed.
+    los_cache: los_cache::LosCache,
     rng: SimRng,
 }
 

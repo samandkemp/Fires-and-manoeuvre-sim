@@ -108,6 +108,11 @@ impl UnitState {
 /// signature rather than nine positional arguments.
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct GlimpseTarget {
+    /// Which asset list [`GlimpseTarget::idx`] refers to — the other half of the
+    /// line-of-sight cache key.
+    pub kind: super::los_cache::TargetKind,
+    /// Index of this target within its list.
+    pub idx: usize,
     /// World position, metres.
     pub pos: Vec2,
     /// Height above the ground beneath it — the §1.2 actor height.

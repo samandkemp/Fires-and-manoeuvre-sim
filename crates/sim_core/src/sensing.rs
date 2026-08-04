@@ -159,6 +159,10 @@ pub fn concealment_at(terrain: &TerrainGrid, pos: Vec2) -> f32 {
 /// actor height, and contributes `concealment = 0` because an airborne target is not
 /// standing in the cell below it (§9.1). `sensor_height_m` is explicit too — a sensor
 /// carried by a drone sits at the airframe's height, not at its own `mount_height_m`.
+///
+/// Composed from [`detection_gate`] and [`rate_given_los`] rather than written out, so a
+/// caller that can reuse a line-of-sight result (the sim caches them for endpoints that
+/// have not moved) runs the identical arithmetic in the identical order.
 // Nine arguments is past clippy's taste threshold, but they are the model's actual
 // parameters and bundling them into a struct would only move the noise.
 #[allow(clippy::too_many_arguments)]
@@ -174,8 +178,48 @@ pub fn detection_rate_against(
     signature: f32,
     concealment: f32,
 ) -> f32 {
-    if signature <= 0.0 {
+    let Some(r) = detection_gate(
+        terrain,
+        sensor,
+        sensor_pos,
+        sensor_height_m,
+        facing_deg,
+        target_pos,
+        target_height_m,
+        signature,
+    ) else {
         return 0.0;
+    };
+    let l = los::line_of_sight(
+        terrain,
+        sensor_pos,
+        sensor_height_m,
+        target_pos,
+        target_height_m,
+    );
+    rate_given_los(sensor, r, &l, signature, concealment)
+}
+
+/// The cheap gates that precede the line-of-sight walk: signature, slant range, and field
+/// of regard. Returns the slant range when the sensor could plausibly see the target,
+/// `None` when something rules it out.
+///
+/// Separated because the LOS traversal costs ~77 µs while these cost ~0.1 µs, so the
+/// order matters: gate first, walk the grid only if the gates pass.
+#[allow(clippy::too_many_arguments)]
+#[must_use]
+pub fn detection_gate(
+    terrain: &TerrainGrid,
+    sensor: &SensorType,
+    sensor_pos: Vec2,
+    sensor_height_m: f32,
+    facing_deg: f32,
+    target_pos: Vec2,
+    target_height_m: f32,
+    signature: f32,
+) -> Option<f32> {
+    if signature <= 0.0 {
+        return None;
     }
 
     // Slant range, not horizontal (§9.1): overhead is not point blank.
@@ -187,7 +231,7 @@ pub fn detection_rate_against(
         target_height_m,
     );
     if r > sensor.max_range_m {
-        return 0.0;
+        return None;
     }
 
     // Field of regard: bearing to target within ±width/2 of facing.
@@ -201,23 +245,27 @@ pub fn detection_rate_against(
             off += 360.0;
         }
         if off.abs() > width * 0.5 {
-            return 0.0;
+            return None;
         }
     }
+    Some(r)
+}
 
-    let l = los::line_of_sight(
-        terrain,
-        sensor_pos,
-        sensor_height_m,
-        target_pos,
-        target_height_m,
-    );
-    if !l.clear {
+/// The rate itself, given a slant range from [`detection_gate`] and a completed LOS
+/// query: `λ₀ · f(r) · signature · τ · (1 − concealment)`, or zero if hard-blocked.
+#[must_use]
+pub fn rate_given_los(
+    sensor: &SensorType,
+    slant_range_m: f32,
+    los: &los::LosResult,
+    signature: f32,
+    concealment: f32,
+) -> f32 {
+    if !los.clear {
         return 0.0;
     }
-
-    let falloff = 1.0 / (1.0 + (r / sensor.range_half_m).powf(sensor.range_exponent));
-    sensor.lambda0_per_s * falloff * signature * l.transmittance * (1.0 - concealment)
+    let falloff = 1.0 / (1.0 + (slant_range_m / sensor.range_half_m).powf(sensor.range_exponent));
+    sensor.lambda0_per_s * falloff * signature * los.transmittance * (1.0 - concealment)
 }
 
 /// Probability of at least one detection in a tick of length `dt_s` at rate

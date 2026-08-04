@@ -11,9 +11,11 @@
 //! 3. **Expiry** — a track not refreshed within `track_hold_s` is lost, and the target
 //!    must be acquired from scratch.
 
+use super::los_cache::{self, TargetKind};
 use super::{GlimpseTarget, JammerState, Side, Sim};
 use crate::ew;
-use crate::sensing::{self, detection_rate_against, p_detect_tick};
+use crate::los::{self, LosResult};
+use crate::sensing::{self, p_detect_tick};
 use glam::Vec2;
 use rand::Rng;
 
@@ -100,9 +102,18 @@ impl Sim {
     /// The single place the two are combined, so acquisition (a draw against this rate)
     /// and maintenance (a threshold on it) can never disagree about what a sensor can
     /// currently see.
-    fn effective_rate(&self, sensor_idx: usize, view: SensorView, target: GlimpseTarget) -> f32 {
+    ///
+    /// Gates first, then a *cached* line-of-sight walk (see [`los_cache`]) — the gates
+    /// cost ~0.1 µs and the walk ~77 µs, and the walk's answer cannot change while both
+    /// endpoints hold still.
+    fn effective_rate(
+        &mut self,
+        sensor_idx: usize,
+        view: SensorView,
+        target: GlimpseTarget,
+    ) -> f32 {
         let (s_pos, s_height, s_facing) = view;
-        detection_rate_against(
+        let Some(r) = sensing::detection_gate(
             &self.terrain,
             &self.sensors[sensor_idx].stats,
             s_pos,
@@ -111,8 +122,58 @@ impl Sim {
             target.pos,
             target.height_m,
             target.signature,
+        ) else {
+            return 0.0;
+        };
+        let los = self.cached_los(sensor_idx, target, s_pos, s_height);
+        let rate = sensing::rate_given_los(
+            &self.sensors[sensor_idx].stats,
+            r,
+            &los,
+            target.signature,
             target.concealment,
-        ) * self.jamming_at(target.pos, target.side)
+        );
+        if rate <= 0.0 {
+            return 0.0; // hard-blocked: no need to price the jamming
+        }
+        rate * self.jamming_at(target.pos, target.side)
+    }
+
+    /// The line of sight from a sensor's viewpoint to a target, reusing the previous
+    /// answer when neither endpoint has moved a single float ulp.
+    fn cached_los(
+        &mut self,
+        sensor_idx: usize,
+        target: GlimpseTarget,
+        s_pos: Vec2,
+        s_height: f32,
+    ) -> LosResult {
+        let key = los_cache::Key {
+            sensor: sensor_idx,
+            kind: target.kind,
+            target: target.idx,
+        };
+        let at = los_cache::Endpoints {
+            a: s_pos,
+            h_a: s_height,
+            b: target.pos,
+            h_b: target.height_m,
+        };
+        self.los_cache
+            .fit(self.sensors.len(), self.units.len(), self.air.len());
+        if let Some(hit) = self.los_cache.get(key, at) {
+            return hit;
+        }
+        let los = los::line_of_sight(&self.terrain, at.a, at.h_a, at.b, at.h_b);
+        self.los_cache.put(key, at, los);
+        los
+    }
+
+    /// Line-of-sight cache hits and misses so far — a diagnostic for checking the memo is
+    /// earning its keep on a given scenario, not part of the model.
+    #[must_use]
+    pub fn los_cache_stats(&self) -> (u64, u64) {
+        self.los_cache.stats()
     }
 
     /// One (sensor, target) glimpse (§3.2): the effective rate and a single seeded draw.
@@ -153,6 +214,8 @@ impl Sim {
                     continue;
                 }
                 let target = GlimpseTarget {
+                    kind: TargetKind::Ground,
+                    idx: u_idx,
                     pos: unit.pos,
                     height_m: unit.stats.height_m,
                     signature: unit.stats.signature_in(sensor.stats.modality),
@@ -209,6 +272,8 @@ impl Sim {
             // Modality is per sensor, but every sensor is Optical today; take the
             // signature from the first view so the rate reflects the real target.
             let target = GlimpseTarget {
+                kind: TargetKind::Ground,
+                idx: u_idx,
                 pos: unit.pos,
                 height_m: unit.stats.height_m,
                 signature: views.first().map_or(0.0, |&(i, _)| {
@@ -237,6 +302,8 @@ impl Sim {
                 continue;
             }
             let target = GlimpseTarget {
+                kind: TargetKind::Air,
+                idx: a_idx,
                 pos: air.pos,
                 height_m: air.actor_height(&self.terrain),
                 signature: views.first().map_or(0.0, |&(i, _)| {
@@ -276,11 +343,20 @@ impl Sim {
     /// preventing a new one. A plain "can it be seen" test would leave EW unable to break
     /// anything, which is the gap this closes. Still deterministic — the rate decides,
     /// nothing is drawn.
-    fn holds_track(&self, views: &[(usize, SensorView)], target: GlimpseTarget) -> bool {
-        views.iter().any(|&(i, view)| {
-            self.sensors[i].side != target.side
-                && p_detect_tick(self.effective_rate(i, view, target), self.epoch_s)
-                    >= self.track_maintain_p
-        })
+    fn holds_track(&mut self, views: &[(usize, SensorView)], target: GlimpseTarget) -> bool {
+        // Not `.any()` over an iterator: the rate lookup needs `&mut self` for the LOS
+        // cache, which a closure capturing `self` cannot hand out. A plain loop is also
+        // clearer about the short-circuit.
+        for &(i, view) in views {
+            if self.sensors[i].side == target.side {
+                continue;
+            }
+            if p_detect_tick(self.effective_rate(i, view, target), self.epoch_s)
+                >= self.track_maintain_p
+            {
+                return true;
+            }
+        }
+        false
     }
 }

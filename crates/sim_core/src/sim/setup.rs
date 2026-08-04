@@ -84,6 +84,7 @@ impl Sim {
             strike_events: Vec::new(),
             near_misses: Vec::new(),
             views: Vec::new(),
+            los_cache: super::los_cache::LosCache::default(),
             rng: SimRng::seed_from_u64(seed ^ SEED_SALT),
         };
         sim.place_from_scenario(scenario, libs)?;
@@ -127,6 +128,9 @@ impl Sim {
         self.air_events.clear();
         self.air_defence_events.clear();
         self.strike_events.clear();
+        // The cache is indexed by asset position in lists that are about to be rebuilt,
+        // so its contents are meaningless rather than stale.
+        self.los_cache.clear();
         self.rng = SimRng::seed_from_u64(seed ^ SEED_SALT);
     }
 
