@@ -28,6 +28,8 @@ The README carries the rationale; this table is the map.
 | Stochastic processes | Poisson rates, Gaussian dispersion, Markov chains | detection `λ`; CEP and Carleton damage; suppression chain; time-to-kill | §§2–4, §9.4 | V14–V24, V28–V31, V48–V49 |
 | Game theory | `v = max_x min_y xᵀAy` | zero-sum interdiction game by fictitious play | §6 | V32–V39 |
 | Partial observability | belief `b_t(s)`, the posterior over enemy position given `z_{1:t}` | belief filter with negative information; EW on the rate | §8 | V40–V43 |
+| Combinatorial optimisation | `max Σ payoff[i][j] x_ij` over an assignment | side-wide weapon–target allocation (Kuhn–Munkres) | §10.2 | V56 |
+| Information-gain control | maximise `H(b) − E[H(b')]` over the available looks | belief-driven sensor tasking | §10.3 | V57 |
 
 Two structural properties cut across all five and are treated as first-class:
 
@@ -835,13 +837,13 @@ Stated rather than hidden, each a clean later addition and none a refactor:
 | V51 | envelope & magazine gating | exactly zero engagements outside the slant-range band, outside the altitude band, without LOS when `requires_los`, without a cue when `self_cue` is off, or with an empty magazine; concurrent engagements never exceed `channels` |
 | V52 | air-off identity | no air and no air defence ⇒ event log bit-identical to the pre-air build; with air, same `(scenario, seed)` reproduces exactly |
 
-## 10. The decision layer *(Phase 10 — in progress)*
+## 10. The decision layer *(Phase 10 — complete)*
 
-Phases 1–9 model everything except anyone *deciding* anything. Fires pick the nearest
-enemy, routes are drawn by hand, sensors stare where they were placed, and the belief
-filter of §8.2 is computed for a UI overlay that no sim code reads. Two of the five
-strands — DP and game theory — therefore sit *beside* the simulation rather than inside
-it. This phase closes the loop **sensing → belief → decision → action**.
+Phases 1–9 modelled everything except anyone *deciding* anything. Fires picked the
+nearest enemy, routes were drawn by hand, sensors stared where they were placed, and the
+belief filter of §8.2 was computed for a UI overlay that no sim code read. This phase
+closes the loop **sensing → belief → decision → action**: tracks now decay (§10.1), fire
+is allocated side-wide (§10.2), and sensors point themselves by belief (§10.3).
 
 The decision epoch of §3.3 was designed as the hook for exactly this. It currently calls
 only `resolve_fires()`.
@@ -963,13 +965,47 @@ On the other shipped scenarios the gap is exactly 0.0%: with one or two shooters
 each reach one enemy, all three rules agree. Allocation only matters when there is a real
 choice to make.
 
-### 10.3 Belief-driven sensor tasking *(next)*
+### 10.3 Belief-driven sensor tasking *(landed)*
 
-The sim gains a per-side `SpatialBelief` on a coarse (~128×128) grid, updated each epoch
-with `pomdp::no_detection_likelihood` and diffused by `predict`. Sensors with a finite
-`for_width_deg` choose among candidate facings to maximise expected reduction in
-`H(b) = −Σ_s b(s) log b(s)` — the POMDP control objective, against an API that already
-exists.
+The sim gains a per-side `SpatialBelief` on a coarse grid (`[sim] belief_cells`, default
+48), updated each epoch from what the side's sensors *failed* to see and then diffused by
+`predict`. This is the point at which the §8.2 POMDP layer stops being a display and
+starts driving the simulation.
+
+**The objective is information gain, computed exactly.** For a candidate facing, the
+observation is binary per cell: either a sensor detects something at cell `c`, with
+probability `b(c)·p(c)`, collapsing the belief to a point mass of zero entropy; or it sees
+nothing and the belief becomes `b'(c) ∝ b(c)(1 − p(c))`. So
+
+```
+E[H after] = (1 − Σ_c b(c)p(c)) · H(b')
+gain(facing) = H(b) − E[H after]
+```
+
+and each steerable sensor takes the facing maximising `gain`. Sensors with no
+`for_width_deg` see all round and have nothing to choose.
+
+**Why it is affordable.** The expensive part of a detection rate is the line-of-sight
+walk, and **LOS does not depend on facing** — only the field-of-regard gate does. So the
+per-cell rate is computed once per sensor with the arc removed, cached against the pose it
+was built for, and each of the twelve candidate facings is then a cheap arc mask over that
+raster. Without this, one epoch would cost a viewshed per facing per sensor.
+
+Carried sensors are excluded: a drone-mounted sensor moves every tick, so it would rebuild
+its raster every epoch and never get a cache hit — and it has nothing to steer anyway,
+since it faces where its airframe points.
+
+**Off by default (`[sim] sensor_tasking`).** A `facing_deg` written in a scenario is a
+statement of intent, and silently overriding it would change what every existing scenario
+means. It would also dissolve the §6.3 interdiction game, whose Blue strategies *are*
+committed postures — a sensor that re-points itself is no longer playing a strategy. V39
+caught exactly this when the default was briefly `true`.
+
+*Measured*, on `scenarios/sensor_search.toml` (three 70°-arc observers, five Red units,
+none of them in the sectors the observers start on): a fixed stare finds **2 of 5**; the
+belief-driven sweep finds **5 of 5**. Nothing about the sweep is scripted — each sensor
+drains its own belief out of ground it has cleared, so the best-information facing moves
+on by itself.
 
 ### 10.4 Validation gates (V54–V58)
 
@@ -978,14 +1014,19 @@ exists.
 | V54 | removal preserves history | removal tombstones rather than shifting: every index already in an event log still resolves to the same asset |
 | V55 | track lifecycle & EW | a track lapses `track_hold_s` after its last observation and is cleared; continuous observation refreshes it indefinitely; jamming drives `λ_eff` below the maintenance threshold and so *breaks* a track, which permanent detection made impossible |
 | V56 | allocation optimality | Hungarian matches an exhaustive brute-force optimum for n ≤ 7; its total payoff is never below greedy's; no target draws more shooters than it has slots; an ineligible pairing is never chosen |
-| V57 | tasking beats staring | against a hidden mover, belief-directed tasking has a shorter mean time-to-detect than a fixed facing over seeded Monte Carlo; belief stays normalised throughout (extends V42) |
-| V58 | decision-layer identity | same `(scenario, seed)` reproduces every log; one shooter against one target gives the identical fire log to the pre-Phase-10 build, allocation degenerating to the old choice |
+| V57 | tasking beats staring | against an enemy hidden outside its initial arc, a belief-tasked sensor detects where a fixed stare never does, with a shorter mean time-to-detect; belief stays a normalised non-negative distribution with finite entropy across many updates (extends V42); tasking draws no randomness |
+| V58 | decision-layer identity | with one shooter and one reachable target, every allocation rule and both tasking settings produce the identical detection and fire logs — the decision phases draw zero randomness, so the stream cannot shift |
 
-**Regression risk, stated up front.** Allocation changes what units shoot at, so V24, V30
-(Lanchester), V31 and V39 could move. All four are single-shooter or homogeneous-line
-scenarios where allocation degenerates to today's choice, so they *should* be untouched —
-but that is a prediction to verify, not an assumption. If one moves, understand why
-before re-baselining.
+**Regression risk, as predicted and as found.** Allocation changes what units shoot at, so
+V24, V30 (Lanchester), V31 and V39 were flagged as able to move. **V24, V30 and V31 did
+not**, exactly as reasoned: they are single-shooter or homogeneous-line scenarios where
+allocation degenerates to the old choice.
+
+**V39 did move**, and for an instructive reason — not allocation, but *tasking*. Its Blue
+strategies are committed sensor postures, so a sensor that re-points itself is not playing
+a strategy at all, and the "unwatched lane" stopped being unwatched. That is what settled
+`sensor_tasking` defaulting to off rather than on. The gate was doing its job: it caught a
+model change that would otherwise have quietly invalidated the Phase 6 game.
 
 ### 10.5 Deferred
 

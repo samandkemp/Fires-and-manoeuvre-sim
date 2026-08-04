@@ -1,0 +1,81 @@
+# Belief-driven sensor tasking, made watchable (docs/DESIGN.md §10.3).
+#
+# Three Blue observers with **narrow arcs** — 70°, so none of them can watch more than a
+# slice of the map at once — against Red units dispersed across ground none of them starts
+# pointed at. With `sensor_tasking = true` each observer re-points itself every epoch to
+# wherever it expects to learn the most, and the result looks like a coordinated search:
+# each sensor drains its own belief out of the ground it has cleared, so the
+# best-information facing keeps moving on. Nothing about that sweep is scripted.
+#
+# Set `sensor_tasking = false` to watch the same scenario with the observers frozen where
+# they were placed. Most of Red is then simply never found.
+#
+# Flat, open ground on purpose: with no terrain masking, the only thing deciding what gets
+# seen is where the sensors chose to look.
+
+name = "sensor_search"
+default_seed = 5
+
+[sim]
+dt_s = 1.0
+epoch_s = 10.0
+sensor_tasking = true
+# Belief runs on a 48x48 grid regardless of map size — choosing between twelve 30°
+# sectors does not need 10 m fidelity.
+belief_cells = 48
+# Tracks lapse quickly here, so a sensor that looks away really does lose contact and the
+# search has to be sustained rather than done once.
+track_hold_s = 30.0
+
+[terrain]
+cell_size_m = 10.0
+width_cells = 300
+height_cells = 300
+
+[terrain.source.flat]
+elevation_m = 0.0
+
+# --- Blue: three narrow-arc observers, all initially staring east --------------------
+[[blue.sensors]]
+id = "obs-north"
+type = "narrow_optical"
+pos = [700.0, 2100.0]
+facing_deg = 0.0
+
+[[blue.sensors]]
+id = "obs-centre"
+type = "narrow_optical"
+pos = [700.0, 1500.0]
+facing_deg = 0.0
+
+[[blue.sensors]]
+id = "obs-south"
+type = "narrow_optical"
+pos = [700.0, 900.0]
+facing_deg = 0.0
+
+# --- Red: dispersed, and none of them east of the observers --------------------------
+[[red.units]]
+id = "red-nw"
+type = "inf_section"
+pos = [500.0, 2500.0]
+
+[[red.units]]
+id = "red-sw"
+type = "inf_section"
+pos = [400.0, 500.0]
+
+[[red.units]]
+id = "red-n"
+type = "afv"
+pos = [1600.0, 2700.0]
+
+[[red.units]]
+id = "red-s"
+type = "afv"
+pos = [1700.0, 350.0]
+
+[[red.units]]
+id = "red-w"
+type = "inf_section"
+pos = [200.0, 1500.0]

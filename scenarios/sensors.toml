@@ -30,6 +30,19 @@ lambda0_per_s = 0.6
 range_half_m = 1000.0
 range_exponent = 2.0
 
+# A narrow-arc observer: it can only watch a slice of the map at once, so where it points
+# is a real decision. This is the sensor type the §10.3 tasking layer exists for — with
+# `[sim] sensor_tasking = true` it re-points itself each epoch toward whichever sector it
+# expects to learn the most from. An all-round sensor has nothing to task.
+[narrow_optical]
+modality = "optical"
+mount_height_m = 4.0
+max_range_m = 3000.0
+lambda0_per_s = 0.6
+range_half_m = 1400.0
+range_exponent = 2.0
+for_width_deg = 70.0
+
 # An air-defence battery's organic radar: long reach, quick to acquire, all-round. This
 # is what lets a CIWS self-cue instead of waiting on the net (docs/DESIGN.md §9.5).
 [ciws_radar]

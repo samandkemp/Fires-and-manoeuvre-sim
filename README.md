@@ -30,7 +30,7 @@ munition or sensor performance data.** The models are the product; the numbers a
 
 # The OR strands
 
-Five bodies of theory, each doing a job the others cannot. This section states each one
+Six bodies of theory, each doing a job the others cannot. This section states each one
 in its own symbols, says what it buys, and points at the code and the gate that holds it
 honest. `docs/DESIGN.md` carries the per-subsystem depth; this is the argument for why
 each tool is the right one.
@@ -276,9 +276,49 @@ so a jammer raises belief entropy `H(b) = −Σ_s b(s) log b(s)` without moving 
 With no jammers every `g_j = 1` and the product is exactly 1, so EW-off reduces to the
 sensing model bit-for-bit (V40) — an identity, not an approximation.
 
-Entropy is also the control objective for the sensor-tasking layer: point sensors where
-the *expected* reduction in `H(b)` is greatest. That closes the loop
-sensing → belief → decision → action, and it is the piece currently being built.
+Entropy is also the control objective for the sensor-tasking layer: point each steerable
+sensor at the facing maximising the *expected* reduction in `H(b)`. For a candidate
+facing, either something is detected — collapsing belief to a point of zero entropy — or
+nothing is, and belief becomes `b'(c) ∝ b(c)(1 − p(c))`, so
+
+```
+gain = H(b) − (1 − Σ_c b(c)p(c)) · H(b')
+```
+
+That closes the loop **sensing → belief → decision → action**. Measured: three
+narrow-arc observers searching for five dispersed units find **2 of 5** staring where
+they were placed, and **5 of 5** when tasked by belief — and nothing about the resulting
+sweep is scripted. Each sensor drains its own belief out of ground it has cleared, so the
+best-information facing moves on by itself.
+
+*Lives in* [`ew.rs`](crates/sim_core/src/ew.rs), [`pomdp.rs`](crates/sim_core/src/pomdp.rs),
+[`sim/tasking.rs`](crates/sim_core/src/sim/tasking.rs) *·  gates V40–V43, V57*
+
+## 6. Combinatorial optimisation — who shoots what
+
+Which shooter engages which target is an assignment problem, and solving it side-wide
+rather than shooter-by-shooter is the difference between three tanks all firing at the
+nearest enemy and three tanks covering three enemies. For shooter `i` and slot `k` of
+target `j`,
+
+```
+payoff[i][(j,k)] = q(i,j) · value(j) · (1 − q̄(j))^k
+```
+
+`q` is the fraction of the target destroyed this epoch, straight from the fires model.
+The geometric term is the diminishing return on piling on: the (k+1)-th shooter only
+helps if the `k` before it all failed. Expressing it as extra columns is what keeps this
+a plain linear assignment — solved optimally by Kuhn–Munkres — instead of a submodular
+problem needing a bespoke solver.
+
+A greedy allocator ships alongside, and it earns its place. On a scenario built to
+present a real choice, coordination is worth **~15%** off the time to destroy the enemy —
+but **greedy beats the "optimal" solver**, consistently. That is not a solver bug: the
+Hungarian maximises *one epoch's modelled payoff*, which is not the same objective as
+winning the battle quickly. Keeping the baseline is what turned that from an assumption
+into a number.
+
+*Lives in* [`allocation.rs`](crates/sim_core/src/allocation.rs) *·  gate V56*
 
 *Lives in* [`ew.rs`](crates/sim_core/src/ew.rs), [`pomdp.rs`](crates/sim_core/src/pomdp.rs)
 *·  gates V40–V43*
@@ -292,7 +332,7 @@ sensing → belief → decision → action, and it is the piece currently being 
 | `crates/sim_core/` | Headless, deterministic OR engine — pure Rust, no Bevy. Where all the maths lives |
 | `crates/app/` | Bevy front-end: tactical map, pan/zoom, egui control panel |
 | `crates/experiments/` | Headless batch runs: sweeps, Monte Carlo, equilibria. Depends on `sim_core` only |
-| `crates/validation/` | The V1–V55 gates: every model checked against a closed form or a stated invariant |
+| `crates/validation/` | The V1–V58 gates: every model checked against a closed form or a stated invariant |
 | `scenarios/` | TOML scenarios and the unit/weapon/sensor stat blocks |
 | **`docs/HOW_IT_WORKS.md`** | **Start here if you are new.** How detection, engagement and scenarios actually work, with worked numbers |
 | `docs/DESIGN.md` | The deep spec: equations, state machines, and the validation gate for every model |
@@ -372,7 +412,7 @@ difference between two scenarios means anything.
 ## Validation
 
 Every model ships with a test checking it against a closed-form result or a documented
-invariant. The gates are numbered **V1–V55**, live in the `validation` crate, and each is
+invariant. The gates are numbered **V1–V58**, live in the `validation` crate, and each is
 stated in `docs/DESIGN.md` next to the model it constrains, for example:
 
 - **V14/V15** — the exponential detection law, Monte Carlo against `1 − e^(−λT)`
@@ -382,6 +422,8 @@ stated in `docs/DESIGN.md` next to the model it constrains, for example:
 - **V40** — EW degrades detection, and EW switched off is exactly the identity
 - **V48/V49** — air-defence time-to-kill: exponential for a gun, geometric for a missile
 - **V55** — a track lapses without observation, so jamming can break one
+- **V56** — the optimal allocation matches an exhaustive optimum, and beats no coordination
+- **V57** — belief-driven tasking finds what a fixed stare never does
 
 `cargo run -p validation --bin validation_report` prints every gate beside the closed form
 it is checked against. That is the question the project actually cares about — not "are
@@ -397,10 +439,12 @@ Roadmap phases 1–9 are implemented — terrain and LOS, sensing, fires, suppre
 attrition, movement as DP, game-theoretic decisions, visualisation, electronic warfare
 with partial observability, and air with counter-air.
 
-Phase 10, the decision layer, is under way. It closes the loop that the phases above
-leave open: the simulation models everything except anyone *deciding* anything. Tracks
-now decay (so jamming can break one, which permanent detection made impossible); optimal
-side-wide fire allocation and belief-driven sensor tasking follow.
+**Phase 10, the decision layer, is complete.** It closes the loop the phases above left
+open — the simulation modelled everything except anyone *deciding* anything. Tracks now
+decay (so jamming can break one, which permanent detection made impossible); fire is
+allocated side-wide by solving an assignment problem; and steerable sensors point
+themselves by expected information gain. Movement decisions in-loop are deliberately
+deferred (DESIGN §10.5).
 
 Beyond that: suppression of enemy air defence, air-to-air, acoustic detection of drones,
 ingesting real-world elevation data, live playback and state scrubbing, full-resolution

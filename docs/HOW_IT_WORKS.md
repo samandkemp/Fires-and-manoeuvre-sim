@@ -8,7 +8,7 @@ This is deliberately a different job from its neighbours:
 
 | Doc | Question it answers |
 |---|---|
-| `README.md` | *Why* these methods? The five OR strands and the argument for each |
+| `README.md` | *Why* these methods? The six OR strands and the argument for each |
 | `docs/DESIGN.md` | *What* is specified? Equations, invariants, and the gate for every model |
 | **this file** | *How* does it actually work, and where is the code? |
 
@@ -30,7 +30,7 @@ structural fact about the project:
         ▼               ▼               ▼
    ┌─────────┐   ┌─────────────┐   ┌────────────┐
    │   app   │   │ experiments │   │ validation │
-   │  (Bevy) │   │  (headless) │   │ (V1–V55)   │
+   │  (Bevy) │   │  (headless) │   │ (V1–V58)   │
    └─────────┘   └─────────────┘   └────────────┘
 ```
 
@@ -53,6 +53,7 @@ Each module owns one idea:
 | `air.rs`, `air_defence.rs` | Drones and the things that shoot them |
 | `ew.rs`, `pomdp.rs` | Jamming, and reasoning about where an unseen enemy might be |
 | `game.rs` | The zero-sum game solver |
+| `allocation.rs` | Weapon–target assignment: who shoots what |
 | `scenario.rs` | Loading TOML into structs |
 | `sim/` | **The engine that drives all of the above** |
 
@@ -72,6 +73,7 @@ sim/commands.rs     what the app's mouse can change between ticks
 sim/detection.rs    the glimpse process, EW, and the track lifecycle
 sim/engagement.rs   ground fires: picking a target, resolving rounds
 sim/counter_air.rs  the air phases
+sim/tasking.rs      belief, and where each sensor should look next
 sim/los_cache.rs    a speed-up (see §9); no effect on results
 ```
 
@@ -197,10 +199,15 @@ phases in a fixed order:
 5. suppression recovery     suppressed units calm down
 6. air defence              batteries engage drones
 7. strike release           drones drop munitions
-8. IF an epoch boundary was crossed:
+8. IF an epoch boundary was crossed:      ← all the DECIDING happens here
       maintain tracks       refresh or expire what is being watched
-      resolve fires         ← shooting happens here
+      task sensors          re-point steerable sensors by belief (if enabled)
+      resolve fires         allocate targets side-wide, then shoot
 ```
+
+Those three run in that order for a reason: tasking reasons about what was *not* seen
+this epoch, so tracks must be settled first; and fires are gated on tracks, so allocation
+comes last.
 
 Two different clocks, and the distinction matters:
 
@@ -371,10 +378,25 @@ steps.
 
 Skipped if dead, if **Pinned** (suppression), or if it carries no weapon.
 
-### Step 2 — pick a target (`pick_target`)
+### Step 2 — allocate targets (`allocate_fires`)
 
-Currently **the nearest eligible enemy**. Eligibility differs by weapon class, and the
-difference is the point:
+Each side assigns **all** its shooters at once, rather than each choosing for itself. The
+payoff for putting shooter `i` on the `k`-th slot of target `j` is
+
+```
+q(i,j) × value(j) × (1 − q̄(j))^k
+```
+
+`q` is the fraction of the target this shooter expects to destroy this epoch (straight
+from the fires model below), `value` is what the target is worth, and the last term is
+diminishing returns — a second shooter on a target only helps if the first failed.
+Solved optimally by the Hungarian algorithm.
+
+Why bother? Because the obvious rule wastes fire in an obvious way: three tanks all
+engage the nearest enemy while a second, equally dangerous one is untouched. Set
+`[sim] allocation = "independent"` to get that old behaviour back and compare.
+
+Eligibility differs by weapon class, and the difference is the point:
 
 | | Direct fire | Indirect fire |
 |---|---|---|
@@ -384,10 +406,6 @@ difference is the point:
 
 That asymmetry is why sensing matters. Artillery cannot fire at what nobody is watching,
 so a sensor that loses its track silences the guns behind it.
-
-> This nearest-enemy rule is the simplest thing that works, and it is the next thing
-> scheduled to change: Phase 10 replaces it with a side-wide optimal assignment
-> (`docs/DESIGN.md` §10.2).
 
 ### Step 3 — work out the shot once (`prepare_shot`)
 
@@ -553,7 +571,9 @@ the cache hit rate.
 | Change how long tracks last | scenario `[sim]`: `track_hold_s` |
 | Make suppression stickier | scenario `[sim]`: `p_suppress` ↑, `recover_per_s` ↓ |
 | Build a different map | scenario `[terrain.source]` — see §2 |
-| Change *how targets are chosen* | `sim/engagement.rs :: pick_target` — this is code, not a dial |
+| Change how targets are chosen | scenario `[sim]`: `allocation` = `optimal` / `greedy` / `independent` |
+| Let sensors search for themselves | scenario `[sim]`: `sensor_tasking = true` (needs a sensor with `for_width_deg`) |
+| Change the *allocation payoff* | `sim/engagement.rs :: allocate_fires` — this is code, not a dial |
 | Change the detection *model* | `sensing.rs` — and expect to update a validation gate |
 
 The rule: if it is a number, it lives in TOML. If it is a decision or a functional form,
@@ -569,7 +589,7 @@ cargo run -p validation --release --bin validation_report    # the gate table
 cargo clippy --workspace                                     # lints
 ```
 
-The **V-gates** (V1–V55) are the project's backbone. Each one checks a model against a
+The **V-gates** (V1–V58) are the project's backbone. Each one checks a model against a
 closed-form result or a stated invariant — not against a previously recorded output. The
 difference matters: a regression test tells you the answer changed, while a gate tells you
 the answer is *wrong*.
@@ -581,6 +601,8 @@ Examples:
 - **V30** — attrition against Lanchester's square law
 - **V40** — EW switched off is exactly the identity
 - **V55** — a track lapses without observation, so jamming can break one
+- **V56** — the allocator matches an exhaustive optimum, and never picks a forbidden pairing
+- **V57** — belief-driven tasking finds enemies a fixed stare never does
 
 `validation_report` prints each gate beside the closed form it is checked against, because
 the useful question is not "are the tests green" but *is the maths still right, and right

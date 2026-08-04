@@ -36,6 +36,7 @@ mod events;
 mod los_cache;
 mod setup;
 mod state;
+mod tasking;
 
 pub use events::{AirDefenceEvent, AirDetectionEvent, DetectionEvent, FireEvent, StrikeEvent};
 pub use state::{JammerState, SensorState, Side, UnitState};
@@ -59,6 +60,9 @@ pub struct Sim {
     // Fire-allocation dials (§10.2).
     allocation: AllocationChoice,
     max_shooters_per_target: u32,
+    // Sensor-tasking dials and state (§10.3).
+    sensor_tasking: bool,
+    tasking: tasking::Tasking,
     time_s: f64,
     epochs_run: u64,
     sensors: Vec<SensorState>,
@@ -116,12 +120,15 @@ impl Sim {
         self.resolve_air_defence();
         self.resolve_strikes();
 
-        // 8. Decision epoch: maintain tracks, then resolve one epoch of fires per
-        // boundary crossed. Track maintenance leads because fires are gated on tracks.
+        // 8. Decision epoch, in dependency order: refresh what is known, decide where to
+        // look next, then decide what to shoot. Track maintenance leads because fires are
+        // gated on tracks; tasking follows it because it reasons about what was *not*
+        // seen this epoch.
         let epochs_due = (self.time_s / f64::from(self.epoch_s)).floor() as u64;
         while self.epochs_run < epochs_due {
             self.epochs_run += 1;
             self.maintain_tracks();
+            self.task_sensors();
             self.resolve_fires();
         }
     }

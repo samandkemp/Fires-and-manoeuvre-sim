@@ -72,6 +72,8 @@ impl Sim {
             track_maintain_p: cfg.track_maintain_p,
             allocation: cfg.allocation,
             max_shooters_per_target: cfg.max_shooters_per_target,
+            sensor_tasking: cfg.sensor_tasking,
+            tasking: super::tasking::Tasking::new(cfg.belief_cells.max(1)),
             time_s: 0.0,
             epochs_run: 0,
             sensors: Vec::new(),
@@ -133,6 +135,8 @@ impl Sim {
         // The cache is indexed by asset position in lists that are about to be rebuilt,
         // so its contents are meaningless rather than stale.
         self.los_cache.clear();
+        // Likewise the belief: a new trial knows nothing about where the enemy is.
+        self.tasking.reset();
         self.rng = SimRng::seed_from_u64(seed ^ SEED_SALT);
     }
 

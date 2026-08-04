@@ -96,6 +96,26 @@ pub struct SimConfig {
     /// target still offers at most one slot per remaining element, whichever is smaller.
     #[serde(default = "default_max_shooters_per_target")]
     pub max_shooters_per_target: u32,
+    /// Should steerable sensors re-point themselves each epoch to maximise expected
+    /// information gain (`docs/DESIGN.md` §10.3)?
+    ///
+    /// **Off by default, deliberately.** A `facing_deg` written in a scenario is a
+    /// statement of intent, and silently overriding it would change what every existing
+    /// scenario means. It would also dissolve the §6.3 interdiction game, whose Blue
+    /// strategies *are* committed postures — a sensor that re-points itself is no longer
+    /// playing a strategy (V39 catches exactly this).
+    ///
+    /// Only affects sensors with a finite `for_width_deg`; an all-round sensor has no
+    /// decision to make.
+    #[serde(default = "default_sensor_tasking")]
+    pub sensor_tasking: bool,
+    /// Edge length of the coarse belief grid, in cells (`docs/DESIGN.md` §10.3).
+    ///
+    /// Belief runs at this resolution regardless of terrain size: tasking chooses between
+    /// twelve 30° sectors and does not need 10 m fidelity to do it. The cost of the
+    /// coverage raster behind it scales as the square of this.
+    #[serde(default = "default_belief_cells")]
+    pub belief_cells: usize,
 }
 
 /// Which allocation solver a scenario asks for.
@@ -157,6 +177,14 @@ fn default_max_shooters_per_target() -> u32 {
     3
 }
 
+fn default_sensor_tasking() -> bool {
+    false
+}
+
+fn default_belief_cells() -> usize {
+    48
+}
+
 impl Default for SimConfig {
     fn default() -> Self {
         Self {
@@ -170,6 +198,8 @@ impl Default for SimConfig {
             track_maintain_p: default_track_maintain_p(),
             allocation: AllocationChoice::default(),
             max_shooters_per_target: default_max_shooters_per_target(),
+            sensor_tasking: default_sensor_tasking(),
+            belief_cells: default_belief_cells(),
         }
     }
 }
