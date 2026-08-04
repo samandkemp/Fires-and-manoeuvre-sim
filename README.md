@@ -294,8 +294,14 @@ sensing → belief → decision → action, and it is the piece currently being 
 | `crates/experiments/` | Headless batch runs: sweeps, Monte Carlo, equilibria. Depends on `sim_core` only |
 | `crates/validation/` | The V1–V55 gates: every model checked against a closed form or a stated invariant |
 | `scenarios/` | TOML scenarios and the unit/weapon/sensor stat blocks |
+| **`docs/HOW_IT_WORKS.md`** | **Start here if you are new.** How detection, engagement and scenarios actually work, with worked numbers |
 | `docs/DESIGN.md` | The deep spec: equations, state machines, and the validation gate for every model |
 | `SETUP.md` | Environment setup (Rust + Bevy + VSCode), written for a Rust beginner |
+
+Inside `sim_core`, `sim/` is the engine that drives everything else: `sim/mod.rs` holds
+the tick, with detection, engagement, setup and the air phases in sibling modules. The
+model code around it — `sensing.rs`, `fires.rs`, `movement.rs` — is pure functions with no
+state, which is what lets the validation crate check each one in isolation.
 
 `sim_core` never depends on `app` or on Bevy. That boundary is what keeps the maths
 independently testable and the simulation runnable headless.

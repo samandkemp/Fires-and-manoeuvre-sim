@@ -6,6 +6,10 @@ right tool and states it in its own symbols; this file works each one out in ful
 section is written **before** its subsystem is implemented, and every model states the
 analytical result or invariant its tests check against.
 
+New to the codebase? Read `docs/HOW_IT_WORKS.md` first — it walks the same models in
+plain terms, with worked numbers and the code path for each, and points back here for the
+specification.
+
 Sections are filled in roadmap order. §§1–6 and §§8–10 are written and implemented; §7
 (the simulation loop) is a placeholder — the loop is documented alongside the code it
 lives in.

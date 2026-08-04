@@ -22,7 +22,8 @@ the knobs.
 with those libraries empty, so a pre-Phase-9 set still works.
 
 The schema these parse into lives in `crates/sim_core/src/scenario.rs`; the conventions
-they follow are in `docs/DESIGN.md`.
+they follow are in `docs/DESIGN.md`. For a walkthrough of what each dial actually does to
+a detection or a round — with worked numbers — see `docs/HOW_IT_WORKS.md`.
 
 ## Loading a scenario
 
