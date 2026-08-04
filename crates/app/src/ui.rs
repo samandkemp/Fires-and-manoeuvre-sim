@@ -449,6 +449,7 @@ impl Panel<'_, '_, '_> {
                 "green bar = remaining strength",
                 "faint line = movement route / flight plan",
                 "yellow ring = selected (left-click, shift adds, drag boxes)",
+                "faint wedge = sensor field of regard (swings when tasked)",
                 "magenta bubble = EW jammer",
                 "teal ring = air-defence envelope",
                 "yellow line = air-defence engagement",

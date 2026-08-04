@@ -153,6 +153,30 @@ pub fn draw_markers(
         let c = side_color(s.side);
         gizmos.circle_2d(Isometry2d::from_translation(s.pos), 8.0 * px, c);
         gizmos.circle_2d(Isometry2d::from_translation(s.pos), 3.0 * px, c);
+
+        // Field of regard: the wedge the sensor is actually watching. Only drawn for a
+        // sensor that has one — an all-round sensor would just be a circle, and the
+        // whole point of the wedge is to show what is *not* being watched. With
+        // `[sim] sensor_tasking` on, this is where the belief-driven search is visible:
+        // the wedges swing about between epochs (docs/DESIGN.md §10.3).
+        if let Some(width) = s.stats.for_width_deg {
+            let reach = s.stats.max_range_m;
+            let facing = s.facing_deg.to_radians();
+            let half = width.to_radians() * 0.5;
+            let edge = |a: f32| s.pos + Vec2::from_angle(a) * reach;
+            let faint = c.with_alpha(0.35);
+            gizmos.line_2d(s.pos, edge(facing - half), faint);
+            gizmos.line_2d(s.pos, edge(facing + half), faint);
+            // The far arc, as a short polyline.
+            const STEPS: usize = 12;
+            for k in 0..STEPS {
+                let t0 = k as f32 / STEPS as f32;
+                let t1 = (k + 1) as f32 / STEPS as f32;
+                let a0 = facing - half + 2.0 * half * t0;
+                let a1 = facing - half + 2.0 * half * t1;
+                gizmos.line_2d(edge(a0), edge(a1), faint);
+            }
+        }
     }
     for u in sim.sim.units() {
         if !u.alive() {
