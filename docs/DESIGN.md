@@ -895,29 +895,73 @@ a jammer that drives `λ_eff` below the threshold ages the track out even with c
 A pure "can it still be seen?" test would have re-opened the exact gap this closes.
 Drawing nothing also leaves the per-tick RNG stream unperturbed.
 
-### 10.2 Fire allocation *(next)*
+### 10.2 Fire allocation *(landed)*
 
-Replaces the nearest-enemy rule with a side-wide assignment. For shooter `i` and target
-`j`,
+Replaces the nearest-enemy rule with a side-wide assignment, solved once per epoch per
+side before anyone shoots. For shooter `i` and slot `k` of target `j`,
 
 ```
-payoff[i][j] = P(kill this epoch) · value(j)
+payoff[i][(j,k)] = q(i,j) · value(j) · (1 − q̄(j))^k
 ```
 
-with `P(kill)` from the existing fires model — `direct_p_hit` or `expected_area_damage`,
-times cover, suppression factor and round count, exactly as a round already resolves.
-Ineligible pairings (out of range, no LOS, undetected for indirect) are `−∞`.
+`q(i,j)` is the **fraction of the target destroyed this epoch**, from the existing fires
+model — `direct_p_hit` or `expected_area_damage`, times cover, suppression factor and
+round count, exactly as a round resolves — clamped to `[0,1]`. Ineligible pairings (out
+of range, no LOS, undetected for indirect) are forbidden outright.
 
-`value(j)` is an optional dial on the stat block, defaulting to
-`elements × rof × p_kill_given_hit × max_range` normalised — so an unscored stat block is
-still ranked sensibly, and doctrine ("kill the radar first") can be stated when wanted.
+`value(j)` is `elements × per_element`, where `per_element` is the optional `value` dial
+on the stat block, or `1 + threat/threat_max` when absent, with
+`threat = rof × p_kill_given_hit × max_range`. So an unscored stat block still ranks
+sensibly — a unit is worth its size, doubled if it is the most dangerous thing on the
+field — and doctrine ("kill the radar first") can be stated when wanted. Per *element*,
+so a half-destroyed unit is correctly worth less.
 
-Each target offers `min(elements, cap)` **slots**, each worth the marginal value of one
-more shooter on it. That turns allocation-with-diminishing-returns into a clean
-assignment problem instead of needing a bespoke solver, and stops shooters idling once
-targets run out. Solved by Hungarian (Kuhn–Munkres) over shooters × slots, with a greedy
-allocator kept alongside as the baseline that makes the optimal solver's benefit a
-number.
+**Slots and the discount.** A target with `E` elements offers `min(E, cap)` slots, and
+slot `k` is discounted by `(1 − q̄)^k` for a representative `q̄`: the (k+1)-th shooter
+only helps if the `k` before it all failed. This is the standard weapon–target-assignment
+decomposition and is exact when the shooters on a target are alike. It turns diminishing
+returns into extra columns, keeping the problem a plain linear assignment rather than a
+submodular one.
+
+Solved by Hungarian (Kuhn–Munkres) over shooters × slots, with greedy and `independent`
+(the old per-shooter rule) alongside. `[sim] allocation` chooses.
+
+**Forbidden pairings are scored zero, not `−∞`.** Kuhn–Munkres produces a *perfect*
+matching, while what is wanted is a maximum-weight matching that may leave a shooter
+idle. With non-negative payoffs and rows ≤ columns, any partial matching extends to a
+perfect one using only zero-weight cells without changing its total — so the two optima
+coincide, and assignments landing on a forbidden or worthless cell are simply dropped
+afterwards. A large negative sentinel would have been worse than wrong: `1e18 + 10.0`
+is `1e18` in `f64`, so every matching with the same number of forbidden cells would have
+scored identically.
+
+#### Measured: the optimum is not the fastest *(2026-08-04)*
+
+`experiments/allocation_gap` runs each scenario under all three rules. On
+`scenarios/fire_allocation.toml` (four shooters that can all reach all four targets),
+200 seeds:
+
+| Rule | Time to destroy Red | Targets engaged per epoch |
+|---|---|---|
+| `independent` (the old rule) | 75.2 s | 1.00 |
+| `greedy` | **64.2 s** (−14.6%) | 3.00 |
+| `optimal` | 64.7 s (−14.0%) | 3.00 |
+
+Coordination is worth ~15%, and the mechanism is visible in the spread column: the old
+rule sent every gun at the nearest target while three others stood untouched.
+
+But **greedy beats the optimal solver**, consistently and outside the noise. That is not
+a bug in the solver (V56 checks it against an exhaustive optimum). It is the surrogate:
+Hungarian maximises *one epoch's modelled payoff*, and that is not the same objective as
+finishing the battle quickly. The geometric slot discount is an approximation, and
+maximising an approximation exactly can do slightly worse than a heuristic that happens
+to hedge. Keeping greedy is what made this measurable rather than assumed — and the
+honest reading is that the *coordination* is worth 15%, while the *optimality* is worth
+nothing here.
+
+On the other shipped scenarios the gap is exactly 0.0%: with one or two shooters that can
+each reach one enemy, all three rules agree. Allocation only matters when there is a real
+choice to make.
 
 ### 10.3 Belief-driven sensor tasking *(next)*
 

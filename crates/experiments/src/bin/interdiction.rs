@@ -58,6 +58,7 @@ fn main() {
         element_count: 1,
         signature: BTreeMap::new(),
         weapon: Some("mortar".to_owned()),
+        value: None,
         ..Default::default()
     };
     let mortar = WeaponType {
@@ -75,6 +76,7 @@ fn main() {
         speed_m_s: RED_SPEED,
         signature: BTreeMap::from([("optical".to_owned(), 0.8)]),
         weapon: None, // pure interdiction target
+        value: None,
     };
 
     // Three lanes (south / centre / north). Each Blue overwatch sits mid-lane facing

@@ -13,6 +13,7 @@
 
 pub mod air;
 pub mod air_defence;
+pub mod allocation;
 pub mod ew;
 pub mod fires;
 pub mod game;

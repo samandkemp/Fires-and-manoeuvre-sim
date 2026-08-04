@@ -21,6 +21,7 @@
 
 use crate::air::AirState;
 use crate::air_defence::AirDefenceState;
+use crate::scenario::AllocationChoice;
 use crate::suppression::Suppression;
 use crate::terrain::TerrainGrid;
 use crate::SimRng;
@@ -55,6 +56,9 @@ pub struct Sim {
     // Track lifecycle dials (§10.1).
     track_hold_s: f32,
     track_maintain_p: f32,
+    // Fire-allocation dials (§10.2).
+    allocation: AllocationChoice,
+    max_shooters_per_target: u32,
     time_s: f64,
     epochs_run: u64,
     sensors: Vec<SensorState>,

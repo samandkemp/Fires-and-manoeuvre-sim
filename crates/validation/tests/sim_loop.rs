@@ -368,6 +368,7 @@ fn v39_interdiction_safe_route() {
         element_count: 1,
         signature: BTreeMap::new(),
         weapon: Some("m".to_owned()),
+        value: None,
         ..Default::default()
     };
     let mortar = WeaponType {
@@ -385,6 +386,7 @@ fn v39_interdiction_safe_route() {
         speed_m_s: 10.0,
         signature: BTreeMap::from([("optical".to_owned(), 0.9)]),
         weapon: None,
+        value: None,
     };
 
     // Both Blue positions watch lane 0 (y=500) from the west; neither can see lane 1
@@ -835,6 +837,7 @@ fn battle_scenario() -> Fixture {
             speed_m_s: 0.0,
             signature: BTreeMap::from([("optical".to_owned(), 0.5)]),
             weapon: Some("cannon".to_owned()),
+            value: None,
         },
     );
     libs.weapons.insert(
@@ -922,6 +925,7 @@ fn v30_lanchester_square_law() {
         speed_m_s: 0.0,
         signature: BTreeMap::new(),
         weapon: Some("rifle".to_owned()),
+        value: None,
     };
     let units = BTreeMap::from([
         ("blue_line".to_owned(), line(50)),
@@ -1018,6 +1022,7 @@ fn v31_suppression_gates_fire() {
                 speed_m_s: 0.0,
                 signature: BTreeMap::new(),
                 weapon: Some("mg".to_owned()),
+                value: None,
             },
         ),
         (

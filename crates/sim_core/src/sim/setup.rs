@@ -70,6 +70,8 @@ impl Sim {
             suppressed_fire_factor: cfg.suppressed_fire_factor,
             track_hold_s: cfg.track_hold_s,
             track_maintain_p: cfg.track_maintain_p,
+            allocation: cfg.allocation,
+            max_shooters_per_target: cfg.max_shooters_per_target,
             time_s: 0.0,
             epochs_run: 0,
             sensors: Vec::new(),

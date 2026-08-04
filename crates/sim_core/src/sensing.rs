@@ -60,6 +60,15 @@ pub struct UnitType {
     /// Weapon type id this unit carries (key into the weapon library), if any.
     #[serde(default)]
     pub weapon: Option<String>,
+    /// How much killing **one element** of this unit is worth, for fire allocation
+    /// (`docs/DESIGN.md` §10.2). Omit and it is derived from size and weapon threat.
+    ///
+    /// Per element rather than per unit, so a half-destroyed unit is correctly worth
+    /// less than a fresh one. Set it to express doctrine the derived score cannot know —
+    /// "kill the radar first" is a `value` an unarmed sensor vehicle would never earn on
+    /// its own.
+    #[serde(default)]
+    pub value: Option<f32>,
 }
 
 fn default_silhouette_width() -> f32 {
@@ -82,6 +91,7 @@ impl Default for UnitType {
             speed_m_s: 0.0,
             signature: BTreeMap::new(),
             weapon: None,
+            value: None,
         }
     }
 }

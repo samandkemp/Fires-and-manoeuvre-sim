@@ -1,0 +1,81 @@
+# A scenario built to make fire allocation matter (docs/DESIGN.md §10.2).
+#
+# The shipped scenarios never present a contested targeting choice — one or two shooters
+# that can each reach one enemy is a decision with only one answer, so optimal, greedy and
+# the old nearest-enemy rule all agree. `allocation_gap` measured 0.0% between them.
+#
+# This is the case where they differ: **four shooters that can all reach all four
+# targets**. Under the old rule every gun engages whichever target is nearest, so three
+# bursts land on a unit the first has already broken while three other targets are left
+# untouched. Coordinated, the side takes one target each.
+#
+# Deliberately one-sided so the measurement is clean. Red is dismounted infantry sitting
+# at 1200-1500 m, well outside its own 600 m small-arms range: it cannot shoot back, so
+# the only thing the numbers reflect is how well Blue spends its rounds. Flat, open
+# ground for the same reason — no terrain, no LOS masking, no cover.
+
+name = "fire_allocation"
+default_seed = 11
+
+[sim]
+dt_s = 1.0
+epoch_s = 10.0
+# Try "independent" to recover the pre-Phase-10 behaviour, or "greedy" for the heuristic.
+allocation = "optimal"
+max_shooters_per_target = 3
+
+[terrain]
+cell_size_m = 10.0
+width_cells = 220
+height_cells = 100
+
+[terrain.source.flat]
+elevation_m = 0.0
+
+# --- Blue: four AFV troops in a line, all within 2500 m of every Red position ---------
+[[blue.units]]
+id = "blue-1"
+type = "afv"
+pos = [300.0, 300.0]
+
+[[blue.units]]
+id = "blue-2"
+type = "afv"
+pos = [300.0, 450.0]
+
+[[blue.units]]
+id = "blue-3"
+type = "afv"
+pos = [300.0, 600.0]
+
+[[blue.units]]
+id = "blue-4"
+type = "afv"
+pos = [300.0, 750.0]
+
+# An observer, so the picture is visible in the app. Direct fire needs no detection.
+[[blue.sensors]]
+id = "blue-obs"
+type = "mast_optical"
+pos = [250.0, 525.0]
+
+# --- Red: four infantry sections, staggered in range so "nearest" is unambiguous ------
+[[red.units]]
+id = "red-1"
+type = "inf_section"
+pos = [1500.0, 300.0]
+
+[[red.units]]
+id = "red-2"
+type = "inf_section"
+pos = [1600.0, 450.0]
+
+[[red.units]]
+id = "red-3"
+type = "inf_section"
+pos = [1700.0, 600.0]
+
+[[red.units]]
+id = "red-4"
+type = "inf_section"
+pos = [1800.0, 750.0]

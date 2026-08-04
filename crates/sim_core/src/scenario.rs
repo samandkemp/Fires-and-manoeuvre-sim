@@ -84,6 +84,41 @@ pub struct SimConfig {
     /// so this is what lets EW degrade a sensor enough to break an existing track.
     #[serde(default = "default_track_maintain_p")]
     pub track_maintain_p: f32,
+    /// How fire allocation is solved each epoch (`docs/DESIGN.md` §10.2):
+    /// `"optimal"` (Hungarian, the default), `"greedy"`, or `"independent"` — the
+    /// pre-Phase-10 rule where every shooter chose for itself.
+    ///
+    /// A dial rather than a constant so the cost of *not* coordinating is measurable on
+    /// any scenario; `experiments/allocation_gap` sweeps all three.
+    #[serde(default)]
+    pub allocation: AllocationChoice,
+    /// Most shooters that may be assigned to one target in an epoch. Caps overkill: a
+    /// target still offers at most one slot per remaining element, whichever is smaller.
+    #[serde(default = "default_max_shooters_per_target")]
+    pub max_shooters_per_target: u32,
+}
+
+/// Which allocation solver a scenario asks for.
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Default, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum AllocationChoice {
+    /// Kuhn–Munkres: the side-wide optimum.
+    #[default]
+    Optimal,
+    /// Repeatedly take the best remaining pairing.
+    Greedy,
+    /// Each shooter picks for itself, ignoring the rest of the side.
+    Independent,
+}
+
+impl From<AllocationChoice> for crate::allocation::Solver {
+    fn from(c: AllocationChoice) -> Self {
+        match c {
+            AllocationChoice::Optimal => Self::Optimal,
+            AllocationChoice::Greedy => Self::Greedy,
+            AllocationChoice::Independent => Self::Independent,
+        }
+    }
 }
 
 fn default_dt_s() -> f32 {
@@ -118,6 +153,10 @@ fn default_track_maintain_p() -> f32 {
     0.5
 }
 
+fn default_max_shooters_per_target() -> u32 {
+    3
+}
+
 impl Default for SimConfig {
     fn default() -> Self {
         Self {
@@ -129,6 +168,8 @@ impl Default for SimConfig {
             suppressed_fire_factor: default_suppressed_fire_factor(),
             track_hold_s: default_track_hold(),
             track_maintain_p: default_track_maintain_p(),
+            allocation: AllocationChoice::default(),
+            max_shooters_per_target: default_max_shooters_per_target(),
         }
     }
 }
