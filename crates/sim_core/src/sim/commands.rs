@@ -1,0 +1,118 @@
+//! Commands from outside the simulation: what the app's mouse and a scenario script can
+//! change between ticks.
+//!
+//! Kept apart from the tick itself so the boundary is obvious — the simulation never
+//! calls anything here, and everything here is safe to call between steps. Removal
+//! **tombstones** rather than shifting the asset lists, because the event logs hold
+//! indices into them (V54).
+
+use super::Sim;
+use crate::air::{AirState, FlightPlan};
+use crate::suppression::Suppression;
+use glam::Vec2;
+
+impl Sim {
+    /// Assign a movement route (world waypoints) to a placed unit.
+    pub fn set_route(&mut self, unit_idx: usize, route: Vec<Vec2>) {
+        self.units[unit_idx].route = route;
+        self.units[unit_idx].route_idx = 0;
+    }
+
+    /// Append one waypoint to a unit's route (for interactive route drawing).
+    pub fn push_waypoint(&mut self, unit_idx: usize, waypoint: Vec2) {
+        self.units[unit_idx].route.push(waypoint);
+    }
+
+    /// Teleport a unit to `pos`, clearing any route it was following.
+    pub fn set_unit_pos(&mut self, unit_idx: usize, pos: Vec2) {
+        let u = &mut self.units[unit_idx];
+        u.pos = pos;
+        u.route.clear();
+        u.route_idx = 0;
+    }
+
+    /// Assign a flight plan to a placed air asset.
+    pub fn set_flight_plan(&mut self, air_idx: usize, plan: FlightPlan) {
+        self.air[air_idx].set_plan(plan);
+    }
+
+    /// Mutable access to a placed air asset — the hook for interactive editing (the app
+    /// sets altitude, heading, speed and flight plan from its panel). Prefer the typed
+    /// helpers elsewhere on `Sim` for anything the simulation itself does.
+    pub fn air_mut(&mut self, air_idx: usize) -> &mut AirState {
+        &mut self.air[air_idx]
+    }
+
+    /// Force a unit's suppression state (`docs/DESIGN.md` §4.3).
+    ///
+    /// The suppression chain is normally driven by near-miss volume, but pinning a unit
+    /// directly is what lets a caller isolate the *effect* of a state from the process
+    /// that produces it — which is how V31 measures the fire-effectiveness multiplier and
+    /// V38 checks that a pinned unit halts. Also the hook a scenario script or the app
+    /// would use to set up a situation.
+    pub fn set_suppression(&mut self, unit_idx: usize, state: Suppression) {
+        self.units[unit_idx].suppression = state;
+    }
+
+    /// Remove a unit from the fight.
+    ///
+    /// A tombstone, not a `Vec::remove`: the detection, fire, strike and air-defence logs
+    /// all hold indices into these lists, as does `SensorState.carrier`, so shifting the
+    /// vectors would repoint the whole recorded history at the wrong assets. Setting
+    /// `elements = 0` is the state a killed unit already reaches, so nothing downstream
+    /// needs a new case.
+    pub fn remove_unit(&mut self, unit_idx: usize) {
+        self.units[unit_idx].elements = 0;
+        self.units[unit_idx].route.clear();
+    }
+
+    /// Remove an air asset, tombstoning it exactly as a shot-down airframe (see
+    /// [`Sim::remove_unit`] for why indices are never shifted). Its carried sensor stops
+    /// sensing with it, via [`Sim::sensor_active`].
+    pub fn remove_air(&mut self, air_idx: usize) {
+        self.air[air_idx].alive = false;
+    }
+
+    /// Index of the nearest live unit to `pos` within `max_dist_m`, or `None`.
+    #[must_use]
+    pub fn nearest_unit(&self, pos: Vec2, max_dist_m: f32) -> Option<usize> {
+        nearest(
+            self.units
+                .iter()
+                .enumerate()
+                .filter(|(_, u)| u.alive())
+                .map(|(i, u)| (i, u.pos)),
+            pos,
+            max_dist_m,
+        )
+    }
+
+    /// Index of the nearest live air asset to `pos` within `max_dist_m`, or `None`.
+    /// Horizontal distance: this is for picking a marker off a 2-D map.
+    #[must_use]
+    pub fn nearest_air(&self, pos: Vec2, max_dist_m: f32) -> Option<usize> {
+        nearest(
+            self.air
+                .iter()
+                .enumerate()
+                .filter(|(_, a)| a.alive)
+                .map(|(i, a)| (i, a.pos)),
+            pos,
+            max_dist_m,
+        )
+    }
+}
+
+/// Nearest `(index, position)` to `pos` within `max_dist_m`. Ties break on the lower
+/// index, so clicking between two coincident markers always picks the same one.
+fn nearest(
+    candidates: impl Iterator<Item = (usize, Vec2)>,
+    pos: Vec2,
+    max_dist_m: f32,
+) -> Option<usize> {
+    candidates
+        .map(|(i, p)| (i, p.distance(pos)))
+        .filter(|(_, d)| *d <= max_dist_m)
+        .min_by(|a, b| a.1.total_cmp(&b.1).then(a.0.cmp(&b.0)))
+        .map(|(i, _)| i)
+}
