@@ -113,6 +113,17 @@ impl Sim {
         self.air[air_idx].alive = false;
     }
 
+    /// Destroy a C2 post (`docs/DESIGN.md` §11).
+    ///
+    /// Tombstoned like every other removal. The interesting part is what it does *not*
+    /// do: no battery is lost, no magazine emptied, no envelope shrunk. What is lost is
+    /// the coordination — from the next tick, batteries that were allocating as a group
+    /// revert to each taking whatever is nearest, with the duplicated engagements and
+    /// leakers that follow. This is the hook SEAD will pull on.
+    pub fn remove_c2(&mut self, c2_idx: usize) {
+        self.c2[c2_idx].alive = false;
+    }
+
     /// Index of the nearest live unit to `pos` within `max_dist_m`, or `None`.
     #[must_use]
     pub fn nearest_unit(&self, pos: Vec2, max_dist_m: f32) -> Option<usize> {

@@ -10,6 +10,8 @@ the knobs.
 | `default.toml` | The main scenario: terrain generation, forces, sensor placements |
 | `fire_allocation.toml` | Four shooters that can all reach all four targets — the case where the allocation rule actually matters |
 | `sensor_search.toml` | Narrow-arc observers searching by belief (needs `sensor_tasking`) |
+| `ad_c2.toml` | Coordinated vs decentralised air defence — delete the `[[blue.c2]]` block to compare |
+| `c2.toml` | C2 post stat blocks: coordination radius, and how findable the post is |
 | `air_raid.toml` | The counter-air scenario: a drone raid vs self-cued and net-cued defences |
 | `mountain_pass.toml` | A composable terrain recipe: rolling base + ridge + woodland + urban |
 | `flat_range.toml` | A flat, featureless test range — isolates models from terrain effects |
@@ -20,8 +22,8 @@ the knobs.
 | `air.toml` | Drones: altitude, speed, turn rate, endurance, sensor/strike payload |
 | `air_defence.toml` | Air defence: gun vs missile engagement, envelope, magazine, cue latency |
 
-`air.toml` and `air_defence.toml` are optional — a scenario directory without them loads
-with those libraries empty, so a pre-Phase-9 set still works.
+`air.toml`, `air_defence.toml` and `c2.toml` are optional — a scenario directory without them loads
+with those libraries empty, so an older scenario set still works.
 
 The schema these parse into lives in `crates/sim_core/src/scenario.rs`; the conventions
 they follow are in `docs/DESIGN.md`. For a walkthrough of what each dial actually does to
@@ -83,7 +85,7 @@ from the one seeded stream, so a recipe plus a seed always gives the same map. `
 | `name`, `default_seed` | Identity, and the seed used unless a run overrides it |
 | `[sim]` | Tick and epoch length, the suppression dials, and the track-decay dials (DESIGN §3.3, §4.3, §10.1) |
 | `[terrain]` | Grid size and cell size, and a `source` describing how to generate it |
-| `[[blue.*]]` / `[[red.*]]` | Placed `units`, `sensors`, `jammers`, `air`, `air_defence` |
+| `[[blue.*]]` / `[[red.*]]` | Placed `units`, `sensors`, `jammers`, `air`, `air_defence`, `c2` |
 
 Every placed asset names a `type` from the libraries above, so a scenario says *where*
 things are and the libraries say *what they are*.

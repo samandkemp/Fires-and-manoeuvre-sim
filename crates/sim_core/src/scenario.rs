@@ -3,6 +3,7 @@
 
 use crate::air::{AirType, AltitudeRef, Terminal};
 use crate::air_defence::AirDefenceType;
+use crate::c2::C2Type;
 use crate::fires::WeaponType;
 use crate::sensing::{SensorType, UnitType};
 use crate::terrain::{TerrainGrid, TerrainParamsTable, TerrainSource};
@@ -222,6 +223,21 @@ pub struct Force {
     /// Placed air-defence batteries (`docs/DESIGN.md` §9.4).
     #[serde(default)]
     pub air_defence: Vec<AirDefenceInstance>,
+    /// Placed C2 posts, which coordinate nearby air defence (`docs/DESIGN.md` §11).
+    #[serde(default)]
+    pub c2: Vec<C2Instance>,
+}
+
+/// A placed C2 post: a type id from `c2.toml` plus where it is.
+#[derive(Debug, Clone, serde::Deserialize)]
+pub struct C2Instance {
+    /// Unique-in-scenario id.
+    pub id: String,
+    /// Key into the C2 type library.
+    #[serde(rename = "type")]
+    pub type_id: String,
+    /// World position `[x, y]`, metres.
+    pub pos: [f32; 2],
 }
 
 /// A placed air asset: a type id from `air.toml` plus where it is, how it is flying, and
@@ -464,6 +480,19 @@ pub fn load_air_types(path: &Path) -> Result<BTreeMap<String, AirType>, Scenario
     Ok(toml::from_str(&text)?)
 }
 
+/// Load the C2 type library (`scenarios/c2.toml`). Optional, like `air.toml`: a scenario
+/// set without it simply has no way to coordinate air defence.
+///
+/// # Errors
+/// As [`Scenario::load`].
+pub fn load_c2_types(path: &Path) -> Result<BTreeMap<String, C2Type>, ScenarioError> {
+    let text = std::fs::read_to_string(path).map_err(|source| ScenarioError::Io {
+        path: path.to_path_buf(),
+        source,
+    })?;
+    Ok(toml::from_str(&text)?)
+}
+
 /// Load the air-defence type library (`scenarios/air_defence.toml`).
 ///
 /// # Errors
@@ -497,6 +526,8 @@ pub struct Libraries {
     pub air: BTreeMap<String, AirType>,
     /// Air-defence stat blocks (`air_defence.toml`).
     pub air_defence: BTreeMap<String, AirDefenceType>,
+    /// C2 post stat blocks (`c2.toml`).
+    pub c2: BTreeMap<String, C2Type>,
 }
 
 impl Libraries {
@@ -512,6 +543,7 @@ impl Libraries {
             weapons: BTreeMap::new(),
             air: BTreeMap::new(),
             air_defence: BTreeMap::new(),
+            c2: BTreeMap::new(),
         }
     }
 
@@ -529,6 +561,7 @@ impl Libraries {
             weapons: load_weapon_types(&dir.join("weapons.toml"))?,
             air: load_optional(&dir.join("air.toml"), load_air_types)?,
             air_defence: load_optional(&dir.join("air_defence.toml"), load_air_defence_types)?,
+            c2: load_optional(&dir.join("c2.toml"), load_c2_types)?,
         })
     }
 }

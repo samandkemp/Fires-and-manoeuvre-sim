@@ -130,6 +130,14 @@ pub struct AirType {
     /// Slant range to the aim point at which a munition is released, metres.
     #[serde(default = "default_release_range")]
     pub release_range_m: f32,
+    /// How much shooting this airframe down is worth, for air-defence allocation
+    /// (`docs/DESIGN.md` §11.2). Omit and it is derived from what the airframe can do.
+    ///
+    /// The derived default already ranks a loaded strike drone above a recce one; set
+    /// this to overrule that — a cheap decoy that must *not* soak up an interceptor is
+    /// the case the derivation cannot know about.
+    #[serde(default)]
+    pub value: Option<f32>,
 }
 
 fn default_silhouette_width() -> f32 {
@@ -161,11 +169,37 @@ impl Default for AirType {
             munitions: 0,
             expendable: false,
             release_range_m: default_release_range(),
+            value: None,
         }
     }
 }
 
 impl AirType {
+    /// What destroying this airframe is worth to the defender (`docs/DESIGN.md` §11.2).
+    ///
+    /// The `value` dial wins when set. Otherwise it is derived from what the airframe can
+    /// still do: a strike drone is worth its remaining munitions, a recce drone a flat
+    /// amount for the picture it is feeding back, and an empty airframe very little. So
+    /// an unscored stat block still ranks a loaded bomber above a spent one without
+    /// anybody writing a number.
+    #[must_use]
+    pub fn threat_value(&self, munitions_left: u32) -> f32 {
+        if let Some(v) = self.value {
+            return v.max(0.0);
+        }
+        // A munition still aboard is the thing that actually hurts.
+        let strike = if self.payload.is_some() {
+            munitions_left as f32
+        } else {
+            0.0
+        };
+        // A recce drone is worth intercepting even unarmed: it is cueing someone else.
+        let recce = if self.sensor.is_some() { 0.75 } else { 0.0 };
+        // Never zero, or the allocator would treat a spent airframe as not worth a shot
+        // even when nothing else is in range.
+        (strike + recce).max(0.1)
+    }
+
     /// The airframe's signature in a modality (0 if the table has no entry).
     #[must_use]
     pub fn signature_in(&self, modality: Modality) -> f32 {

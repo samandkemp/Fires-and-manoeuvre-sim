@@ -21,6 +21,7 @@
 
 use crate::air::AirState;
 use crate::air_defence::AirDefenceState;
+use crate::c2::C2State;
 use crate::scenario::AllocationChoice;
 use crate::suppression::Suppression;
 use crate::terrain::TerrainGrid;
@@ -70,6 +71,7 @@ pub struct Sim {
     jammers: Vec<JammerState>,
     air: Vec<AirState>,
     air_defence: Vec<AirDefenceState>,
+    c2: Vec<C2State>,
     events: Vec<DetectionEvent>,
     fire_events: Vec<FireEvent>,
     air_events: Vec<AirDetectionEvent>,
@@ -218,6 +220,12 @@ impl Sim {
     #[must_use]
     pub fn air_defence(&self) -> &[AirDefenceState] {
         &self.air_defence
+    }
+
+    /// Placed C2 posts, in placement order (`docs/DESIGN.md` §11).
+    #[must_use]
+    pub fn c2(&self) -> &[C2State] {
+        &self.c2
     }
 
     /// The append-only detection log.

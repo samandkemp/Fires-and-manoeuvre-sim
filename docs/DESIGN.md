@@ -1150,3 +1150,98 @@ model change that would otherwise have quietly invalidated the Phase 6 game.
 **Movement decisions in-loop** — re-pathing with `least_risk_path` against a live risk
 raster. Out of scope for this phase: it needs a per-epoch risk raster, and the coarse-grid
 machinery built for §10.3 is what makes that affordable later.
+
+## 11. Command and control *(Phase 11)*
+
+Ground fires coordinate side-wide for free (§10.2) — defensible for a battlegroup sharing
+one fire-control net. Air defence should not, and did not: each battery independently
+engaged whatever was nearest.
+
+Decision (user, 2026-08-05): **coordination is an asset you field, not a switch you set.**
+A dial would have made "the batteries cooperate" free and permanent. Making it a placed
+**C2 post** makes it something that must be paid for, positioned, and can be taken away —
+which is the behaviour worth modelling, and the seam SEAD hangs off.
+
+### 11.1 The C2 post
+
+A post is a placed asset with a `coordination_range_m`. Batteries within that radius of a
+**live friendly** post allocate as one group; batteries outside act on their own. It has
+no weapon, no sensor, and does not move. Its only effect is on who is in whose assignment
+problem.
+
+Range is **horizontal**, not slant (§9.1). A coordination link is a communications
+relationship, not a sightline; using slant range would make a post on a hill mysteriously
+worse at talking to the battery beneath it. A terrain-aware comms model is a clean later
+refinement — the §9.5 cue-latency machinery is the natural seam.
+
+Destroying a post costs no battery, no magazine and no envelope. What is lost is the
+coordination: from the next tick the group **decoheres** and every battery reverts to
+nearest-first. That is what makes "kill the command post" a better opening move than "kill
+one more launcher", and the model produces it without being told to.
+
+### 11.2 The air-defence payoff
+
+Rows of the assignment are **free engagement channels**, not batteries — a two-channel
+battery contributes two rows, so `channels` falls out of the structure rather than needing
+a special case. Columns are slots on each engageable airframe, discounted geometrically as
+in §10.2.
+
+```
+payoff[channel][(air, k)] = P(kill before release) · value(air) · (1 − p)^k
+```
+
+**The deadline is the release point, not the envelope edge.** A drone that leaves the
+envelope having already dropped its munition has won, so the window is the time to reach
+`release_range_m` of its aim point, and the battery best placed to stop the airframe
+*closest to doing damage* wins it — not the one that happens to be nearest. An airframe
+with nothing left to drop has no such deadline and is scored over the time to cross the
+envelope instead: still worth shooting, just not urgently.
+
+`P(kill | window)` is `air_defence::p_kill_in_window`, which is the same §9.4 pair of laws
+V48 and V49 gate — exponential for a gun, geometric for a missile — evaluated forward over
+a window rather than sampled, so the two cannot drift apart. `value(air)` is the optional
+`value` dial on `AirType`, or a derivation from remaining munitions and whether the
+airframe carries a sensor, so an unscored stat block still ranks a loaded bomber above a
+spent one.
+
+#### Measured: coordination is about *ammunition*, not kills *(2026-08-05)*
+
+`scenarios/ad_c2.toml` — three SAM batteries against a tight packet of ten drones, 500
+seeds, compared **paired**:
+
+| | Downed (of 10) | Rounds left (of 24) | Leakers |
+|---|---|---|---|
+| No C2 | 9.33 ± 0.04 | 0.82 ± 0.06 | 0.77 ± 0.02 |
+| With C2 | 9.92 ± 0.01 | **3.65 ± 0.11** | 0.69 ± 0.02 |
+| Paired difference | +0.59 ± 0.04 (t = 15) | **+2.83 ± 0.11 (t = 27)** | −0.08 ± 0.02 (t = −4) |
+
+The kill count barely moves. What moves is the **magazine**: the coordinated defence ends
+with four and a half times the reserve, having achieved slightly *more*. Uncoordinated, it
+very nearly shot itself dry against a raid it was otherwise winning — and a defence out of
+rounds is a defence that loses the next raid.
+
+**Why this scenario uses missiles, and why that is the whole point.** A gun is a Poisson
+process, so two batteries on one target simply add their kill rates: `λ + λ`, and nothing
+is lost. **Stacking guns is not wasteful.** A missile launch is a discrete round out of a
+finite magazine, so three interceptors at a drone one would have killed is two rounds that
+will not be there for the next one. Coordination pays exactly where the shot is a
+*countable resource* — which is a sharper statement than "coordination is good", and it
+falls out of the two engagement models rather than being asserted.
+
+### 11.3 Deliberate limitations (v1)
+
+- **The post is not attritable yet.** `Sim::remove_c2` exists and V59 uses it, but nothing
+  in the simulation targets a post: strike drones engage assigned ground units (§9.3), and
+  ground fires iterate the unit list. Making posts and batteries strikeable is the SEAD
+  work this phase is built to enable, and is the agreed next focus.
+- **Coordination is binary and instant.** Inside the radius or not; no partial link, no
+  latency, no degradation under jamming. The §9.5 cue-latency machinery is the obvious
+  place to grow this.
+- **Ground fires still coordinate for free.** The asymmetry with air defence is deliberate
+  for now, but a C2 requirement on ground allocation is the natural symmetry to consider.
+
+### 11.4 Validation gates (V59)
+
+| # | Property | Reference |
+|---|----------|-----------|
+| V59 | C2-coordinated air defence | with one drone nearest to every battery, nearest-first sends them all at it while a C2 post makes them cover one drone each; a scenario with **no** post is unchanged from the pre-C2 engine (the §7.4 identity discipline, so V50–V52 cannot move); a **dead** post coordinates nothing, costing no battery, magazine or envelope — only the coordination |

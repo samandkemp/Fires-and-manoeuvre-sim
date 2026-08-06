@@ -337,7 +337,7 @@ error on every figure.)
 | `crates/sim_core/` | Headless, deterministic OR engine — pure Rust, no Bevy. Where all the maths lives |
 | `crates/app/` | Bevy front-end: tactical map, pan/zoom, egui control panel |
 | `crates/experiments/` | Headless batch runs: sweeps, Monte Carlo, equilibria. Depends on `sim_core` only |
-| `crates/validation/` | The V1–V58 gates: every model checked against a closed form or a stated invariant |
+| `crates/validation/` | The V1–V59 gates: every model checked against a closed form or a stated invariant |
 | `scenarios/` | TOML scenarios and the unit/weapon/sensor stat blocks |
 | **`docs/HOW_IT_WORKS.md`** | **Start here if you are new.** How detection, engagement and scenarios actually work, with worked numbers |
 | `docs/DESIGN.md` | The deep spec: equations, state machines, and the validation gate for every model |
@@ -419,7 +419,7 @@ difference between two scenarios means anything.
 ## Validation
 
 Every model ships with a test checking it against a closed-form result or a documented
-invariant. The gates are numbered **V1–V58**, live in the `validation` crate, and each is
+invariant. The gates are numbered **V1–V59**, live in the `validation` crate, and each is
 stated in `docs/DESIGN.md` next to the model it constrains, for example:
 
 - **V14/V15** — the exponential detection law, Monte Carlo against `1 − e^(−λT)`
@@ -431,6 +431,7 @@ stated in `docs/DESIGN.md` next to the model it constrains, for example:
 - **V55** — a track lapses without observation, so jamming can break one
 - **V56** — the optimal allocation matches an exhaustive optimum, and beats no coordination
 - **V57** — belief-driven tasking finds what a fixed stare never does
+- **V59** — a C2 post makes air defence split a raid; killing it decoheres the defence
 
 `cargo run -p validation --bin validation_report` prints every gate beside the closed form
 it is checked against. That is the question the project actually cares about — not "are
@@ -452,6 +453,13 @@ decay (so jamming can break one, which permanent detection made impossible); fir
 allocated side-wide by solving an assignment problem; and steerable sensors point
 themselves by expected information gain. Movement decisions in-loop are deliberately
 deferred (DESIGN §10.5).
+
+**Phase 11 adds command and control.** Coordination is modelled as an *asset you field*,
+not a switch you set: a C2 post lets nearby air-defence batteries allocate as a group, and
+destroying it costs no battery but decoheres the defence. Measured over 500 seeds, the
+interesting effect is on **ammunition** rather than kills — a coordinated defence ends a
+raid with four and a half times the magazine reserve, because stacking discrete missile
+shots on one target is what actually wastes them.
 
 Beyond that: suppression of enemy air defence, air-to-air, acoustic detection of drones,
 ingesting real-world elevation data, live playback and state scrubbing, full-resolution

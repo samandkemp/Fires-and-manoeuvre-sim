@@ -1,0 +1,167 @@
+# Does coordinating air defence actually help? (docs/DESIGN.md §11)
+#
+# Three SAM batteries against a **tight packet** of ten drones arriving together. With the
+# drones almost co-located, whichever is marginally closest is the nearest to *every*
+# battery, so nearest-first sends all three at that one drone.
+#
+# Missiles are what make that expensive, and the reason this scenario uses them rather
+# than guns. A gun is a Poisson process, so two batteries on one target simply add their
+# kill rates and nothing is lost — stacking guns is not actually wasteful. A missile
+# launch is a **discrete round out of a finite magazine**: three interceptors at a drone
+# that one would have killed is two rounds that will not be there for the next drone. The
+# waste only becomes real when the shot is a countable resource.
+#
+# The Blue C2 post fixes exactly that. Every battery is inside its 6 km coordination
+# radius, so they allocate as a group and take three different drones at once.
+#
+# To see the difference, delete the [[blue.c2]] block and re-run at the same seed. Nothing
+# else changes — same batteries, same envelopes, same magazines.
+#
+# The post is also the obvious thing to attack: unarmed, conspicuous (signature 0.85), and
+# killing it decoheres three batteries without destroying any of them. Making it
+# attritable is the SEAD work this scenario is built to lead into.
+
+name = "ad_c2"
+default_seed = 21
+
+[sim]
+dt_s = 1.0
+epoch_s = 10.0
+allocation = "optimal"
+# Two batteries on one drone is already waste here; three is pure loss.
+max_shooters_per_target = 2
+
+[terrain]
+cell_size_m = 10.0
+width_cells = 700
+height_cells = 400
+
+[terrain.source.flat]
+elevation_m = 0.0
+
+# --- Blue: three single-channel guns, and the post that ties them together ------------
+[[blue.air_defence]]
+id = "sam-1"
+type = "sam"
+pos = [1200.0, 1600.0]
+
+[[blue.air_defence]]
+id = "sam-2"
+type = "sam"
+pos = [1200.0, 2000.0]
+
+[[blue.air_defence]]
+id = "sam-3"
+type = "sam"
+pos = [1200.0, 2400.0]
+
+# The SAM carries no organic radar, so it lives entirely on the cueing chain (DESIGN
+# §9.5). Without this early-warning radar the batteries never become actionable and never
+# fire a round — which is itself the §9.5 point, and worth seeing by deleting it.
+[[blue.sensors]]
+id = "ew-radar"
+type = "ciws_radar"
+pos = [1400.0, 2000.0]
+
+# Remove this block to watch the same defence fight uncoordinated.
+[[blue.c2]]
+id = "blue-cp"
+type = "ad_command_post"
+pos = [700.0, 2000.0]
+
+# What the raid is aimed at.
+[[blue.units]]
+id = "blue-target"
+type = "sp_gun"
+pos = [400.0, 2000.0]
+
+# --- Red: ten drones in a tight packet, all aimed at the same target ------------------
+[[red.air]]
+id = "uas-1"
+type = "strike_uas"
+pos = [4600.0, 1970.0]
+altitude_m = 400.0
+heading_deg = 180.0
+waypoints = [[400.0, 2000.0]]
+target = { unit = "blue-target" }
+
+[[red.air]]
+id = "uas-2"
+type = "strike_uas"
+pos = [4640.0, 1970.0]
+altitude_m = 400.0
+heading_deg = 180.0
+waypoints = [[400.0, 2000.0]]
+target = { unit = "blue-target" }
+
+[[red.air]]
+id = "uas-3"
+type = "strike_uas"
+pos = [4680.0, 1970.0]
+altitude_m = 400.0
+heading_deg = 180.0
+waypoints = [[400.0, 2000.0]]
+target = { unit = "blue-target" }
+
+[[red.air]]
+id = "uas-4"
+type = "strike_uas"
+pos = [4720.0, 1970.0]
+altitude_m = 400.0
+heading_deg = 180.0
+waypoints = [[400.0, 2000.0]]
+target = { unit = "blue-target" }
+
+[[red.air]]
+id = "uas-5"
+type = "strike_uas"
+pos = [4760.0, 1970.0]
+altitude_m = 400.0
+heading_deg = 180.0
+waypoints = [[400.0, 2000.0]]
+target = { unit = "blue-target" }
+
+[[red.air]]
+id = "uas-6"
+type = "strike_uas"
+pos = [4600.0, 2030.0]
+altitude_m = 400.0
+heading_deg = 180.0
+waypoints = [[400.0, 2000.0]]
+target = { unit = "blue-target" }
+
+[[red.air]]
+id = "uas-7"
+type = "strike_uas"
+pos = [4640.0, 2030.0]
+altitude_m = 400.0
+heading_deg = 180.0
+waypoints = [[400.0, 2000.0]]
+target = { unit = "blue-target" }
+
+[[red.air]]
+id = "uas-8"
+type = "strike_uas"
+pos = [4680.0, 2030.0]
+altitude_m = 400.0
+heading_deg = 180.0
+waypoints = [[400.0, 2000.0]]
+target = { unit = "blue-target" }
+
+[[red.air]]
+id = "uas-9"
+type = "strike_uas"
+pos = [4720.0, 2030.0]
+altitude_m = 400.0
+heading_deg = 180.0
+waypoints = [[400.0, 2000.0]]
+target = { unit = "blue-target" }
+
+[[red.air]]
+id = "uas-10"
+type = "strike_uas"
+pos = [4760.0, 2030.0]
+altitude_m = 400.0
+heading_deg = 180.0
+waypoints = [[400.0, 2000.0]]
+target = { unit = "blue-target" }

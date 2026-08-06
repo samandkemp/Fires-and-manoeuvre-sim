@@ -10,6 +10,7 @@
 
 use super::{AirDefenceEvent, AirDetectionEvent, GlimpseTarget, Side, Sim, StrikeEvent};
 use crate::air::TargetSpec;
+use crate::allocation::{self, Solver};
 use crate::fires::WeaponType;
 use crate::{air_defence, fires, los};
 use glam::Vec2;
@@ -91,6 +92,8 @@ impl Sim {
             .collect();
 
         let mut resolutions = Vec::new();
+        // Batteries under C2 defer their opening to one coordinated pass (§11).
+        let mut coordinated: Vec<(usize, Vec<bool>, Vec<f32>)> = Vec::new();
         for ad_idx in 0..self.air_defence.len() {
             // Which targets this battery may engage right now, and at what range.
             let mut engageable = vec![false; self.air.len()];
@@ -145,6 +148,15 @@ impl Sim {
                 });
             }
 
+            // A battery under a live friendly C2 post defers its opening to the
+            // coordinated pass below (§11). One that is not opens for itself, right here,
+            // by exactly the rule it always used — which is what keeps a scenario with no
+            // C2 post bit-identical to the pre-C2 engine (V59).
+            if self.coordinated(ad_idx) {
+                coordinated.push((ad_idx, engageable, ranges));
+                continue;
+            }
+
             // Commit new engagements, nearest first; ties break on index so the order is
             // deterministic.
             let mut candidates: Vec<(usize, f32)> = engageable
@@ -168,6 +180,158 @@ impl Sim {
                 ad.open(a_idx, now, range);
             }
         }
+
+        self.open_coordinated(&coordinated, now);
+    }
+
+    /// Is this battery under a live friendly C2 post (`docs/DESIGN.md` §11)?
+    fn coordinated(&self, ad_idx: usize) -> bool {
+        let ad = &self.air_defence[ad_idx];
+        self.c2
+            .iter()
+            .any(|post| post.side == ad.side && post.covers(ad.pos))
+    }
+
+    /// Open engagements for every C2-coordinated battery at once, so the group splits the
+    /// raid instead of each battery independently taking whatever is nearest.
+    ///
+    /// **Each free channel is a row.** A two-channel CIWS contributes two rows, so
+    /// `channels` falls out of the assignment structure rather than needing a special
+    /// case — and a battery with none contributes nothing, which is exactly right.
+    ///
+    /// Draws no randomness: this decides *who shoots at what*, and the shooting itself is
+    /// resolved by `resolve_due` on a later tick, in battery index order as before.
+    fn open_coordinated(&mut self, coordinated: &[(usize, Vec<bool>, Vec<f32>)], now: f64) {
+        if coordinated.is_empty() {
+            return;
+        }
+        // Rows: one per free channel. `can_open` already folds in magazine and readiness.
+        let mut rows: Vec<(usize, f32)> = Vec::new(); // (battery, its range row is scored on)
+        for &(ad_idx, _, _) in coordinated {
+            let ad = &self.air_defence[ad_idx];
+            if !ad.can_open(now) {
+                continue;
+            }
+            let free = (ad.stats.channels as usize).saturating_sub(ad.engagements.len());
+            let free = free.min(ad.magazine_left.max(1) as usize);
+            for _ in 0..free {
+                rows.push((ad_idx, 0.0));
+            }
+        }
+        if rows.is_empty() {
+            return;
+        }
+
+        // Columns: slots on each airframe any coordinated battery can engage.
+        let mut targets: Vec<usize> = Vec::new();
+        for (_, engageable, _) in coordinated {
+            for (a_idx, &ok) in engageable.iter().enumerate() {
+                if ok && self.air[a_idx].alive && !targets.contains(&a_idx) {
+                    targets.push(a_idx);
+                }
+            }
+        }
+        if targets.is_empty() {
+            return;
+        }
+        targets.sort_unstable();
+
+        let cap = self.max_shooters_per_target.max(1) as usize;
+        let mut slot_target = Vec::new();
+        let mut slot_rank = Vec::new();
+        for (t_pos, _) in targets.iter().enumerate() {
+            for k in 0..cap {
+                slot_target.push(t_pos);
+                slot_rank.push(k);
+            }
+        }
+
+        // Which batteries can reach which airframe, and at what range.
+        let engageable_by: Vec<&Vec<bool>> = coordinated.iter().map(|(_, e, _)| e).collect();
+        let ranges_by: Vec<&Vec<f32>> = coordinated.iter().map(|(_, _, r)| r).collect();
+        let index_of = |ad_idx: usize| {
+            coordinated
+                .iter()
+                .position(|&(i, _, _)| i == ad_idx)
+                .expect("row batteries come from the coordinated list")
+        };
+
+        let payoff: Vec<Vec<f64>> = rows
+            .iter()
+            .map(|&(ad_idx, _)| {
+                let g = index_of(ad_idx);
+                slot_target
+                    .iter()
+                    .zip(&slot_rank)
+                    .map(|(&t_pos, &k)| {
+                        let a_idx = targets[t_pos];
+                        if !engageable_by[g][a_idx] || !self.air[a_idx].alive {
+                            return allocation::ineligible();
+                        }
+                        let p = self.p_kill_before_release(ad_idx, a_idx, ranges_by[g][a_idx]);
+                        if p <= 0.0 {
+                            return allocation::ineligible();
+                        }
+                        let value = f64::from(
+                            self.air[a_idx]
+                                .stats
+                                .threat_value(self.air[a_idx].munitions_left),
+                        );
+                        // Same geometric discount as ground fires (§10.2): a second
+                        // battery on one drone only helps if the first misses.
+                        f64::from(p) * value * f64::from(1.0 - p).powi(k as i32)
+                    })
+                    .collect()
+            })
+            .collect();
+
+        let solver: Solver = self.allocation.into();
+        for (row, slot) in allocation::solve(&payoff, solver).into_iter().enumerate() {
+            let Some(j) = slot else { continue };
+            let (ad_idx, _) = rows[row];
+            let a_idx = targets[slot_target[j]];
+            if !self.air[a_idx].alive {
+                continue;
+            }
+            let g = index_of(ad_idx);
+            let range = ranges_by[g][a_idx];
+            let ad = &mut self.air_defence[ad_idx];
+            if !ad.can_open(now) || ad.engaging(a_idx) {
+                continue;
+            }
+            ad.open(a_idx, now, range);
+        }
+    }
+
+    /// Probability this battery destroys this airframe **before it releases** — the
+    /// payoff air-defence allocation maximises (`docs/DESIGN.md` §11.2).
+    ///
+    /// The deadline that matters is the release point, not the envelope edge: a drone
+    /// that leaves the envelope having already dropped its munition has won. So the
+    /// window is the time until it reaches `release_range_m` of its aim point, and a
+    /// battery is rewarded for intercepting the airframe that is closest to doing damage
+    /// rather than the one that happens to be nearest.
+    ///
+    /// An airframe with nothing to drop has no such deadline; it is scored over the time
+    /// it takes to cross the remaining envelope instead, so a recce drone is still worth
+    /// shooting, just not urgently.
+    fn p_kill_before_release(&self, ad_idx: usize, a_idx: usize, range_m: f32) -> f32 {
+        let ad = &self.air_defence[ad_idx];
+        let air = &self.air[a_idx];
+        let speed = air.speed_m_s.max(1.0);
+
+        let window = match (air.can_strike(), self.strike_aim_point(a_idx)) {
+            (true, Some(aim)) => {
+                let to_go = air.pos.distance(aim) - air.stats.release_range_m;
+                (to_go / speed).max(0.0)
+            }
+            // No munition to drop: score it over the time to cross the envelope.
+            _ => ((range_m - ad.stats.min_range_m) / speed).max(0.0),
+        };
+        if window <= 0.0 {
+            return 0.0; // already at its release point; nothing to be gained
+        }
+        air_defence::p_kill_in_window(&ad.stats, range_m, window)
     }
 
     /// Strike release (`docs/DESIGN.md` §9.3): a drone within `release_range_m` of its

@@ -437,6 +437,46 @@ pub fn p_leak_gun(kill_rate_per_s: f32, window_s: f32) -> f32 {
     (-f64::from(kill_rate_per_s) * f64::from(window_s)).exp() as f32
 }
 
+/// Probability this battery kills a target at `range_m` within `window_s` seconds — the
+/// two §9.4 laws behind one signature, so a caller comparing batteries does not have to
+/// know which kind it is holding.
+///
+/// Gun: the Poisson law, `1 − e^{−λW}`. Missile: `K` shot opportunities fit in the
+/// window once the first interceptor's flight time is paid, giving `1 − (1−p)^K`.
+///
+/// Used by the §11.2 air-defence allocation as its payoff. It is the *same* pair of laws
+/// V48 and V49 gate, evaluated forward over a window rather than sampled — so a change to
+/// either law moves this too, rather than the two drifting apart.
+#[must_use]
+pub fn p_kill_in_window(stats: &AirDefenceType, range_m: f32, window_s: f32) -> f32 {
+    if window_s <= 0.0 {
+        return 0.0;
+    }
+    match stats.engagement {
+        AdEngagement::Gun { kill_rate_per_s } => 1.0 - p_leak_gun(kill_rate_per_s, window_s),
+        AdEngagement::Missile {
+            ssk_p,
+            missile_speed_m_s,
+            reload_s,
+        } => {
+            let flight = flight_time_s(range_m, missile_speed_m_s);
+            if window_s < flight {
+                return 0.0; // the first interceptor cannot even arrive in time
+            }
+            // One shot arrives at `flight`; each subsequent one costs `flight + reload`.
+            let per_extra = flight + reload_s;
+            let extra = if per_extra > 0.0 {
+                ((window_s - flight) / per_extra).floor()
+            } else {
+                0.0
+            };
+            #[allow(clippy::cast_possible_truncation)]
+            let shots = (1.0 + extra) as i32;
+            1.0 - (1.0 - ssk_p).powi(shots.max(0))
+        }
+    }
+}
+
 /// How many shots a missile battery gets inside an effective window:
 /// `⌊(W_eff − t_f)/(t_f + t_r)⌋ + 1`, or 0 if the first shot cannot arrive in time.
 #[must_use]

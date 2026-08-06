@@ -8,6 +8,7 @@
 use super::{JammerState, SensorState, Side, Sim, UnitState};
 use crate::air::{AirState, AirType, FlightPlan, TargetSpec};
 use crate::air_defence::{AirDefenceState, AirDefenceType};
+use crate::c2::{C2State, C2Type};
 use crate::ew::Jammer;
 use crate::fires::WeaponType;
 use crate::scenario::{Libraries, Scenario, ScenarioError, TargetConfig};
@@ -81,6 +82,7 @@ impl Sim {
             jammers: Vec::new(),
             air: Vec::new(),
             air_defence: Vec::new(),
+            c2: Vec::new(),
             events: Vec::new(),
             fire_events: Vec::new(),
             air_events: Vec::new(),
@@ -127,6 +129,7 @@ impl Sim {
         self.jammers.clear();
         self.air.clear();
         self.air_defence.clear();
+        self.c2.clear();
         self.events.clear();
         self.fire_events.clear();
         self.air_events.clear();
@@ -210,6 +213,12 @@ impl Sim {
                     d.self_cue,
                     sensor,
                 );
+            }
+            for c in &force.c2 {
+                let stats = libs.c2.get(&c.type_id).ok_or_else(|| {
+                    ScenarioError::Invalid(format!("unknown C2 type '{}'", c.type_id))
+                })?;
+                self.add_c2(&c.id, side, Vec2::from(c.pos), stats.clone());
             }
         }
         Ok(())
@@ -313,6 +322,12 @@ impl Sim {
             payload,
         ));
         idx
+    }
+
+    /// Place a C2 post, returning its index in `Sim::c2` (`docs/DESIGN.md` §11).
+    pub fn add_c2(&mut self, id: &str, side: Side, pos: Vec2, stats: C2Type) -> usize {
+        self.c2.push(C2State::new(id, side, pos, stats));
+        self.c2.len() - 1
     }
 
     /// Place an air-defence battery, returning its index in `Sim::air_defence`. An
