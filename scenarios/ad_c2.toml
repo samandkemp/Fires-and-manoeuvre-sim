@@ -29,7 +29,8 @@ dt_s = 1.0
 epoch_s = 10.0
 allocation = "optimal"
 # Two batteries on one drone is already waste here; three is pure loss.
-max_shooters_per_target = 2
+# Ground cap; the air-defence cap is max_batteries_per_air_target (default 2).
+max_shooters_per_target = 3
 
 [terrain]
 cell_size_m = 10.0

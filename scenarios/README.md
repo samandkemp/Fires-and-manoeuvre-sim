@@ -105,7 +105,8 @@ Every dial has a default, so a scenario states only what it wants to change.
 | `track_hold_s` | 45.0 | How long a track survives unobserved (§10.1) |
 | `track_maintain_p` | 0.5 | How good a look must be to refresh a track |
 | `allocation` | `optimal` | `optimal` / `greedy` / `independent` (§10.2) |
-| `max_shooters_per_target` | 3 | Overkill cap per target per epoch |
+| `max_shooters_per_target` | 3 | Overkill cap: ground shooters per target per epoch |
+| `max_batteries_per_air_target` | 2 | Overkill cap: air-defence batteries per airframe (§11.2) |
 | `sensor_tasking` | `false` | Do steerable sensors search by belief? (§10.3) |
 | `belief_cells` | 48 | Edge length of the coarse belief grid |
 

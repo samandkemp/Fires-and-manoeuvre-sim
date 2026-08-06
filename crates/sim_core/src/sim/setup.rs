@@ -73,6 +73,7 @@ impl Sim {
             track_maintain_p: cfg.track_maintain_p,
             allocation: cfg.allocation,
             max_shooters_per_target: cfg.max_shooters_per_target,
+            max_batteries_per_air_target: cfg.max_batteries_per_air_target,
             sensor_tasking: cfg.sensor_tasking,
             tasking: super::tasking::Tasking::new(cfg.belief_cells.max(1)),
             time_s: 0.0,

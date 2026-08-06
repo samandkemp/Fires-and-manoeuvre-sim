@@ -93,10 +93,20 @@ pub struct SimConfig {
     /// any scenario; `experiments/allocation_gap` sweeps all three.
     #[serde(default)]
     pub allocation: AllocationChoice,
-    /// Most shooters that may be assigned to one target in an epoch. Caps overkill: a
-    /// target still offers at most one slot per remaining element, whichever is smaller.
+    /// Most **ground shooters** that may be assigned to one target in an epoch. Caps
+    /// overkill: a target still offers at most one slot per remaining element, whichever
+    /// is smaller.
     #[serde(default = "default_max_shooters_per_target")]
     pub max_shooters_per_target: u32,
+    /// Most **air-defence batteries** that may be assigned to one airframe
+    /// (`docs/DESIGN.md` §11.2).
+    ///
+    /// A separate dial from the ground cap, because they answer different questions with
+    /// different natural answers. A ground target is a multi-element unit that genuinely
+    /// absorbs several shooters; an airframe is one object, so a second battery is
+    /// insurance against the first missing and a third is nearly always waste.
+    #[serde(default = "default_max_batteries_per_air_target")]
+    pub max_batteries_per_air_target: u32,
     /// Should steerable sensors re-point themselves each epoch to maximise expected
     /// information gain (`docs/DESIGN.md` §10.3)?
     ///
@@ -178,6 +188,10 @@ fn default_max_shooters_per_target() -> u32 {
     3
 }
 
+fn default_max_batteries_per_air_target() -> u32 {
+    2
+}
+
 fn default_sensor_tasking() -> bool {
     false
 }
@@ -199,6 +213,7 @@ impl Default for SimConfig {
             track_maintain_p: default_track_maintain_p(),
             allocation: AllocationChoice::default(),
             max_shooters_per_target: default_max_shooters_per_target(),
+            max_batteries_per_air_target: default_max_batteries_per_air_target(),
             sensor_tasking: default_sensor_tasking(),
             belief_cells: default_belief_cells(),
         }

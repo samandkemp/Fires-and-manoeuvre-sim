@@ -244,7 +244,7 @@ impl Sim {
         }
         targets.sort_unstable();
 
-        let cap = self.max_shooters_per_target.max(1) as usize;
+        let cap = self.max_batteries_per_air_target.max(1) as usize;
         let mut slot_target = Vec::new();
         let mut slot_rank = Vec::new();
         for (t_pos, _) in targets.iter().enumerate() {

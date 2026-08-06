@@ -1182,6 +1182,11 @@ one more launcher", and the model produces it without being told to.
 
 ### 11.2 The air-defence payoff
 
+The overkill cap is its own dial, `max_batteries_per_air_target` (default 2), rather than
+the ground one. They answer different questions: a ground target is a multi-element unit
+that genuinely absorbs several shooters, while an airframe is a single object, so a second
+battery is insurance against the first missing and a third is nearly always waste.
+
 Rows of the assignment are **free engagement channels**, not batteries — a two-channel
 battery contributes two rows, so `channels` falls out of the structure rather than needing
 a special case. Columns are slots on each engageable airframe, discounted geometrically as

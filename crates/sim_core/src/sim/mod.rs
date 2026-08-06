@@ -61,6 +61,7 @@ pub struct Sim {
     // Fire-allocation dials (§10.2).
     allocation: AllocationChoice,
     max_shooters_per_target: u32,
+    max_batteries_per_air_target: u32,
     // Sensor-tasking dials and state (§10.3).
     sensor_tasking: bool,
     tasking: tasking::Tasking,
