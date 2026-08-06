@@ -30,7 +30,7 @@ structural fact about the project:
         ▼               ▼               ▼
    ┌─────────┐   ┌─────────────┐   ┌────────────┐
    │   app   │   │ experiments │   │ validation │
-   │  (Bevy) │   │  (headless) │   │ (V1–V58)   │
+   │  (Bevy) │   │  (headless) │   │ (V1–V60)   │
    └─────────┘   └─────────────┘   └────────────┘
 ```
 
@@ -54,6 +54,7 @@ Each module owns one idea:
 | `ew.rs`, `pomdp.rs` | Jamming, and reasoning about where an unseen enemy might be |
 | `game.rs` | The zero-sum game solver |
 | `allocation.rs` | Weapon–target assignment: who shoots what |
+| `c2.rs` | Command posts: which assets are allowed to coordinate |
 | `scenario.rs` | Loading TOML into structs |
 | `sim/` | **The engine that drives all of the above** |
 
@@ -74,7 +75,7 @@ sim/detection.rs    the glimpse process, EW, and the track lifecycle
 sim/engagement.rs   ground fires: picking a target, resolving rounds
 sim/counter_air.rs  the air phases
 sim/tasking.rs      belief, and where each sensor should look next
-sim/los_cache.rs    a speed-up (see §9); no effect on results
+sim/los_cache.rs    a speed-up (see §10); no effect on results
 ```
 
 **If you read one function, read `Sim::step_one` in `sim/mod.rs`.** Everything else hangs
@@ -537,7 +538,46 @@ ground and jammed areas. The app's belief overlay draws exactly this.
 
 ---
 
-## 9. Performance, and why it does not affect results
+## 9. Command, and why it is worth attacking
+
+Ground fires coordinate side-wide for free — a reasonable simplification for a battlegroup
+on one fire-control net. Air defence does not, and that difference is deliberate.
+
+A **C2 post** is a placed asset with a coordination radius. Air-defence batteries inside a
+live friendly post's radius solve one assignment together; batteries outside each take
+whatever is nearest. So coordination is something you have to **field**, position, and can
+**lose** — not a setting.
+
+Killing a post costs the defender **no firepower at all**. What it costs is the
+coordination: the group decoheres and every battery reverts to nearest-first, with the
+duplicated engagements that follow. Measured on `ad_c2.toml` over 500 seeds, the effect is
+not really on kills:
+
+| | Downed (of 10) | Rounds left (of 24) |
+|---|---|---|
+| No C2 | 9.33 | 0.82 |
+| With C2 | 9.92 | **3.65** |
+
+Coordination buys **ammunition**, not kills — the coordinated defence finishes with four
+and a half times the reserve. And the reason is worth knowing, because it is sharper than
+"coordination is good":
+
+> A gun is a Poisson process, so two batteries on one target simply **add their kill
+> rates**. Stacking guns wastes nothing. A missile is a **discrete round from a finite
+> magazine**, so three interceptors at a drone one would have killed is two rounds gone.
+> Coordination pays exactly where the shot is a countable resource.
+
+**SEAD** follows from this. Batteries and posts have `element_count` and take the same
+area damage as units, and a strike drone can be assigned one by name
+(`target = { unit = "sam-1" }` — ids are unique across all three asset lists). Destroying
+a battery also takes **its radar** off the network, since an organic radar is just an
+ordinary entry in the sensor list. Destroying a post takes only the coordination.
+
+*Gates V59, V60 · `docs/DESIGN.md` §11–§12*
+
+---
+
+## 10. Performance, and why it does not affect results
 
 Two optimisations are worth knowing about because you will see them in the code.
 
@@ -559,7 +599,7 @@ the cache hit rate.
 
 ---
 
-## 10. Where to change things
+## 11. Where to change things
 
 | You want to… | Edit |
 |---|---|
@@ -572,6 +612,8 @@ the cache hit rate.
 | Make suppression stickier | scenario `[sim]`: `p_suppress` ↑, `recover_per_s` ↓ |
 | Build a different map | scenario `[terrain.source]` — see §2 |
 | Change how targets are chosen | scenario `[sim]`: `allocation` = `optimal` / `greedy` / `independent` |
+| Let air defence coordinate | place a `[[blue.c2]]` post covering the batteries |
+| Send a drone against a SAM | `target = { unit = "sam-1" }` on the `[[red.air]]` entry |
 | Let sensors search for themselves | scenario `[sim]`: `sensor_tasking = true` (needs a sensor with `for_width_deg`) |
 | Change the *allocation payoff* | `sim/engagement.rs :: allocate_fires` — this is code, not a dial |
 | Change the detection *model* | `sensing.rs` — and expect to update a validation gate |
@@ -581,7 +623,7 @@ it lives in code — and code changes come with a gate.
 
 ---
 
-## 11. Checking you have not broken anything
+## 12. Checking you have not broken anything
 
 ```
 cargo test --workspace                                       # everything
@@ -589,7 +631,7 @@ cargo run -p validation --release --bin validation_report    # the gate table
 cargo clippy --workspace                                     # lints
 ```
 
-The **V-gates** (V1–V58) are the project's backbone. Each one checks a model against a
+The **V-gates** (V1–V60) are the project's backbone. Each one checks a model against a
 closed-form result or a stated invariant — not against a previously recorded output. The
 difference matters: a regression test tells you the answer changed, while a gate tells you
 the answer is *wrong*.
@@ -603,6 +645,7 @@ Examples:
 - **V55** — a track lapses without observation, so jamming can break one
 - **V56** — the allocator matches an exhaustive optimum, and never picks a forbidden pairing
 - **V57** — belief-driven tasking finds enemies a fixed stare never does
+- **V59/V60** — a C2 post makes air defence split a raid; SEAD can then destroy the post
 
 `validation_report` prints each gate beside the closed form it is checked against, because
 the useful question is not "are the tests green" but *is the maths still right, and right
