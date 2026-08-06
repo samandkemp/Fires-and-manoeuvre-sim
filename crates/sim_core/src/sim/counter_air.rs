@@ -329,13 +329,12 @@ impl Sim {
     /// Which doctrine tier an airframe sits in for `side`. Tier 0 for everything when the
     /// side has no doctrine, which is what makes the undirected path unchanged.
     fn air_tier(&self, side: Side, a_idx: usize) -> usize {
-        self.doctrine_of(side).map_or(0, |doc| {
-            doc.tier_of(&crate::doctrine::TargetNames {
+        self.doctrine_of(side)
+            .tier_of(&crate::doctrine::TargetNames {
                 id: &self.air[a_idx].id,
                 role: self.air[a_idx].stats.role.as_deref(),
                 class: "air",
             })
-        })
     }
 
     /// Split the engageable airframes into doctrine tiers, with the value multiplier each
@@ -345,9 +344,7 @@ impl Sim {
     /// `Weighted` — in the weighted case the multipliers ride on the per-target value
     /// instead, so the solve stays a single problem and the payoff still decides.
     fn air_target_groups(&self, side: Side, targets: &[usize]) -> (Vec<Vec<usize>>, Vec<f32>) {
-        let Some(doc) = self.doctrine_of(side) else {
-            return (vec![targets.to_vec()], vec![1.0]);
-        };
+        let doc = self.doctrine_of(side);
         let tier_of = |a_idx: usize| {
             doc.tier_of(&crate::doctrine::TargetNames {
                 id: &self.air[a_idx].id,
@@ -399,13 +396,11 @@ impl Sim {
             if weight.is_finite() {
                 return weight;
             }
-            doc.map_or(1.0, |d| {
-                d.weight_for_tier(d.tier_of(&crate::doctrine::TargetNames {
-                    id: &self.air[a_idx].id,
-                    role: self.air[a_idx].stats.role.as_deref(),
-                    class: "air",
-                }))
-            })
+            doc.weight_for_tier(doc.tier_of(&crate::doctrine::TargetNames {
+                id: &self.air[a_idx].id,
+                role: self.air[a_idx].stats.role.as_deref(),
+                class: "air",
+            }))
         };
 
         let cap = self.max_batteries_per_air_target.max(1) as usize;

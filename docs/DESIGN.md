@@ -1535,13 +1535,22 @@ sweep <scn> --param blue.doctrine.mode --values strict,weighted --seeds 1000 \
 
 ### 13.1 What a priority entry may name
 
-Three things, checked in this order, all equally valid:
+Four things, checked in this order, all equally valid:
 
 | Entry | Matches |
 |---|---|
 | an asset **id** | that one asset — how a gate pins an exact target |
 | a **role** | every asset whose stat block declares it (`role = "artillery"`) |
 | a **class** | `unit`, `air_defence`, `c2`, `air` — always available, never declared |
+| `"all"` | anything — the tier that says "and then everyone else, equally" |
+
+**There is no "no doctrine".** A side always has one; omitting the block gives
+`priority = ["all"]`, a single tier holding every target and ranked among itself by the
+ordinary payoff — which *is* the undirected behaviour. So the engine has **one** code path
+rather than two, and the identity with the pre-doctrine model holds by construction (one
+tier means one solve over every target, exactly what the old code did) rather than by a
+separate branch that has to be kept honest. `"all"` is usable mid-list too, which makes the
+bottom tier explicit: `["c2", "air_defence", "all"]` reads as the fire plan it is.
 
 Roles are free-form strings on the stat block, so a scenario can invent whatever
 categories it needs; adding "engineer" takes no code change. A role never *masks* its
@@ -1600,7 +1609,39 @@ and line of sight are **not** checked — an order is an order, and a shooter th
 reach its target wastes the epoch. That is the cost of giving a bad one, and it should be
 visible rather than silently corrected.
 
-### 13.4 Deliberate limitations (v1)
+### 13.4 Eligibility blocks, and a shooter holds what it takes
+
+Two rules keep a fire plan from becoming a way to waste ammunition.
+
+**Line of sight and range block a pairing; they do not merely lower its score.** A target a
+shooter cannot engage is `INELIGIBLE` in the payoff and is never returned by any solver, so
+a shooter whose whole top tier is masked by a ridge finds nothing there and **falls through
+to the next tier**. It is never left idle facing a hill while something it could engage goes
+unengaged. `Sim::can_engage` is the one test — alive, in range, in line of sight for direct
+fire, holding a live track for indirect — and doctrine, target locks and ordered engagements
+all ask it, so all three agree about what "reachable" means.
+
+That applies to `[[orders]]` too. An order stands while the pairing is reachable and lapses
+while it is not, resuming the moment the target reappears. Making orders the exception —
+"an order is an order, the crew tries anyway" — is defensible in isolation but contradicts
+the rule everything else follows, and it would let one bad order silence a gun indefinitely.
+
+**A shooter holds its target.** `UnitState.engaging` is a **lock**: once taken, it is kept
+until the target is dead or can no longer be engaged. Air defence has always worked this way
+(`AirDefenceState::engagements`, dropped by `drop_engagements` when the target leaves the
+envelope); this is the ground half of the same idea.
+
+Without it a gun re-decides from scratch every epoch and flip-flops between two
+near-identical targets as tiny payoff differences wobble — wasted fire for a reason no crew
+would recognise. Switching targets is itself a decision with a cost, so it takes something
+changing on the ground, not a rounding difference. The one thing that *does* break a lock is
+a new order, which is the point of an order.
+
+A held lock still **consumes a slot** on its target. Otherwise `max_shooters_per_target`
+would apply only to the shooters that happened to be re-deciding, and a target could
+accumulate any number of locked guns — the overkill cap of §10.2 quietly bypassed.
+
+### 13.5 Deliberate limitations (v1)
 
 - **Doctrine is static.** A side's priority does not change with the situation; there is no
   "switch to counter-battery once the air threat is gone". A conditional kill chain is the
@@ -1610,8 +1651,8 @@ visible rather than silently corrected.
 - **Strike drones are unaffected.** They still attack the asset a scenario named (§12.5);
   doctrine drives *allocation*, and a strike drone does not allocate.
 
-### 13.5 Validation gates (V66)
+### 13.6 Validation gates (V66)
 
 | # | Property | Reference |
 |---|----------|-----------|
-| V66 | directed targeting | a gun with a 46% shot at a near high-value tank and a 3% shot at a far SAM takes the tank unprompted and the **SAM** when told `priority = ["air_defence"]` — strict doctrine is followed, not weighed; the same priority in `weighted` mode does not overturn the fifteen-fold better shot; an ordered engagement bypasses the assignment and lapses if its target dies; no doctrine is an exact identity (§7.4); a priority naming nothing is a load error listing what would have worked, and ids, roles and classes are all accepted; air defence follows the same doctrine, taking a further strike drone over a nearer recce one |
+| V66 | directed targeting | line of sight and range **block** a pairing, so a masked priority target does not hold a shooter hostage — doctrine and orders alike fall through to what can be engaged; a shooter **holds** its target until it is dead or unengageable, and a held lock consumes a slot so the overkill cap cannot be bypassed; a gun with a 46% shot at a near high-value tank and a 3% shot at a far SAM takes the tank unprompted and the **SAM** when told `priority = ["air_defence"]` — strict doctrine is followed, not weighed; the same priority in `weighted` mode does not overturn the fifteen-fold better shot; an ordered engagement bypasses the assignment and lapses if its target dies; no doctrine is an exact identity (§7.4); a priority naming nothing is a load error listing what would have worked, and ids, roles and classes are all accepted; air defence follows the same doctrine, taking a further strike drone over a nearer recce one |

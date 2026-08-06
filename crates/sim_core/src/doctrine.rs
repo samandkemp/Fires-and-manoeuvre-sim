@@ -28,6 +28,19 @@
 //! | an asset **id** | that one asset — how a gate pins an exact target |
 //! | a **role** | every asset whose stat block declares it (`role = "artillery"`) |
 //! | a **class** | `unit`, `air_defence`, `c2`, `air` — always available, no declaration |
+//! | [`ALL`] | anything at all — the tier that says "and then everyone else, equally" |
+//!
+//! # There is no "no doctrine"
+//!
+//! A side always has one. Omitting the block gives `priority = ["all"]`: a single tier
+//! holding every target, ranked among itself by the ordinary §10.2 payoff — which *is* the
+//! undirected behaviour. So the engine has one code path rather than two, and the identity
+//! with the pre-doctrine model holds **by construction** (one tier means one solve over
+//! every target, which is exactly what the old code did) rather than by a separate branch
+//! that has to be kept honest.
+//!
+//! `"all"` is usable mid-list too, which makes the bottom tier explicit:
+//! `["c2", "air_defence", "all"]` reads as the fire plan it is.
 //!
 //! A role never masks its class: a battery with `role = "sam"` matches both `"sam"` and
 //! `"air_defence"`, so a coarse doctrine keeps working when a stat block gets more specific.
@@ -38,6 +51,12 @@
 //! doctrine nobody is following.
 
 use std::collections::BTreeSet;
+
+/// The universal-match name: a tier containing everything not already claimed above it.
+///
+/// Also the whole of the default priority, which is what lets "this side has no fire plan"
+/// and "this side's fire plan is one tier" be the *same* case rather than two.
+pub const ALL: &str = "all";
 
 /// How a declared priority combines with the §10.2 payoff.
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default, serde::Deserialize)]
@@ -58,7 +77,7 @@ pub enum DoctrineMode {
     Weighted,
 }
 
-/// A side's target priority.
+/// A side's target priority. Always present — see the module header.
 #[derive(Clone, Debug, serde::Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Doctrine {
@@ -81,7 +100,27 @@ fn default_falloff() -> f32 {
     2.0
 }
 
+impl Default for Doctrine {
+    /// One tier holding everything: the undirected model, expressed as a fire plan.
+    fn default() -> Self {
+        Self {
+            priority: vec![ALL.to_owned()],
+            mode: DoctrineMode::Strict,
+            weight_falloff: default_falloff(),
+        }
+    }
+}
+
 impl Doctrine {
+    /// Is this the default — one tier, everything equal?
+    ///
+    /// Not used to branch the allocation, which has one path either way. It is what lets a
+    /// front-end say "no fire plan" instead of printing `["all"]` at someone.
+    #[must_use]
+    pub fn is_undirected(&self) -> bool {
+        self.priority.len() == 1 && self.priority[0] == ALL
+    }
+
     /// The clamped falloff actually used.
     #[must_use]
     pub fn falloff(&self) -> f32 {
@@ -131,9 +170,12 @@ pub struct TargetNames<'a> {
 
 impl TargetNames<'_> {
     /// Does `name` refer to this asset?
+    ///
+    /// [`ALL`] refers to everything, which is what makes the default priority a single
+    /// tier containing the whole field.
     #[must_use]
     pub fn matches(&self, name: &str) -> bool {
-        self.id == name || self.role == Some(name) || self.class == name
+        name == ALL || self.id == name || self.role == Some(name) || self.class == name
     }
 }
 
@@ -147,6 +189,9 @@ pub struct Vocabulary(pub BTreeSet<String>);
 impl Vocabulary {
     /// Add everything one asset answers to.
     pub fn insert(&mut self, names: &TargetNames) {
+        // Always valid, and valid even on an empty map: "engage everything" is a coherent
+        // instruction to a side with nothing to engage.
+        self.0.insert(ALL.to_owned());
         self.0.insert(names.id.to_owned());
         self.0.insert(names.class.to_owned());
         if let Some(r) = names.role {

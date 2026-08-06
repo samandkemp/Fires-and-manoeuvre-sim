@@ -68,7 +68,7 @@ pub struct Sim {
     fires_need_c2: bool,
     // Each side's target priority and its directly ordered engagements (§13). Indexed
     // Blue, Red — an array rather than two fields so every lookup goes through `Side`.
-    doctrine: [Option<crate::doctrine::Doctrine>; 2],
+    doctrine: [crate::doctrine::Doctrine; 2],
     orders: [Vec<crate::doctrine::Order>; 2],
     // Sensor-tasking dials and state (§10.3).
     sensor_tasking: bool,

@@ -9,7 +9,7 @@ use super::{JammerState, SensorState, Side, Sim, UnitState};
 use crate::air::{AirState, AirType, FlightPlan, TargetSpec};
 use crate::air_defence::{AirDefenceState, AirDefenceType};
 use crate::c2::{C2State, C2Type};
-use crate::doctrine::Vocabulary;
+use crate::doctrine::{Doctrine, Vocabulary};
 use crate::ew::Jammer;
 use crate::fires::WeaponType;
 use crate::scenario::{Libraries, Scenario, ScenarioError, TargetConfig};
@@ -76,7 +76,7 @@ impl Sim {
             max_shooters_per_target: cfg.max_shooters_per_target,
             max_batteries_per_air_target: cfg.max_batteries_per_air_target,
             fires_need_c2: cfg.fires_need_c2,
-            doctrine: [None, None],
+            doctrine: [Doctrine::default(), Doctrine::default()],
             orders: [Vec::new(), Vec::new()],
             sensor_tasking: cfg.sensor_tasking,
             tasking: super::tasking::Tasking::new(cfg.belief_cells.max(1)),
@@ -241,22 +241,22 @@ impl Sim {
     /// question. Same reasoning as the schema's `deny_unknown_fields`, and the error names
     /// what *would* have worked, because the usual cause is a typo or a role never declared.
     fn check_doctrine(&self) -> Result<(), ScenarioError> {
-        if self.doctrine.iter().all(Option::is_none) && self.orders.iter().all(Vec::is_empty) {
-            return Ok(()); // nothing declared: nothing to check
+        if self.doctrine.iter().all(Doctrine::is_undirected)
+            && self.orders.iter().all(Vec::is_empty)
+        {
+            return Ok(()); // the default fire plan names only "all", which always matches
         }
         let mut vocab = Vocabulary::default();
         for t in self.all_target_names() {
             vocab.insert(&t);
         }
         for side in [Side::Blue, Side::Red] {
-            if let Some(doc) = &self.doctrine[side as usize] {
-                if let Some(bad) = vocab.first_unmatched(&doc.priority) {
-                    return Err(ScenarioError::Invalid(format!(
-                        "{side:?} doctrine names '{bad}', which is not an id, role or class \
-                         on this map. Known: {}",
-                        vocab.known()
-                    )));
-                }
+            if let Some(bad) = vocab.first_unmatched(&self.doctrine[side as usize].priority) {
+                return Err(ScenarioError::Invalid(format!(
+                    "{side:?} doctrine names '{bad}', which is not an id, role or class on \
+                     this map. Known: {}",
+                    vocab.known()
+                )));
             }
             for order in &self.orders[side as usize] {
                 for (what, id) in [("shooter", &order.shooter), ("target", &order.target)] {
@@ -315,6 +315,7 @@ impl Sim {
             speed_m_s,
             route: Vec::new(),
             route_idx: 0,
+            engaging: None,
         });
     }
 

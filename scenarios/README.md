@@ -130,8 +130,9 @@ isolate one model from another:
 
 ## The kill chain
 
-A side may declare what it has been told to shoot first (DESIGN §13). Absent, the §10.2
-payoff decides alone; present, it is **followed**:
+A side always has a fire plan (DESIGN §13). Omitting the block gives `priority = ["all"]` —
+one tier holding everything, ranked by the ordinary §10.2 payoff, which *is* the undirected
+behaviour. Declare one and it is **followed**:
 
 ```toml
 [blue.doctrine]
@@ -148,10 +149,18 @@ crew follows orders, not a kill-probability table. `weighted` scales value by ti
 so doctrine biases the optimisation without overriding it.
 
 An entry may name an asset **id**, a **role** declared on its stat block (`role = "armour"`),
-or a **class** (`unit`, `air_defence`, `c2`, `air`). A role never masks its class, so
-`"air_defence"` still matches a battery that calls itself `"sam"`. Anything unnamed falls
-into an implicit bottom tier. **A name matching nothing is a load error** listing what would
-have worked — a tier that silently matches nothing is a doctrine nobody is following.
+a **class** (`unit`, `air_defence`, `c2`, `air`), or **`"all"`** — anything at all, which is
+how the bottom tier is written explicitly. A role never masks its class, so `"air_defence"`
+still matches a battery that calls itself `"sam"`. **A name matching nothing is a load
+error** listing what would have worked — a tier that silently matches nothing is a doctrine
+nobody is following.
+
+Two rules stop a fire plan wasting ammunition. **Line of sight and range block a pairing**,
+so a shooter whose top tier is masked by a ridge falls through to what it can actually
+engage rather than idling — and an `[[orders]]` entry lapses the same way while its target
+is unreachable. And **a shooter holds its target** until that target is dead or can no
+longer be engaged, instead of re-deciding every epoch and flip-flopping between two similar
+targets; a new order is the one thing that breaks a lock.
 
 `scenarios/kill_chain.toml` is the worked example.
 

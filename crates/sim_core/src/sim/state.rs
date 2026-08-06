@@ -83,6 +83,18 @@ pub struct UnitState {
     pub route: Vec<Vec2>,
     /// Index of the next waypoint to head for.
     pub route_idx: usize,
+    /// What this unit is currently engaging, if anything (`docs/DESIGN.md` §13.4).
+    ///
+    /// A **lock**, not a preference: once a shooter takes a target it stays on it until the
+    /// target is dead or can no longer be engaged — masked by terrain, out of range, or its
+    /// track lapsed. Air defence has always worked this way (`AirDefenceState::engagements`
+    /// with `drop_engagements`); this is the ground half of the same idea.
+    ///
+    /// Without it a gun re-decides from scratch every epoch and flip-flops between two
+    /// near-identical targets as tiny payoff differences wobble — wasted fire for a reason
+    /// no crew would recognise. Switching targets is itself a decision with a cost, so it
+    /// takes something changing on the ground, not a rounding difference.
+    pub engaging: Option<super::FireTarget>,
 }
 
 impl UnitState {

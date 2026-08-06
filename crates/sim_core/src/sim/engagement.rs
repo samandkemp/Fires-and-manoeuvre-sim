@@ -114,9 +114,10 @@ impl Sim {
         out
     }
 
-    /// This side's declared target priority, if it has one.
-    pub(super) fn doctrine_of(&self, side: Side) -> Option<&Doctrine> {
-        self.doctrine[side as usize].as_ref()
+    /// This side's target priority. Always present — the undirected case is one tier
+    /// holding everything (`docs/DESIGN.md` §13).
+    pub(super) fn doctrine_of(&self, side: Side) -> &Doctrine {
+        &self.doctrine[side as usize]
     }
 
     /// The fire-relevant facts about a target, whichever list it is in.
@@ -240,6 +241,16 @@ impl Sim {
             .flat_map(|side| self.allocate_side(side))
             .collect();
         orders.sort_unstable();
+
+        // Record the locks (§13.4). Written for *every* shooter, so one that was allocated
+        // nothing has its lock cleared rather than keeping a stale one — an idle gun is not
+        // still engaging what it shot at two epochs ago.
+        for u in &mut self.units {
+            u.engaging = None;
+        }
+        for &(s_idx, target) in &orders {
+            self.units[s_idx].engaging = Some(target);
+        }
 
         for (s_idx, target) in orders {
             let shooter = &self.units[s_idx];
@@ -405,35 +416,73 @@ impl Sim {
         };
         let mut all: Vec<usize> = (0..self.units.len()).filter(|&i| live_shooter(i)).collect();
 
-        // Directly ordered engagements come out of the problem entirely, before anything
-        // else is decided (§13.3). A shooter under orders is not choosing.
+        // Three ways a shooter leaves the problem before it is solved, in this order:
+        //
+        // 1. it is **ordered** to engage something reachable (§13.3);
+        // 2. it is already **locked** onto a target it can still engage (§13.4);
+        // 3. otherwise it is allocated.
+        //
+        // Orders outrank locks so a new order re-tasks a gun that is mid-engagement —
+        // an order is the one thing that should break a lock.
         let mut assigned = self.ordered_engagements(side, &all);
         all.retain(|s| !assigned.iter().any(|(a, _)| a == s));
 
+        for &s in &all {
+            if let Some(t) = self.units[s].engaging {
+                if self.can_engage(s, t) {
+                    assigned.push((s, t));
+                }
+            }
+        }
+        all.retain(|s| !assigned.iter().any(|(a, _)| a == s));
+
+        // Locked and ordered shooters still occupy slots on their targets, or the overkill
+        // cap would be silently bypassed by anything holding a lock (V56).
+        let taken = self.slots_taken(side, &assigned);
+
         if !self.fires_need_c2 {
-            assigned.extend(self.allocate_by_doctrine(side, &all, self.allocation.into()));
+            assigned.extend(self.allocate_by_doctrine(side, &all, self.allocation.into(), &taken));
             return assigned;
         }
         let (netted, alone): (Vec<usize>, Vec<usize>) =
             all.into_iter().partition(|&i| self.under_c2(i));
-        assigned.extend(self.allocate_by_doctrine(side, &netted, self.allocation.into()));
-        assigned.extend(self.allocate_by_doctrine(side, &alone, Solver::Independent));
+        assigned.extend(self.allocate_by_doctrine(side, &netted, self.allocation.into(), &taken));
+        assigned.extend(self.allocate_by_doctrine(side, &alone, Solver::Independent, &taken));
         assigned
+    }
+
+    /// How many shooters are already committed to each engageable target, parallel to
+    /// [`Sim::engageable_targets`].
+    ///
+    /// A lock is a shooter on a target just as much as a fresh assignment is, so it has to
+    /// consume a slot. Without this a battery holding three locks would keep drawing new
+    /// shooters however low `max_shooters_per_target` was set — the cap would apply only to
+    /// the shooters that happened to be re-deciding.
+    fn slots_taken(&self, side: Side, assigned: &[(usize, FireTarget)]) -> Vec<u32> {
+        let targets = self.engageable_targets(side);
+        targets
+            .iter()
+            .map(|t| assigned.iter().filter(|(_, a)| a == t).count() as u32)
+            .collect()
     }
 
     /// Engagements this side has ordered outright (`docs/DESIGN.md` §13.3).
     ///
-    /// Both ends must still be alive and the shooter must still be able to shoot; an order
-    /// against a destroyed target simply lapses and the shooter rejoins the problem, which
-    /// is the only sensible reading — a standing order does not make a crew fire at a
-    /// wreck. Range and line of sight are **not** checked: an order is an order, and a
-    /// shooter that cannot reach its target wastes the epoch, which is exactly the cost of
-    /// giving a bad one.
+    /// An order stands only while the pairing is **actually engageable** — alive, in range,
+    /// and in line of sight if the weapon needs it. When it is not, the order lapses for
+    /// that epoch and the shooter rejoins the assignment; it resumes the moment the target
+    /// is reachable again.
+    ///
+    /// That is the same rule doctrine follows, and deliberately so. An unreachable pairing
+    /// is *blocked*, never merely preferred, so no shooter can be left idle facing a target
+    /// it cannot touch while something it could engage goes unengaged. A gate wanting a
+    /// hard-forced pairing sets up a reachable one, so nothing is lost by making the two
+    /// mechanisms agree.
     fn ordered_engagements(&self, side: Side, shooters: &[usize]) -> Vec<(usize, FireTarget)> {
         if self.orders[side as usize].is_empty() {
             return Vec::new();
         }
-        let mut out = Vec::new();
+        let mut out: Vec<(usize, FireTarget)> = Vec::new();
         for order in &self.orders[side as usize] {
             let Some(&s) = shooters
                 .iter()
@@ -449,11 +498,21 @@ impl Sim {
             let Some(t) = self.named_fire_target(&order.target) else {
                 continue;
             };
-            if self.target_state(t).elements > 0 {
+            if self.can_engage(s, t) {
                 out.push((s, t));
             }
         }
         out
+    }
+
+    /// Can this shooter engage this target *right now*?
+    ///
+    /// The one eligibility test, shared by orders, target locks and the assignment payoff,
+    /// so all three agree about what "reachable" means. Wraps [`Sim::kill_fraction`],
+    /// which already folds in every gate: alive, in range, in line of sight for direct
+    /// fire, and holding a live track for indirect (§2, §10.1, §12.4).
+    fn can_engage(&self, shooter: usize, t: FireTarget) -> bool {
+        self.target_state(t).elements > 0 && self.kill_fraction(shooter, t).is_some_and(|q| q > 0.0)
     }
 
     /// Resolve an id to a ground-fire target, searching units, batteries then posts — the
@@ -493,12 +552,10 @@ impl Sim {
         side: Side,
         shooters: &[usize],
         solver: Solver,
+        taken: &[u32],
     ) -> Vec<(usize, FireTarget)> {
         let targets = self.engageable_targets(side);
-        let Some(doc) = self.doctrine_of(side) else {
-            let weights = vec![1.0f32; targets.len()];
-            return self.allocate_fires(side, shooters, &targets, &weights, solver);
-        };
+        let doc = self.doctrine_of(side);
         let tiers: Vec<usize> = targets
             .iter()
             .map(|&t| doc.tier_of(&self.target_names(t)))
@@ -506,7 +563,7 @@ impl Sim {
 
         if doc.mode == DoctrineMode::Weighted {
             let weights: Vec<f32> = tiers.iter().map(|&k| doc.weight_for_tier(k)).collect();
-            return self.allocate_fires(side, shooters, &targets, &weights, solver);
+            return self.allocate_fires(side, shooters, &targets, &weights, taken, solver);
         }
 
         let mut remaining: Vec<usize> = shooters.to_vec();
@@ -515,19 +572,21 @@ impl Sim {
             if remaining.is_empty() {
                 break;
             }
-            let in_tier: Vec<FireTarget> = targets
+            let (in_tier, tier_taken): (Vec<FireTarget>, Vec<u32>) = targets
                 .iter()
                 .zip(&tiers)
-                .filter(|(_, &k)| k == tier)
-                .map(|(&t, _)| t)
-                .collect();
+                .zip(taken)
+                .filter(|((_, &k), _)| k == tier)
+                .map(|((&t, _), &n)| (t, n))
+                .unzip();
             if in_tier.is_empty() {
                 continue;
             }
             let weights = vec![1.0f32; in_tier.len()];
-            let taken = self.allocate_fires(side, &remaining, &in_tier, &weights, solver);
-            remaining.retain(|s| !taken.iter().any(|(a, _)| a == s));
-            out.extend(taken);
+            let chosen =
+                self.allocate_fires(side, &remaining, &in_tier, &weights, &tier_taken, solver);
+            remaining.retain(|s| !chosen.iter().any(|(a, _)| a == s));
+            out.extend(chosen);
         }
         out
     }
@@ -555,6 +614,7 @@ impl Sim {
         shooters: &[usize],
         targets: &[FireTarget],
         doctrine_weights: &[f32],
+        taken: &[u32],
         solver: Solver,
     ) -> Vec<(usize, FireTarget)> {
         let _ = side;
@@ -576,7 +636,12 @@ impl Sim {
         let mut slot_weight = Vec::new();
         for (t_pos, &t) in targets.iter().enumerate() {
             let elements = self.target_state(t).elements;
-            let count = elements.min(self.max_shooters_per_target).max(1);
+            // Slots already held by locked or ordered shooters are gone (`slots_taken`),
+            // so a target that is fully committed offers none and draws no more fire.
+            let count = elements
+                .min(self.max_shooters_per_target)
+                .max(1)
+                .saturating_sub(taken[t_pos]);
             // A representative kill probability for this target, over the shooters that
             // can actually engage it. Exact when they are identical, which is the case
             // the geometric discount below is derived for.
@@ -587,7 +652,9 @@ impl Sim {
                 engaging.iter().sum::<f64>() / engaging.len() as f64
             };
             let value = f64::from(self.target_value(t, value_scale) * doctrine_weights[t_pos]);
-            for k in 0..count {
+            // Slot k is the (k+1)-th shooter *including* those already committed, so the
+            // discount continues the sequence rather than restarting it.
+            for k in taken[t_pos]..taken[t_pos] + count {
                 slot_target.push(t_pos);
                 // Geometric discount: the (k+1)-th shooter only helps if the k before it
                 // all failed, which happens with probability (1 - q)^k. This is the

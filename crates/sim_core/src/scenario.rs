@@ -271,10 +271,11 @@ pub struct Force {
     pub c2: Vec<C2Instance>,
     /// What this side has been told to shoot first (`docs/DESIGN.md` §13).
     ///
-    /// Absent means the §10.2 payoff decides alone, exactly as before doctrine existed.
-    /// Present means it is **followed** — see [`crate::doctrine::DoctrineMode`].
+    /// **Always present.** Omitting the block gives `priority = ["all"]` — one tier holding
+    /// every target, which *is* the undirected §10.2 behaviour. So there is no "doctrine or
+    /// not" branch anywhere downstream; the undirected case is simply the one-tier case.
     #[serde(default)]
-    pub doctrine: Option<Doctrine>,
+    pub doctrine: Doctrine,
     /// Engagements ordered outright, bypassing the assignment (`docs/DESIGN.md` §13.3).
     #[serde(default)]
     pub orders: Vec<Order>,

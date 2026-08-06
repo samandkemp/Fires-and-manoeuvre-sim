@@ -489,6 +489,7 @@ impl TerrainSource {
 /// determinism contract: the same recipe and seed always give the same map, and swapping
 /// two layers is a different map (urban over woodland leaves urban).
 #[derive(Clone, Debug, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct TerrainRecipe {
     /// The starting surface.
     pub base: BaseRelief,
