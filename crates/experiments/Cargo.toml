@@ -14,3 +14,5 @@ sim_core = { path = "../sim_core" }
 glam = "0.32"     # sim_core's public APIs take glam::Vec2
 ndarray = { version = "0.16", features = ["rayon"] }  # risk rasters + parallel fill
 rand = "0.9"      # seeded Monte Carlo draws (same version as sim_core)
+rayon = "1"       # one Sim per worker thread; trials are independent, so they parallelise
+toml = "0.8"      # `sweep` patches a scenario's TOML before parsing it (same as sim_core)

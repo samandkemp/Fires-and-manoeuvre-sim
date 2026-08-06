@@ -5,86 +5,54 @@
 //! measurement path to drift.
 //!
 //! ```text
-//! cargo run -p experiments --release --bin batch -- scenarios/ --seeds 50
-//! cargo run -p experiments --release --bin batch -- scenarios/ --seeds 20 --until 900 --out out/
+//! cargo run -p experiments --release --bin batch -- scenarios --seeds 50
+//! cargo run -p experiments --release --bin batch -- scenarios --seeds 2000 --until 900 --out out/
+//! cargo run -p experiments --release --bin batch -- scenarios --only air_raid --seeds 10000
 //! ```
 //!
 //! Writes `<out>/<scenario>.csv` (a row per seed) and `<out>/summary.csv` (a row per
 //! scenario, mean and standard error). `.gitignore` covers `out/` and `*.csv`.
+//!
+//! Trials run in parallel, one sim per worker thread — see [`experiments::study`] for how
+//! that is arranged and why it cannot change the answer.
+//!
+//! To compare *dials* rather than scenarios, use `sweep`: it runs the same scenario at
+//! several values of one parameter over a shared seed set and reports paired differences.
 
+use experiments::csv;
+use experiments::outcome::COLUMNS;
+use experiments::study::{run_study, StudyConfig};
+use experiments::{flag, flag_or, has_flag};
 use sim_core::scenario::{Libraries, Scenario};
-use sim_core::sim::{Side, Sim};
-use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
+use std::time::Instant;
 
-/// What one run produced. Every field comes from the sim's own logs and final state.
-#[derive(Default, Clone, Copy)]
-struct Outcome {
-    blue_losses: f64,
-    red_losses: f64,
-    blue_units_killed: f64,
-    red_units_killed: f64,
-    detections: f64,
-    /// Sim time of the first detection either way; the run length if nothing was seen.
-    first_detection_s: f64,
-    fire_events: f64,
-    /// Air: launched, shot down, and those that survived to release a munition.
-    air_launched: f64,
-    air_downed: f64,
-    air_leakers: f64,
-    munitions_released: f64,
-    ground_casualties_from_air: f64,
-}
-
-/// Column order, shared by the per-seed and summary files so they read the same way.
-const COLUMNS: [&str; 12] = [
+/// Metrics worth putting on the console line; the CSV carries all of them.
+const HEADLINE: [&str; 4] = [
     "blue_losses",
     "red_losses",
-    "blue_units_killed",
-    "red_units_killed",
-    "detections",
-    "first_detection_s",
-    "fire_events",
-    "air_launched",
-    "air_downed",
     "air_leakers",
-    "munitions_released",
-    "ground_casualties_from_air",
+    "first_detection_s",
 ];
-
-impl Outcome {
-    fn values(&self) -> [f64; 12] {
-        [
-            self.blue_losses,
-            self.red_losses,
-            self.blue_units_killed,
-            self.red_units_killed,
-            self.detections,
-            self.first_detection_s,
-            self.fire_events,
-            self.air_launched,
-            self.air_downed,
-            self.air_leakers,
-            self.munitions_released,
-            self.ground_casualties_from_air,
-        ]
-    }
-}
 
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
+    if has_flag(&args, "--help") {
+        println!("{}", usage());
+        return;
+    }
     let dir = args
         .first()
         .filter(|a| !a.starts_with("--"))
         .cloned()
         .unwrap_or_else(|| "scenarios".to_owned());
-    let seeds: u64 = flag(&args, "--seeds")
-        .and_then(|v| v.parse().ok())
-        .unwrap_or(20);
-    let until_s: f64 = flag(&args, "--until")
-        .and_then(|v| v.parse().ok())
-        .unwrap_or(600.0);
+    let cfg = StudyConfig {
+        seeds: flag_or(&args, "--seeds", 20),
+        until_s: flag_or(&args, "--until", 600.0),
+        progress: !has_flag(&args, "--quiet"),
+    };
     let out_dir = PathBuf::from(flag(&args, "--out").unwrap_or_else(|| "out".to_owned()));
+    let only = flag(&args, "--only");
 
     let dir = Path::new(&dir);
     let libs = match Libraries::load_dir(dir) {
@@ -98,27 +66,27 @@ fn main() {
         }
     };
 
-    let scenarios = find_scenarios(dir);
+    let mut scenarios = find_scenarios(dir);
+    if let Some(name) = &only {
+        scenarios.retain(|(n, _)| n == name);
+    }
     if scenarios.is_empty() {
         eprintln!("no scenarios found in {}", dir.display());
         std::process::exit(2);
     }
-    if let Err(e) = std::fs::create_dir_all(&out_dir) {
-        eprintln!("could not create {}: {e}", out_dir.display());
-        std::process::exit(2);
-    }
 
     println!(
-        "=== batch: {} scenario(s) x {seeds} seeds, {until_s:.0} s each -> {} ===",
+        "=== batch: {} scenario(s) x {} seeds, {:.0} s each, {} threads -> {} ===",
         scenarios.len(),
+        cfg.seeds,
+        cfg.until_s,
+        rayon::current_num_threads(),
         out_dir.display()
     );
 
-    let mut summary = String::from("scenario,seeds");
-    for c in COLUMNS {
-        let _ = write!(summary, ",{c}_mean,{c}_se");
-    }
-    summary.push('\n');
+    let mut summary = csv::summary_header(&["scenario"]);
+    let started = Instant::now();
+    let mut trials = 0_u64;
 
     for (name, path) in scenarios {
         let scn = match Scenario::load(&path) {
@@ -128,145 +96,59 @@ fn main() {
                 continue;
             }
         };
-
-        let mut rows = String::from("seed");
-        for c in COLUMNS {
-            let _ = write!(rows, ",{c}");
-        }
-        rows.push('\n');
-
-        // Build the map **once** at the scenario's own seed, then reset per trial. That
-        // keeps the terrain fixed while the dice vary, which is the question being asked
-        // ("what happens on this map, on average") rather than averaging over maps too —
-        // and it skips regenerating a 1000x1000 raster for every seed.
-        let Ok(mut sim) = Sim::new(&scn, &libs, scn.default_seed) else {
-            eprintln!("  {name}: does not resolve; skipped");
-            continue;
+        println!("  {name}");
+        let outcomes = match run_study(&scn, &libs, cfg) {
+            Ok(o) => o,
+            Err(e) => {
+                eprintln!("  {name}: does not resolve ({e}); skipped");
+                continue;
+            }
         };
-        let mut outcomes = Vec::with_capacity(seeds as usize);
-        for seed in 0..seeds {
-            if sim.reset_to_scenario(&scn, &libs, seed).is_err() {
-                eprintln!("  {name}: does not resolve; skipped");
-                break;
-            }
-            let outcome = run_one(&mut sim, until_s);
-            let _ = write!(rows, "{seed}");
-            for v in outcome.values() {
-                let _ = write!(rows, ",{}", tidy(v));
-            }
-            rows.push('\n');
-            outcomes.push(outcome);
-        }
         if outcomes.is_empty() {
             continue;
         }
+        trials += outcomes.len() as u64;
 
-        let per_seed = out_dir.join(format!("{name}.csv"));
-        if let Err(e) = std::fs::write(&per_seed, rows) {
-            eprintln!("  {name}: could not write {}: {e}", per_seed.display());
+        let mut rows = csv::trial_header(&["seed"]);
+        for (seed, o) in outcomes.iter().enumerate() {
+            csv::push_trial(&mut rows, &[seed.to_string()], o);
         }
+        csv::write(&out_dir.join(format!("{name}.csv")), &rows);
 
-        let _ = write!(summary, "{name},{}", outcomes.len());
-        print!("  {name:<16}");
-        for (i, col) in COLUMNS.iter().enumerate() {
-            let xs: Vec<f64> = outcomes.iter().map(|o| o.values()[i]).collect();
-            let (mean, se) = mean_and_se(&xs);
-            let _ = write!(summary, ",{},{}", tidy(mean), tidy(se));
-            // Keep the console line readable: the headline metrics only.
-            if matches!(*col, "blue_losses" | "red_losses" | "air_leakers") {
-                print!("  {col} {mean:>6.2}+-{se:<5.2}");
-            }
-        }
-        summary.push('\n');
-        println!();
-    }
-
-    let summary_path = out_dir.join("summary.csv");
-    match std::fs::write(&summary_path, summary) {
-        Ok(()) => println!("\nwrote {}", summary_path.display()),
-        Err(e) => eprintln!("could not write {}: {e}", summary_path.display()),
-    }
-}
-
-/// Run one battle and read the outcome out of the sim's logs.
-fn run_one(sim: &mut Sim, until_s: f64) -> Outcome {
-    let air_launched = sim.air().len() as f64;
-    let initial: Vec<u32> = sim.units().iter().map(|u| u.elements).collect();
-
-    sim.run_until(until_s);
-
-    let mut o = Outcome {
-        air_launched,
-        detections: (sim.events().len() + sim.air_events().len()) as f64,
-        fire_events: sim.fire_events().len() as f64,
-        ..Default::default()
-    };
-
-    for (i, u) in sim.units().iter().enumerate() {
-        let lost = f64::from(initial[i].saturating_sub(u.elements));
-        match u.side {
-            Side::Blue => {
-                o.blue_losses += lost;
-                o.blue_units_killed += f64::from(u32::from(!u.alive()));
-            }
-            Side::Red => {
-                o.red_losses += lost;
-                o.red_units_killed += f64::from(u32::from(!u.alive()));
-            }
+        let summaries = csv::push_summary(&mut summary, std::slice::from_ref(&name), &outcomes);
+        for metric in HEADLINE {
+            let i = COLUMNS
+                .iter()
+                .position(|c| *c == metric)
+                .expect("headline metric exists");
+            println!("      {metric:<20} {}", summaries[i]);
         }
     }
 
-    // "Leaker" = an airframe that survived to release: exactly what the strike log records.
-    o.air_downed = sim.air().iter().filter(|a| !a.alive).count() as f64;
-    o.munitions_released = sim.strike_events().len() as f64;
-    o.ground_casualties_from_air = sim
-        .strike_events()
-        .iter()
-        .map(|e| f64::from(e.casualties))
-        .sum();
-    let mut leakers: Vec<usize> = sim.strike_events().iter().map(|e| e.air).collect();
-    leakers.sort_unstable();
-    leakers.dedup();
-    o.air_leakers = leakers.len() as f64;
-
-    // Time to the first contact of any kind; the full run length if there was none, so
-    // the column stays comparable rather than mixing in a sentinel.
-    let first_ground = sim.events().first().map(|e| e.time_s);
-    let first_air = sim.air_events().first().map(|e| e.time_s);
-    o.first_detection_s = match (first_ground, first_air) {
-        (Some(a), Some(b)) => a.min(b),
-        (Some(t), None) | (None, Some(t)) => t,
-        (None, None) => until_s,
-    };
-    o
+    csv::write(&out_dir.join("summary.csv"), &summary);
+    let secs = started.elapsed().as_secs_f64();
+    println!(
+        "\n{trials} trials in {secs:.1} s ({:.0}/s)",
+        trials as f64 / secs.max(1e-9)
+    );
 }
 
-/// Collapse `-0.0` to `0.0` for output.
-///
-/// Rust's `f64` sum folds from `-0.0`, not `0.0`, because `-0.0 + x == x` for every `x`
-/// whereas `0.0 + (-0.0)` would drop the sign. So a metric summed over an empty log comes
-/// out `-0.0` and prints as `-0`, which in a results file reads like a bug.
-fn tidy(v: f64) -> f64 {
-    if v == 0.0 {
-        0.0
-    } else {
-        v
-    }
-}
-
-/// Mean and standard error. The SE says whether a difference between two scenarios means
-/// anything, so it sits beside every mean.
-fn mean_and_se(xs: &[f64]) -> (f64, f64) {
-    let n = xs.len() as f64;
-    if n == 0.0 {
-        return (0.0, 0.0);
-    }
-    let mean = xs.iter().sum::<f64>() / n;
-    if n < 2.0 {
-        return (mean, 0.0);
-    }
-    let var = xs.iter().map(|x| (x - mean) * (x - mean)).sum::<f64>() / (n - 1.0);
-    (mean, (var / n).sqrt())
+fn usage() -> String {
+    format!(
+        "batch: run a folder of scenarios over many seeds\n\
+         \n\
+         usage: batch [dir] [--seeds N] [--until SECONDS] [--out DIR] [--only NAME] [--quiet]\n\
+         \n\
+           dir       folder of scenarios and stat-block libraries (default: scenarios)\n\
+           --seeds   trials per scenario, seeds 0..N (default: 20)\n\
+           --until   sim seconds per trial (default: 600)\n\
+           --out     output folder (default: out)\n\
+           --only    just this one scenario, by bare name\n\
+           --quiet   no progress line\n\
+         \n\
+         metrics: {}",
+        COLUMNS.join(", ")
+    )
 }
 
 /// Every `*.toml` in `dir` that parses as a scenario, by bare name. Same rule the app
@@ -287,10 +169,4 @@ fn find_scenarios(dir: &Path) -> Vec<(String, PathBuf)> {
         .collect();
     found.sort();
     found
-}
-
-/// Value of a `--flag value` argument.
-fn flag(args: &[String], name: &str) -> Option<String> {
-    let i = args.iter().position(|a| a == name)?;
-    args.get(i + 1).cloned()
 }

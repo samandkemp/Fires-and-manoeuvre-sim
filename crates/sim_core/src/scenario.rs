@@ -33,7 +33,16 @@ pub enum ScenarioError {
 
 /// A scenario: a named situation the engine can simulate — terrain, sim clock, and the
 /// two forces' placed assets. Weapons join this schema in the fires phase.
+///
+/// # Unknown keys are rejected
+///
+/// Every struct in this schema carries `deny_unknown_fields`. Nearly all the dials have a
+/// serde default, so without it a misspelt key — `track_hold` for `track_hold_s` — parses
+/// perfectly, takes the default, and produces a study of a dial nobody set. That failure
+/// is invisible: the run succeeds and the answer is simply about a different question.
+/// Refusing the key turns it into a load error naming the file.
 #[derive(Debug, Clone, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct Scenario {
     /// Human-readable scenario name.
     pub name: String,
@@ -55,6 +64,7 @@ pub struct Scenario {
 
 /// Sim clock + suppression dials (`docs/DESIGN.md` §3.3, §4.3).
 #[derive(Debug, Clone, Copy, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct SimConfig {
     /// Integration tick, seconds.
     #[serde(default = "default_dt_s")]
@@ -222,6 +232,7 @@ impl Default for SimConfig {
 
 /// One side's placed assets.
 #[derive(Debug, Clone, Default, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct Force {
     /// Placed sensors.
     #[serde(default)]
@@ -245,6 +256,7 @@ pub struct Force {
 
 /// A placed C2 post: a type id from `c2.toml` plus where it is.
 #[derive(Debug, Clone, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct C2Instance {
     /// Unique-in-scenario id.
     pub id: String,
@@ -258,6 +270,7 @@ pub struct C2Instance {
 /// A placed air asset: a type id from `air.toml` plus where it is, how it is flying, and
 /// what (if anything) it has been sent to attack.
 #[derive(Debug, Clone, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct AirInstance {
     /// Unique-in-scenario id.
     pub id: String,
@@ -308,6 +321,7 @@ pub enum TargetConfig {
 /// A placed air-defence battery: a type id from `air_defence.toml` plus its position and
 /// whether its organic sensor is switched on.
 #[derive(Debug, Clone, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct AirDefenceInstance {
     /// Unique-in-scenario id.
     pub id: String,
@@ -329,6 +343,7 @@ fn default_self_cue() -> bool {
 
 /// A placed jammer (`docs/DESIGN.md` §8): position + degradation dials.
 #[derive(Debug, Clone, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct JammerInstance {
     /// World position, metres `[x, y]`.
     pub pos: [f32; 2],
@@ -340,6 +355,7 @@ pub struct JammerInstance {
 
 /// A placed sensor: a type id from `sensors.toml` plus position and facing.
 #[derive(Debug, Clone, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct SensorInstance {
     /// Unique-in-scenario id, shown in event feeds.
     pub id: String,
@@ -355,6 +371,7 @@ pub struct SensorInstance {
 
 /// A placed unit: a type id from `units.toml` plus position and an optional route.
 #[derive(Debug, Clone, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct UnitInstance {
     /// Unique-in-scenario id.
     pub id: String,
@@ -370,6 +387,7 @@ pub struct UnitInstance {
 
 /// The terrain block of a scenario: grid dimensions and how to generate the elevation.
 #[derive(Debug, Clone, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct TerrainConfig {
     /// Square cell size, metres.
     pub cell_size_m: f32,
