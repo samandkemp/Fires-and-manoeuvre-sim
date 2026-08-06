@@ -42,6 +42,7 @@ pub enum AdEngagement {
 
 /// An air-defence type's stat block (`scenarios/air_defence.toml`) — placeholder dials.
 #[derive(Clone, Debug, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct AirDefenceType {
     /// Engagement model and its parameters.
     pub engagement: AdEngagement,

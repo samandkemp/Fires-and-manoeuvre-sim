@@ -406,11 +406,7 @@ impl Scenario {
     /// [`ScenarioError::Io`] if the file can't be read, [`ScenarioError::Parse`] if it
     /// isn't valid TOML / schema, [`ScenarioError::Invalid`] if it fails validation.
     pub fn load(path: &Path) -> Result<Self, ScenarioError> {
-        let text = std::fs::read_to_string(path).map_err(|source| ScenarioError::Io {
-            path: path.to_path_buf(),
-            source,
-        })?;
-        Self::from_toml_str(&text)
+        Self::from_toml_str(&read_to_string(path)?)
     }
 
     /// Parse and validate a scenario from an in-memory TOML string (used by tests and
@@ -455,16 +451,36 @@ impl Scenario {
     }
 }
 
+/// Read a file, tagging the path onto any I/O error. Shared by every loader below, which
+/// otherwise repeat the same five lines seven times.
+fn read_to_string(path: &Path) -> Result<String, ScenarioError> {
+    std::fs::read_to_string(path).map_err(|source| ScenarioError::Io {
+        path: path.to_path_buf(),
+        source,
+    })
+}
+
+/// Parse a stat-block library — or the terrain-params table — from TOML **text**.
+///
+/// The string half of the `load_*` family below: each of those reads a file and calls
+/// this. Public because a caller that already holds the text should not have to write it
+/// back to disk to load it — `experiments`' sweep patches a dial in memory and parses the
+/// result, exactly as `Scenario::from_toml_str` lets it do for a scenario.
+///
+/// # Errors
+/// [`ScenarioError::Parse`] if the text is not valid TOML for `T`.
+pub fn library_from_toml_str<T: serde::de::DeserializeOwned>(
+    text: &str,
+) -> Result<T, ScenarioError> {
+    Ok(toml::from_str(text)?)
+}
+
 /// Load the per-terrain-type dials (`scenarios/terrain_types.toml`).
 ///
 /// # Errors
 /// As [`Scenario::load`] (validation is structural — serde requires every field).
 pub fn load_terrain_params(path: &Path) -> Result<TerrainParamsTable, ScenarioError> {
-    let text = std::fs::read_to_string(path).map_err(|source| ScenarioError::Io {
-        path: path.to_path_buf(),
-        source,
-    })?;
-    Ok(toml::from_str(&text)?)
+    library_from_toml_str(&read_to_string(path)?)
 }
 
 /// Load the sensor-type library (`scenarios/sensors.toml`): a table of stat blocks
@@ -473,11 +489,7 @@ pub fn load_terrain_params(path: &Path) -> Result<TerrainParamsTable, ScenarioEr
 /// # Errors
 /// As [`Scenario::load`].
 pub fn load_sensor_types(path: &Path) -> Result<BTreeMap<String, SensorType>, ScenarioError> {
-    let text = std::fs::read_to_string(path).map_err(|source| ScenarioError::Io {
-        path: path.to_path_buf(),
-        source,
-    })?;
-    Ok(toml::from_str(&text)?)
+    library_from_toml_str(&read_to_string(path)?)
 }
 
 /// Load the unit-type library (`scenarios/units.toml`).
@@ -485,11 +497,7 @@ pub fn load_sensor_types(path: &Path) -> Result<BTreeMap<String, SensorType>, Sc
 /// # Errors
 /// As [`Scenario::load`].
 pub fn load_unit_types(path: &Path) -> Result<BTreeMap<String, UnitType>, ScenarioError> {
-    let text = std::fs::read_to_string(path).map_err(|source| ScenarioError::Io {
-        path: path.to_path_buf(),
-        source,
-    })?;
-    Ok(toml::from_str(&text)?)
+    library_from_toml_str(&read_to_string(path)?)
 }
 
 /// Load the weapon-type library (`scenarios/weapons.toml`).
@@ -497,11 +505,7 @@ pub fn load_unit_types(path: &Path) -> Result<BTreeMap<String, UnitType>, Scenar
 /// # Errors
 /// As [`Scenario::load`].
 pub fn load_weapon_types(path: &Path) -> Result<BTreeMap<String, WeaponType>, ScenarioError> {
-    let text = std::fs::read_to_string(path).map_err(|source| ScenarioError::Io {
-        path: path.to_path_buf(),
-        source,
-    })?;
-    Ok(toml::from_str(&text)?)
+    library_from_toml_str(&read_to_string(path)?)
 }
 
 /// Load the air-type library (`scenarios/air.toml`).
@@ -509,11 +513,7 @@ pub fn load_weapon_types(path: &Path) -> Result<BTreeMap<String, WeaponType>, Sc
 /// # Errors
 /// As [`Scenario::load`].
 pub fn load_air_types(path: &Path) -> Result<BTreeMap<String, AirType>, ScenarioError> {
-    let text = std::fs::read_to_string(path).map_err(|source| ScenarioError::Io {
-        path: path.to_path_buf(),
-        source,
-    })?;
-    Ok(toml::from_str(&text)?)
+    library_from_toml_str(&read_to_string(path)?)
 }
 
 /// Load the C2 type library (`scenarios/c2.toml`). Optional, like `air.toml`: a scenario
@@ -522,11 +522,7 @@ pub fn load_air_types(path: &Path) -> Result<BTreeMap<String, AirType>, Scenario
 /// # Errors
 /// As [`Scenario::load`].
 pub fn load_c2_types(path: &Path) -> Result<BTreeMap<String, C2Type>, ScenarioError> {
-    let text = std::fs::read_to_string(path).map_err(|source| ScenarioError::Io {
-        path: path.to_path_buf(),
-        source,
-    })?;
-    Ok(toml::from_str(&text)?)
+    library_from_toml_str(&read_to_string(path)?)
 }
 
 /// Load the air-defence type library (`scenarios/air_defence.toml`).
@@ -536,11 +532,7 @@ pub fn load_c2_types(path: &Path) -> Result<BTreeMap<String, C2Type>, ScenarioEr
 pub fn load_air_defence_types(
     path: &Path,
 ) -> Result<BTreeMap<String, AirDefenceType>, ScenarioError> {
-    let text = std::fs::read_to_string(path).map_err(|source| ScenarioError::Io {
-        path: path.to_path_buf(),
-        source,
-    })?;
-    Ok(toml::from_str(&text)?)
+    library_from_toml_str(&read_to_string(path)?)
 }
 
 /// Every stat-block library a scenario resolves its instances against.

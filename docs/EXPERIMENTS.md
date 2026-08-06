@@ -138,7 +138,7 @@ sweep <scenario> --param PATH (--values a,b,c | --from X --to Y [--steps N])
                  [--dir DIR] [--out DIR] [--quiet]
 ```
 
-`--param` is a **dotted path into the scenario file**:
+`--param` is a **dotted path**, into either the scenario or a stat-block library:
 
 ```bash
 sweep air_raid  --param sim.track_hold_s   --values 10,20,45,90        --seeds 500
@@ -146,7 +146,21 @@ sweep default   --param sim.p_suppress     --from 0.05 --to 0.8 --steps 8 --seed
 sweep air_raid  --param red.air.0.altitude_m --values 150,300,600,1200 --seeds 1000
 sweep ad_c2     --param sim.allocation     --values greedy,optimal     --seeds 1000 \
                 --set sim.max_batteries_per_air_target=1
+
+# stat blocks: the sensor, weapon and terrain dials the OR models actually turn on
+sweep air_raid  --param sensors.mast_optical.lambda0_per_s --values 0.05,0.1,0.35,1.0 --seeds 1000
+sweep default   --param weapons.mortar.cep_m       --from 20 --to 140 --steps 7 --seeds 2000
+sweep default   --param terrain_types.trees.concealment --values 0.2,0.5,0.8 --seeds 1000
 ```
+
+The **first segment decides which file** is patched: `sensors`, `units`, `weapons`, `air`,
+`air_defence`, `c2` and `terrain_types` name library files, and anything else is a scenario
+path. The two namespaces cannot collide, because a scenario's top level is `name`,
+`default_seed`, `terrain`, `sim`, `blue` and `red`. So `air.recce.speed_m_s` is the *stat
+block* and `red.air.0.speed_m_s` is one airframe's override of it.
+
+Note that a `terrain_types` sweep changes the **map**, not just what happens on it, so each
+arm rebuilds terrain. That is a legitimate question, just a slower and noisier one.
 
 The override is applied to the **TOML**, before it is parsed. Three consequences:
 
@@ -158,10 +172,10 @@ The override is applied to the **TOML**, before it is parsed. Three consequences
   out-of-range value fails the same way rather than reaching the sim.
 
 A dial that is absent from the file — most of them, since nearly all have a default — is
-created. That is safe because the schema sets `deny_unknown_fields`: `sim.track_hold` for
-`sim.track_hold_s` is a load error naming the key, not a silent default. (Which also means
-a typo in a hand-written scenario is now caught, instead of quietly changing what the
-scenario means.)
+created. That is safe because the schema sets `deny_unknown_fields` throughout, scenario
+and stat blocks alike: `sim.track_hold` for `sim.track_hold_s` is a load error naming the
+key, not a silent default. (Which also means a typo in a hand-written scenario or stat
+block is now caught, instead of quietly changing what it means.)
 
 `--set` is repeatable and applies to **every** arm, for holding one dial away from the
 scenario's own setting while varying another.
@@ -307,6 +321,31 @@ So on this scenario the default of 2 is defensible but unearned — it is not ha
 is not doing anything either. Whether that holds when batteries are scarcer relative to the
 raid is the next question, and it is one `--set` away.
 
+### A stat-block dial: what is a better sensor worth?
+
+The same command shape reaches the models themselves. `mast_optical` is the early-warning
+sensor `air_raid` hangs on — it is what cues the SAM, and the SAM is Blue's only answer
+above the CIWS ceiling. So: what does its detection rate buy?
+
+```bash
+cargo run -p experiments --release --bin sweep -- air_raid \
+    --param sensors.mast_optical.lambda0_per_s --values 0.05,0.1,0.35,1.0 \
+    --seeds 1000 --metric air_leakers
+```
+
+| λ₀ (per s) | leakers, paired against 0.05 |
+|---|---|
+| 0.05 | 0.703 (baseline) |
+| 0.1 | −0.029 ± 0.023 — not significant |
+| 0.35 | −0.087 ± 0.032 (t = −2.7) |
+| 1.0 | −0.176 ± 0.031 (t = −5.6) |
+
+A twentyfold better sensor stops a quarter of the leakers. Note the shape: the first
+doubling is worth nothing measurable, and it takes a factor of seven before the effect
+clears the noise. That is what `P = 1 − e^{−λΔt}` looks like from the outside — the sensor
+is not the binding constraint until it is bad enough to be one, and after that each
+increment matters less than the last.
+
 ---
 
 ## Adding a metric
@@ -363,10 +402,6 @@ independently, which is a useful cross-check on both.
 
 ## What this harness cannot do yet
 
-- **Stat-block dials are out of reach.** `--param` patches the *scenario*; a sensor's
-  `lambda0_per_s` and a weapon's `cep_m` live in `sensors.toml` and `weapons.toml`. Sweeping
-  those needs the same TOML-patch treatment applied to `Libraries::load_dir`. This is the
-  biggest gap — several of the most interesting OR questions are library dials.
 - **One dial at a time.** No factorial designs; `--set` pins the others. A 2-D grid is a
   shell loop over `sweep` for now.
 - **No confidence intervals on quantiles**, only on means. A bimodal outcome averaged into a

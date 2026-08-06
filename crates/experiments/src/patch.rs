@@ -17,12 +17,35 @@
 //! red.air.0.altitude_m = 250   # numeric segments index into an array
 //! ```
 //!
-//! **Limitation.** This reaches the *scenario* file only. Stat-block library dials — a
-//! sensor's `lambda0_per_s`, a weapon's `cep_m` — live in `sensors.toml` and `weapons.toml`
-//! and are not reachable this way. Sweeping those needs the same treatment applied to
-//! `Libraries::load_dir`; see `docs/EXPERIMENTS.md`.
+//! **Stat-block libraries too.** A path whose first segment names a library file is applied
+//! to that file instead — so a sensor's detection rate and a weapon's dispersion are as
+//! sweepable as a `[sim]` dial:
+//!
+//! ```text
+//! sensors.mast_optical.lambda0_per_s = 0.4
+//! weapons.mortar.cep_m = 60
+//! terrain_types.trees.concealment = 0.8
+//! ```
+//!
+//! The first segment is unambiguous: a scenario's top level is `name`, `default_seed`,
+//! `terrain`, `sim`, `blue` and `red`, none of which is a library file name. Drone and
+//! air-defence *instances* live under `blue`/`red`, so `air.recce.speed_m_s` (the stat
+//! block) never collides with `red.air.0.speed_m_s` (one airframe's override of it).
 
-use sim_core::scenario::{Scenario, ScenarioError};
+use sim_core::scenario::{library_from_toml_str, Libraries, Scenario, ScenarioError};
+use std::path::Path;
+
+/// The stat-block libraries a dotted path may name, matching the file stems in a
+/// `scenarios/`-shaped directory.
+pub const LIBRARY_FILES: [&str; 7] = [
+    "sensors",
+    "units",
+    "weapons",
+    "air",
+    "air_defence",
+    "c2",
+    "terrain_types",
+];
 
 /// One `path=value` override, already split.
 #[derive(Clone, Debug, PartialEq)]
@@ -67,6 +90,92 @@ pub fn parse_value(text: &str) -> toml::Value {
     }
 }
 
+impl Override {
+    /// Which library file this path patches, if any. `None` means it is a scenario path.
+    #[must_use]
+    pub fn library(&self) -> Option<&'static str> {
+        let head = self.path.split('.').next()?;
+        LIBRARY_FILES.into_iter().find(|f| *f == head)
+    }
+
+    /// The path with the library segment stripped, for use inside that file.
+    fn within_library(&self) -> String {
+        self.path
+            .split_once('.')
+            .map_or(String::new(), |(_, rest)| rest.to_owned())
+    }
+}
+
+/// Split overrides into the ones that patch a library file and the ones that patch the
+/// scenario, so a caller can rebuild only what actually changed.
+#[must_use]
+pub fn split(overrides: &[Override]) -> (Vec<Override>, Vec<Override>) {
+    overrides
+        .iter()
+        .cloned()
+        .partition(|o| o.library().is_some())
+}
+
+/// Load the stat-block libraries from `dir` with `overrides` applied.
+///
+/// Loads the directory normally first, then re-parses only the files a path names. The
+/// patched text goes through the same `library_from_toml_str` a file does, so a bad value
+/// fails identically — and, since the stat blocks carry `deny_unknown_fields`, a misspelt
+/// dial is an error rather than a silent default.
+///
+/// # Errors
+/// [`ScenarioError`] if a file cannot be read or the patched text does not parse.
+pub fn libraries_with_overrides(
+    dir: &Path,
+    overrides: &[Override],
+) -> Result<Libraries, ScenarioError> {
+    let mut libs = Libraries::load_dir(dir)?;
+    if overrides.is_empty() {
+        return Ok(libs);
+    }
+    for file in LIBRARY_FILES {
+        let mine: Vec<Override> = overrides
+            .iter()
+            .filter(|o| o.library() == Some(file))
+            .map(|o| Override {
+                path: o.within_library(),
+                value: o.value.clone(),
+            })
+            .collect();
+        if mine.is_empty() {
+            continue;
+        }
+        let path = dir.join(format!("{file}.toml"));
+        let text = std::fs::read_to_string(&path).map_err(|source| ScenarioError::Io {
+            path: path.clone(),
+            source,
+        })?;
+        let patched = patch_text(&text, &mine)?;
+        match file {
+            "sensors" => libs.sensors = library_from_toml_str(&patched)?,
+            "units" => libs.units = library_from_toml_str(&patched)?,
+            "weapons" => libs.weapons = library_from_toml_str(&patched)?,
+            "air" => libs.air = library_from_toml_str(&patched)?,
+            "air_defence" => libs.air_defence = library_from_toml_str(&patched)?,
+            "c2" => libs.c2 = library_from_toml_str(&patched)?,
+            "terrain_types" => libs.terrain_params = library_from_toml_str(&patched)?,
+            other => unreachable!("LIBRARY_FILES gained '{other}' without a parse arm"),
+        }
+    }
+    Ok(libs)
+}
+
+/// Apply overrides to TOML text and hand back the re-encoded text.
+fn patch_text(text: &str, overrides: &[Override]) -> Result<String, ScenarioError> {
+    let mut doc: toml::Value =
+        toml::from_str(text).map_err(|e| ScenarioError::Invalid(format!("{e}")))?;
+    for ov in overrides {
+        set_path(&mut doc, &ov.path, ov.value.clone())
+            .map_err(|e| ScenarioError::Invalid(format!("override '{}': {e}", ov.path)))?;
+    }
+    toml::to_string(&doc).map_err(|e| ScenarioError::Invalid(format!("re-encode: {e}")))
+}
+
 /// Load a scenario from TOML text with `overrides` applied.
 ///
 /// # Errors
@@ -79,15 +188,7 @@ pub fn scenario_with_overrides(
     if overrides.is_empty() {
         return Scenario::from_toml_str(text);
     }
-    let mut doc: toml::Value =
-        toml::from_str(text).map_err(|e| ScenarioError::Invalid(format!("{e}")))?;
-    for ov in overrides {
-        set_path(&mut doc, &ov.path, ov.value.clone())
-            .map_err(|e| ScenarioError::Invalid(format!("override '{}': {e}", ov.path)))?;
-    }
-    let patched =
-        toml::to_string(&doc).map_err(|e| ScenarioError::Invalid(format!("re-encode: {e}")))?;
-    Scenario::from_toml_str(&patched)
+    Scenario::from_toml_str(&patch_text(text, overrides)?)
 }
 
 /// Replace the value at a dotted path. Numeric segments index into an array.
@@ -261,6 +362,76 @@ elevation_m = 0.0
     fn a_patched_scenario_is_validated_like_a_loaded_one() {
         let ov = [Override::parse("terrain.width_cells=-5").unwrap()];
         assert!(scenario_with_overrides(SCN, &ov).is_err());
+    }
+
+    /// The first segment decides which file a path lands in, and the two namespaces do not
+    /// collide: `air.recce.speed_m_s` is the *stat block*, `red.air.0.speed_m_s` is one
+    /// airframe's override of it.
+    #[test]
+    fn a_paths_first_segment_picks_the_file() {
+        assert_eq!(
+            Override::parse("sensors.mast_optical.lambda0_per_s=0.4")
+                .unwrap()
+                .library(),
+            Some("sensors")
+        );
+        assert_eq!(
+            Override::parse("air.recce.speed_m_s=30").unwrap().library(),
+            Some("air")
+        );
+        for scenario_path in [
+            "sim.track_hold_s=1",
+            "red.air.0.speed_m_s=30",
+            "terrain.width_cells=10",
+            "default_seed=4",
+        ] {
+            assert_eq!(
+                Override::parse(scenario_path).unwrap().library(),
+                None,
+                "{scenario_path} is a scenario path"
+            );
+        }
+    }
+
+    #[test]
+    fn split_sorts_overrides_by_which_file_they_touch() {
+        let ovs = [
+            Override::parse("sim.track_hold_s=10").unwrap(),
+            Override::parse("weapons.mortar.cep_m=60").unwrap(),
+            Override::parse("red.air.0.altitude_m=99").unwrap(),
+        ];
+        let (lib, scn) = split(&ovs);
+        assert_eq!(lib.len(), 1);
+        assert_eq!(scn.len(), 2);
+        assert_eq!(lib[0].within_library(), "mortar.cep_m");
+    }
+
+    /// A library dial really is patched, and a misspelt one is refused — the stat blocks
+    /// carry `deny_unknown_fields` for the same reason the scenario schema does.
+    #[test]
+    fn a_library_dial_is_patched_and_a_typo_is_refused() {
+        let dir = Path::new("../../scenarios");
+        if !dir.join("sensors.toml").exists() {
+            return;
+        }
+        let plain = Libraries::load_dir(dir).expect("library loads");
+        let Some((id, before)) = plain
+            .sensors
+            .iter()
+            .map(|(k, v)| (k.clone(), v.lambda0_per_s))
+            .next()
+        else {
+            return;
+        };
+        let ov = [Override::parse(&format!("sensors.{id}.lambda0_per_s=0.987")).unwrap()];
+        let patched = libraries_with_overrides(dir, &ov).expect("patches cleanly");
+        assert!((patched.sensors[&id].lambda0_per_s - 0.987).abs() < 1e-6);
+        assert_ne!(before, 0.987, "fixture must actually change");
+        // Untouched libraries come through unchanged.
+        assert_eq!(patched.units.len(), plain.units.len());
+
+        let bad = [Override::parse(&format!("sensors.{id}.lambda0=0.5")).unwrap()];
+        assert!(libraries_with_overrides(dir, &bad).is_err(), "typo refused");
     }
 
     #[test]

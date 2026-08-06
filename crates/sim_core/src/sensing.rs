@@ -20,6 +20,7 @@ pub enum Modality {
 
 /// A sensor type's stat block (`scenarios/sensors.toml`) — all placeholder dials.
 #[derive(Clone, Debug, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct SensorType {
     /// Propagation channel.
     pub modality: Modality,
@@ -40,6 +41,7 @@ pub struct SensorType {
 
 /// A unit type's stat block (`scenarios/units.toml`).
 #[derive(Clone, Debug, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct UnitType {
     /// Target height above ground for LOS purposes, metres (also the direct-fire
     /// silhouette height).

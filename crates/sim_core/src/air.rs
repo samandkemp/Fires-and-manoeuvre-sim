@@ -100,6 +100,7 @@ pub enum TargetSpec {
 
 /// An air type's stat block (`scenarios/air.toml`) — all placeholder dials.
 #[derive(Clone, Debug, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct AirType {
     /// Airframe size as a LOS and air-defence target, metres.
     pub height_m: f32,

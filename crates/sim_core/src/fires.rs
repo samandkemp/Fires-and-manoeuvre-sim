@@ -26,6 +26,7 @@ pub enum WeaponClass {
 
 /// Weapon stat block (`scenarios/weapons.toml`). Placeholder dials.
 #[derive(Clone, Debug, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct WeaponType {
     /// Direct or indirect.
     pub class: WeaponClass,

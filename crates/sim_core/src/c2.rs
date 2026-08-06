@@ -24,6 +24,7 @@ use glam::Vec2;
 
 /// A C2 post's stat block (`scenarios/c2.toml`). Placeholder dials, as everywhere.
 #[derive(Clone, Debug, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct C2Type {
     /// How far the post can coordinate, metres. A battery within this radius of a live
     /// friendly post joins its coordinated group.

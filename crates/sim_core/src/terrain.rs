@@ -23,6 +23,7 @@ pub enum TerrainType {
 /// The tweakable dials for one terrain type. Abstract placeholders, loaded from
 /// `scenarios/terrain_types.toml` — the models are the product, these are the knobs.
 #[derive(Clone, Copy, Debug, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct TerrainParams {
     /// Canopy / building height above ground, metres — the blocking surface is `z + f`.
     pub feature_height_m: f32,

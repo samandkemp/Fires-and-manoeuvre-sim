@@ -31,11 +31,10 @@
 //! this crate offers no unpaired comparison.
 
 use experiments::outcome::{Outcome, COLUMNS};
-use experiments::patch::{scenario_with_overrides, Override};
+use experiments::patch::{self, scenario_with_overrides, Override};
 use experiments::stats::paired;
 use experiments::study::{column, run_study, StudyConfig};
 use experiments::{csv, flag, flag_or, flags, has_flag};
-use sim_core::scenario::Libraries;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -92,16 +91,6 @@ fn main() {
         }
     };
 
-    let libs = match Libraries::load_dir(&dir) {
-        Ok(l) => l,
-        Err(e) => {
-            eprintln!(
-                "could not load stat-block libraries from {}: {e}",
-                dir.display()
-            );
-            std::process::exit(2);
-        }
-    };
     let path = resolve_scenario(&dir, &scenario_arg);
     let text = match std::fs::read_to_string(&path) {
         Ok(t) => t,
@@ -144,7 +133,17 @@ fn main() {
             path: param.clone(),
             value: experiments::patch::parse_value(value),
         });
-        let scn = match scenario_with_overrides(&text, &overrides) {
+        // A path naming a stat-block library patches that file; everything else patches
+        // the scenario. Both go through the loaders a file on disk would.
+        let (lib_overrides, scenario_overrides) = patch::split(&overrides);
+        let libs = match patch::libraries_with_overrides(&dir, &lib_overrides) {
+            Ok(l) => l,
+            Err(e) => {
+                eprintln!("  {param}={value}: {e}");
+                std::process::exit(2);
+            }
+        };
+        let scn = match scenario_with_overrides(&text, &scenario_overrides) {
             Ok(s) => s,
             Err(e) => {
                 eprintln!("  {param}={value}: {e}");
