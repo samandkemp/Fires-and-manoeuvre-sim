@@ -107,6 +107,7 @@ Every dial has a default, so a scenario states only what it wants to change.
 | `allocation` | `optimal` | `optimal` / `greedy` / `independent` (§10.2) |
 | `max_shooters_per_target` | 3 | Overkill cap: ground shooters per target per epoch |
 | `max_batteries_per_air_target` | 2 | Overkill cap: air-defence batteries per airframe (§11.2) |
+| `fires_need_c2` | `false` | Must a ground shooter be under a live C2 post to coordinate? (§11.3) |
 | `sensor_tasking` | `false` | Do steerable sensors search by belief? (§10.3) |
 | `belief_cells` | 48 | Edge length of the coarse belief grid |
 
@@ -122,6 +123,26 @@ isolate one model from another:
   as meant. Turn it on to let sensors search (see `sensor_search.toml`), but note it
   dissolves any scenario whose premise is a *committed* sensor posture — the interdiction
   game being the example that caught this.
+- `fires_need_c2` is **off by default**, so a side's guns coordinate for free. Turn it on
+  and a shooter must be inside a live friendly C2 post's radius to join the side-wide fire
+  plan; one outside picks for itself. Turning it on unconditionally would have reduced
+  every existing scenario to `independent` overnight, which is why it is a dial.
+
+## Dials that are not in `[sim]`
+
+Three that matter for the counter-air and SEAD scenarios live on the **stat blocks**, so
+they belong to the asset rather than the situation:
+
+| Dial | On | What it does |
+|---|---|---|
+| `link_latency_s` | `[c2.*]` | How long a battery must be inside the radius before it is in the net (§11.2). Default 0. |
+| `value` | `[air.*]`, `[air_defence.*]`, `[c2.*]` | How much destroying this is worth to the enemy's allocation. Emplacements have no cross-class derivation, so this is how "the SAM before the tanks" is said (§12.4). |
+| `anti_radiation` + `silent_cep_m` | `[weapons.*]` | The munition homes on a *transmitting* radar; against a silent one it lands with `silent_cep_m` instead of `cep_m` (§12.3). |
+
+There is no dial for jamming a C2 link — a jammer already does it. An enemy jammer near a
+post scales its coordination radius by the EW factor, so the batteries on the flanks fall
+out of the net while the one on top of the post keeps talking (§11.2). SEAD hard-kills the
+post; EW soft-kills its reach.
 
 You do not have to edit a file to try a different value. `sweep` patches any dotted path
 into the scenario TOML before it is parsed, and runs every arm over the same seed set:
