@@ -8,6 +8,8 @@ the knobs.
 | File | What it holds |
 |---|---|
 | `default.toml` | The main scenario: terrain generation, forces, sensor placements |
+| `fire_allocation.toml` | Four shooters that can all reach all four targets — the case where the allocation rule actually matters |
+| `sensor_search.toml` | Narrow-arc observers searching by belief (needs `sensor_tasking`) |
 | `air_raid.toml` | The counter-air scenario: a drone raid vs self-cued and net-cued defences |
 | `mountain_pass.toml` | A composable terrain recipe: rolling base + ridge + woodland + urban |
 | `flat_range.toml` | A flat, featureless test range — isolates models from terrain effects |
@@ -86,9 +88,34 @@ from the one seeded stream, so a recipe plus a seed always gives the same map. `
 Every placed asset names a `type` from the libraries above, so a scenario says *where*
 things are and the libraries say *what they are*.
 
-Every dial in `[sim]` has a default, so a scenario only states what it wants to change.
-`dt_s` and `epoch_s` set the continuous and discrete cadences; `track_hold_s` and
-`track_maintain_p` set how long a track survives without a fresh observation and how good
-a look has to be to count as one. Turning `track_hold_s` up towards the run length
-recovers the old permanent-detection behaviour, which is a useful thing to be able to
-switch off when isolating another model.
+## The `[sim]` dials
+
+Every dial has a default, so a scenario states only what it wants to change.
+
+| Dial | Default | What it does |
+|---|---|---|
+| `dt_s` | 1.0 | Tick length — the continuous cadence (DESIGN §7.1) |
+| `epoch_s` | 10.0 | Decision-epoch length — the discrete cadence |
+| `suppression_radius_m` | 35.0 | A round landing this close is a near miss (§4.3) |
+| `p_suppress` | 0.15 | Chance one near miss steps suppression up |
+| `recover_per_s` | 0.05 | Rate of stepping back down |
+| `suppressed_fire_factor` | 0.4 | Outgoing fire multiplier while Suppressed |
+| `track_hold_s` | 45.0 | How long a track survives unobserved (§10.1) |
+| `track_maintain_p` | 0.5 | How good a look must be to refresh a track |
+| `allocation` | `optimal` | `optimal` / `greedy` / `independent` (§10.2) |
+| `max_shooters_per_target` | 3 | Overkill cap per target per epoch |
+| `sensor_tasking` | `false` | Do steerable sensors search by belief? (§10.3) |
+| `belief_cells` | 48 | Edge length of the coarse belief grid |
+
+Three of these are worth knowing as **switches back to older behaviour**, which is how you
+isolate one model from another:
+
+- `allocation = "independent"` restores the pre-Phase-10 rule where every shooter picked
+  the nearest enemy for itself. Comparing against `optimal` is what the
+  `allocation_gap` experiment measures.
+- `track_hold_s` set towards the run length recovers permanent detection — useful when
+  you want to study fires without tracks lapsing underneath you.
+- `sensor_tasking` is **off by default**: a `facing_deg` you write in a scenario is taken
+  as meant. Turn it on to let sensors search (see `sensor_search.toml`), but note it
+  dissolves any scenario whose premise is a *committed* sensor posture — the interdiction
+  game being the example that caught this.
