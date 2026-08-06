@@ -11,7 +11,8 @@ use sim_core::los;
 use sim_core::sim::Side;
 use sim_core::suppression::Suppression;
 
-use crate::state::{Probe, Selected, SimRes, UiState, PROBE_HEIGHT_M};
+use crate::selection;
+use crate::state::{Probe, SimRes, UiState, PROBE_HEIGHT_M};
 
 /// Force markers: sensors as circles, units as diamonds; blue/red by side; a white
 /// ring marks units the enemy has detected. Sizes scale with zoom.
@@ -26,16 +27,16 @@ pub fn draw_markers(
         _ => 1.0,
     };
 
-    // Selection highlight: a yellow ring around every selected ground asset.
+    // Selection highlight: one yellow ring per selected asset, whatever kind it is.
+    // Driven off `selection::position` rather than a match here, so an asset class that
+    // becomes selectable cannot end up selectable-but-invisible.
     for sel in &ui_state.selected {
-        if let Selected::Unit(idx) = sel {
-            if let Some(u) = sim.sim.units().get(*idx).filter(|u| u.alive()) {
-                gizmos.circle_2d(
-                    Isometry2d::from_translation(u.pos),
-                    18.0 * px,
-                    Color::srgb(1.0, 0.9, 0.2),
-                );
-            }
+        if let Some(p) = selection::position(&sim.sim, *sel) {
+            gizmos.circle_2d(
+                Isometry2d::from_translation(p),
+                20.0 * px,
+                Color::srgb(1.0, 0.9, 0.2),
+            );
         }
     }
     let side_color = |side: Side| match side {
@@ -142,7 +143,7 @@ pub fn draw_markers(
 
     // Air assets: a triangle pointing along the heading, so course is readable at a
     // glance; an orbit plan draws its circle.
-    for (i, a) in sim.sim.air().iter().enumerate() {
+    for a in sim.sim.air() {
         let c = side_color(a.side);
         if !a.alive {
             cross(&mut gizmos, a.pos, 7.0 * px); // shot down
@@ -178,13 +179,6 @@ pub fn draw_markers(
 
         if a.detected {
             gizmos.circle_2d(Isometry2d::from_translation(a.pos), 15.0 * px, Color::WHITE);
-        }
-        if ui_state.selected.contains(&Selected::Air(i)) {
-            gizmos.circle_2d(
-                Isometry2d::from_translation(a.pos),
-                20.0 * px,
-                Color::srgb(1.0, 0.9, 0.2),
-            );
         }
     }
 

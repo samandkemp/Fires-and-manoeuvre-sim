@@ -84,6 +84,8 @@ fn keyboard(sim: &mut SimRes, ui_state: &mut UiState, keys: &ButtonInput<KeyCode
             match sel {
                 Selected::Unit(i) => sim.sim.remove_unit(i),
                 Selected::Air(i) => sim.sim.remove_air(i),
+                Selected::AirDefence(i) => sim.sim.remove_air_defence(i),
+                Selected::C2(i) => sim.sim.remove_c2(i),
             }
         }
     }
@@ -223,17 +225,20 @@ fn place_drone(sim: &mut SimRes, ui_state: &mut UiState, world: Vec2) {
 
 /// Place a Blue C2 post. Coordinates every friendly battery inside its radius (§11) —
 /// and, being unarmed and conspicuous, is the obvious thing for the other side to attack.
-fn place_c2(sim: &mut SimRes, ui_state: &UiState, world: Vec2) {
+fn place_c2(sim: &mut SimRes, ui_state: &mut UiState, world: Vec2) {
     let Some(stats) = sim.data.libs.c2.get(&ui_state.c2_type_id).cloned() else {
         return;
     };
     sim.placed += 1;
     let id = format!("cp-p{}", sim.placed);
-    sim.sim.add_c2(&id, Side::Blue, world, stats);
+    let idx = sim.sim.add_c2(&id, Side::Blue, world, stats);
+    // Select what was just placed, as unit and drone placement do: the next thing you want
+    // is almost always to nudge it, and the panel then reports what it is coordinating.
+    ui_state.selected = vec![Selected::C2(idx)];
 }
 
 /// Place a self-cueing Blue air-defence battery.
-fn place_air_defence(sim: &mut SimRes, ui_state: &UiState, world: Vec2) {
+fn place_air_defence(sim: &mut SimRes, ui_state: &mut UiState, world: Vec2) {
     let Some(stats) = sim
         .data
         .libs
@@ -249,6 +254,8 @@ fn place_air_defence(sim: &mut SimRes, ui_state: &UiState, world: Vec2) {
         .sensor
         .as_ref()
         .and_then(|s| sim.data.libs.sensors.get(s).cloned());
-    sim.sim
+    let idx = sim
+        .sim
         .add_air_defence(&id, Side::Blue, world, stats, true, sensor);
+    ui_state.selected = vec![Selected::AirDefence(idx)];
 }

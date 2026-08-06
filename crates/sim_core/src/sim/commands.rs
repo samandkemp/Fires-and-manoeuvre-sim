@@ -124,6 +124,63 @@ impl Sim {
         self.c2[c2_idx].elements = 0;
     }
 
+    /// Destroy an air-defence battery (`docs/DESIGN.md` §12), tombstoned like the rest.
+    ///
+    /// Two things go at once, which is what makes SEAD worth doing: the launchers stop
+    /// engaging, **and** the organic radar goes dark — [`Sim::sensor_active`] already knows
+    /// a battery's radar dies with it, so coverage and belief drop it without a special
+    /// case here.
+    pub fn remove_air_defence(&mut self, ad_idx: usize) {
+        self.air_defence[ad_idx].elements = 0;
+    }
+
+    /// Reposition a C2 post. Emplaced assets do not move themselves, but siting one *is*
+    /// the decision a C2 post represents, so dragging it around is how its radius is
+    /// explored.
+    pub fn set_c2_pos(&mut self, c2_idx: usize, pos: Vec2) {
+        self.c2[c2_idx].pos = pos;
+    }
+
+    /// Reposition an air-defence battery, moving its organic radar with it.
+    ///
+    /// The radar is an ordinary entry in the sensor list, so leaving it behind would give
+    /// the battery a detached eye at its old site — a bug that would show up only as
+    /// coverage in the wrong place.
+    pub fn set_air_defence_pos(&mut self, ad_idx: usize, pos: Vec2) {
+        self.air_defence[ad_idx].pos = pos;
+        if let Some(s) = self.air_defence[ad_idx].sensor_idx {
+            self.sensors[s].pos = pos;
+        }
+    }
+
+    /// Index of the nearest live air-defence battery to `pos` within `max_dist_m`.
+    #[must_use]
+    pub fn nearest_air_defence(&self, pos: Vec2, max_dist_m: f32) -> Option<usize> {
+        nearest(
+            self.air_defence
+                .iter()
+                .enumerate()
+                .filter(|(_, d)| d.alive())
+                .map(|(i, d)| (i, d.pos)),
+            pos,
+            max_dist_m,
+        )
+    }
+
+    /// Index of the nearest live C2 post to `pos` within `max_dist_m`.
+    #[must_use]
+    pub fn nearest_c2(&self, pos: Vec2, max_dist_m: f32) -> Option<usize> {
+        nearest(
+            self.c2
+                .iter()
+                .enumerate()
+                .filter(|(_, c)| c.alive())
+                .map(|(i, c)| (i, c.pos)),
+            pos,
+            max_dist_m,
+        )
+    }
+
     /// Index of the nearest live unit to `pos` within `max_dist_m`, or `None`.
     #[must_use]
     pub fn nearest_unit(&self, pos: Vec2, max_dist_m: f32) -> Option<usize> {

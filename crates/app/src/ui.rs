@@ -181,6 +181,7 @@ impl Panel<'_, '_, '_> {
         ui.separator();
         ui.collapsing("Controls", |ui| {
             ui.small("Left-click select \u{b7} shift add \u{b7} drag box-select");
+            ui.small("Selects units, drones, AD batteries and C2 posts");
             ui.small("Right-click move here \u{b7} shift append waypoint");
             ui.small("Ctrl+A select all \u{b7} Del remove \u{b7} Esc clear");
             ui.small("Middle-drag pan \u{b7} scroll zoom");
@@ -214,6 +215,8 @@ impl Panel<'_, '_, '_> {
         self.ui_state.selected.retain(|sel| match sel {
             Selected::Unit(i) => sim_ref.units().get(*i).is_some_and(|u| u.alive()),
             Selected::Air(i) => sim_ref.air().get(*i).is_some_and(|a| a.alive),
+            Selected::AirDefence(i) => sim_ref.air_defence().get(*i).is_some_and(|d| d.alive()),
+            Selected::C2(i) => sim_ref.c2().get(*i).is_some_and(|c| c.alive()),
         });
         match self.ui_state.selected.len() {
             0 => {
@@ -231,18 +234,55 @@ impl Panel<'_, '_, '_> {
                     let a = &self.sim.sim.air()[i];
                     ui.label(format!("Selected: {} (drone, {:?})", a.id, a.side));
                 }
+                Selected::AirDefence(i) => {
+                    let d = &self.sim.sim.air_defence()[i];
+                    let rounds = if d.magazine_left == u32::MAX {
+                        "unlimited".to_owned()
+                    } else {
+                        format!("{} rounds", d.magazine_left)
+                    };
+                    ui.label(format!(
+                        "Selected: {} (air defence, {:?})  {}/{} up  {rounds}",
+                        d.id,
+                        d.side,
+                        d.elements,
+                        d.stats.element_count.max(1)
+                    ));
+                }
+                Selected::C2(i) => {
+                    let c = &self.sim.sim.c2()[i];
+                    // Say how many batteries it is actually holding together: that number
+                    // is the post's whole reason to exist, and it changes as things move.
+                    let covered = self
+                        .sim
+                        .sim
+                        .air_defence()
+                        .iter()
+                        .filter(|d| d.side == c.side && d.alive() && c.covers(d.pos))
+                        .count();
+                    ui.label(format!(
+                        "Selected: {} (C2 post, {:?})  coordinating {covered}",
+                        c.id, c.side
+                    ));
+                }
             },
             n => {
-                let air = self
-                    .ui_state
-                    .selected
+                let mut counts = [0_usize; 4];
+                for s in &self.ui_state.selected {
+                    counts[match s {
+                        Selected::Unit(_) => 0,
+                        Selected::Air(_) => 1,
+                        Selected::AirDefence(_) => 2,
+                        Selected::C2(_) => 3,
+                    }] += 1;
+                }
+                let parts: Vec<String> = ["ground", "air", "AD", "C2"]
                     .iter()
-                    .filter(|s| matches!(s, Selected::Air(_)))
-                    .count();
-                ui.label(format!(
-                    "Selected: {n} assets ({} ground, {air} air)",
-                    n - air
-                ));
+                    .zip(counts)
+                    .filter(|(_, c)| *c > 0)
+                    .map(|(name, c)| format!("{c} {name}"))
+                    .collect();
+                ui.label(format!("Selected: {n} assets ({})", parts.join(", ")));
             }
         }
     }
@@ -334,7 +374,7 @@ impl Panel<'_, '_, '_> {
             .iter()
             .filter_map(|s| match s {
                 Selected::Air(i) => Some(*i),
-                Selected::Unit(_) => None,
+                _ => None,
             })
             .collect();
         if let [only] = selected_air[..] {

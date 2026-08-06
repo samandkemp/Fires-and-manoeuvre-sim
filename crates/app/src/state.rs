@@ -20,14 +20,23 @@ pub struct SimRes {
     pub placed: u32,
 }
 
-/// One selected asset. Selection spans both lists, so a box-select can pick up a mixed
-/// group and the same commands apply to all of it.
+/// One selected asset. Selection spans every asset list, so a box-select can pick up a
+/// mixed group and the same commands apply to all of it.
+///
+/// Batteries and posts are here because they are placeable, and anything placeable has to
+/// be removable — an asset you can put on the map but never take off is a trap. They are
+/// *emplaced*, so the only command they answer is "be somewhere else"; a right-click drags
+/// them rather than routing them, which is the decision an emplacement represents anyway.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Selected {
     /// Index into `Sim::units`.
     Unit(usize),
     /// Index into `Sim::air`.
     Air(usize),
+    /// Index into `Sim::air_defence`.
+    AirDefence(usize),
+    /// Index into `Sim::c2`.
+    C2(usize),
 }
 
 /// What a right-click on the map does.
