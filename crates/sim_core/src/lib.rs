@@ -15,6 +15,7 @@ pub mod air;
 pub mod air_defence;
 pub mod allocation;
 pub mod c2;
+pub mod doctrine;
 pub mod ew;
 pub mod fires;
 pub mod game;

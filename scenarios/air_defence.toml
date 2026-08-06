@@ -18,6 +18,7 @@
 #   channels       — simultaneous engagements: what a raid saturates.
 
 [ciws]
+role = "point_defence"
 max_range_m = 2000.0
 min_alt_m = 0.0
 max_alt_m = 1500.0
@@ -32,6 +33,7 @@ sensor = "ciws_radar"          # self-cueing: its own radar closes the loop
 kill_rate_per_s = 0.9          # E[TTK] ≈ 1.1 s once it is firing
 
 [sam]
+role = "area_defence"
 min_range_m = 500.0            # inner dead zone
 max_range_m = 12000.0
 min_alt_m = 100.0
@@ -50,6 +52,7 @@ missile_speed_m_s = 700.0
 reload_s = 8.0                 # E[TTK] at 6 km ≈ 13.2 s + 4.3 s = 17.5 s
 
 [gun_truck]
+role = "point_defence"
 # A short-range self-defence gun with no radar at all: cheap, quick to react, but blind
 # without a cue — the clearest illustration of the sensor-to-shooter timeline.
 max_range_m = 1200.0
@@ -63,3 +66,6 @@ magazine = 0                   # unlimited ammunition
 channels = 1
 [gun_truck.engagement.gun]
 kill_rate_per_s = 0.5
+
+# `role` sorts a target-priority list (DESIGN §13.1). The class `air_defence` matches
+# every battery regardless, so these only matter when a fire plan distinguishes the two.

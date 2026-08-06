@@ -128,6 +128,33 @@ isolate one model from another:
   plan; one outside picks for itself. Turning it on unconditionally would have reduced
   every existing scenario to `independent` overnight, which is why it is a dial.
 
+## The kill chain
+
+A side may declare what it has been told to shoot first (DESIGN §13). Absent, the §10.2
+payoff decides alone; present, it is **followed**:
+
+```toml
+[blue.doctrine]
+priority = ["red-cp", "air_defence", "armour"]   # id, class, role — all valid
+mode = "strict"                                  # the default; or "weighted"
+
+[[blue.orders]]                                  # bypass the decision entirely
+shooter = "gun-a"
+target = "red-cp"
+```
+
+`strict` means a shooter that can reach a higher tier takes it *even at a worse shot* — a
+crew follows orders, not a kill-probability table. `weighted` scales value by tier instead,
+so doctrine biases the optimisation without overriding it.
+
+An entry may name an asset **id**, a **role** declared on its stat block (`role = "armour"`),
+or a **class** (`unit`, `air_defence`, `c2`, `air`). A role never masks its class, so
+`"air_defence"` still matches a battery that calls itself `"sam"`. Anything unnamed falls
+into an implicit bottom tier. **A name matching nothing is a load error** listing what would
+have worked — a tier that silently matches nothing is a doctrine nobody is following.
+
+`scenarios/kill_chain.toml` is the worked example.
+
 ## Dials that are not in `[sim]`
 
 Three that matter for the counter-air and SEAD scenarios live on the **stat blocks**, so

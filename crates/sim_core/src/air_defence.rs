@@ -101,6 +101,11 @@ pub struct AirDefenceType {
     /// tanks" gets expressed.
     #[serde(default)]
     pub value: Option<f32>,
+    /// Free-form role this asset answers to in a target-priority list
+    /// (`docs/DESIGN.md` §13). Optional: the class `air_defence` always matches anyway, so
+    /// this is only needed to say something finer than that.
+    #[serde(default)]
+    pub role: Option<String>,
 }
 
 fn default_mount_height() -> f32 {
@@ -134,6 +139,7 @@ impl Default for AirDefenceType {
             height_m: default_ad_height(),
             silhouette_width_m: default_ad_width(),
             value: None,
+            role: None,
             engagement: AdEngagement::Gun {
                 kill_rate_per_s: 0.0,
             },

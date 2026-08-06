@@ -9,6 +9,7 @@ use super::{JammerState, SensorState, Side, Sim, UnitState};
 use crate::air::{AirState, AirType, FlightPlan, TargetSpec};
 use crate::air_defence::{AirDefenceState, AirDefenceType};
 use crate::c2::{C2State, C2Type};
+use crate::doctrine::Vocabulary;
 use crate::ew::Jammer;
 use crate::fires::WeaponType;
 use crate::scenario::{Libraries, Scenario, ScenarioError, TargetConfig};
@@ -75,6 +76,8 @@ impl Sim {
             max_shooters_per_target: cfg.max_shooters_per_target,
             max_batteries_per_air_target: cfg.max_batteries_per_air_target,
             fires_need_c2: cfg.fires_need_c2,
+            doctrine: [None, None],
+            orders: [Vec::new(), Vec::new()],
             sensor_tasking: cfg.sensor_tasking,
             tasking: super::tasking::Tasking::new(cfg.belief_cells.max(1)),
             time_s: 0.0,
@@ -221,6 +224,48 @@ impl Sim {
                     ScenarioError::Invalid(format!("unknown C2 type '{}'", c.type_id))
                 })?;
                 self.add_c2(&c.id, side, Vec2::from(c.pos), stats.clone());
+            }
+            self.doctrine[side as usize] = force.doctrine.clone();
+            self.orders[side as usize] = force.orders.clone();
+        }
+        // After placement, because a priority entry may name an asset by id and nothing is
+        // placed until now.
+        self.check_doctrine()
+    }
+
+    /// Every priority entry and every order must name something on the field
+    /// (`docs/DESIGN.md` §13.1).
+    ///
+    /// A tier that matches nothing is not an empty tier — it is a doctrine nobody is
+    /// following, and it fails silently: the run succeeds and simply answers a different
+    /// question. Same reasoning as the schema's `deny_unknown_fields`, and the error names
+    /// what *would* have worked, because the usual cause is a typo or a role never declared.
+    fn check_doctrine(&self) -> Result<(), ScenarioError> {
+        if self.doctrine.iter().all(Option::is_none) && self.orders.iter().all(Vec::is_empty) {
+            return Ok(()); // nothing declared: nothing to check
+        }
+        let mut vocab = Vocabulary::default();
+        for t in self.all_target_names() {
+            vocab.insert(&t);
+        }
+        for side in [Side::Blue, Side::Red] {
+            if let Some(doc) = &self.doctrine[side as usize] {
+                if let Some(bad) = vocab.first_unmatched(&doc.priority) {
+                    return Err(ScenarioError::Invalid(format!(
+                        "{side:?} doctrine names '{bad}', which is not an id, role or class \
+                         on this map. Known: {}",
+                        vocab.known()
+                    )));
+                }
+            }
+            for order in &self.orders[side as usize] {
+                for (what, id) in [("shooter", &order.shooter), ("target", &order.target)] {
+                    if !vocab.0.contains(id) {
+                        return Err(ScenarioError::Invalid(format!(
+                            "{side:?} order names {what} '{id}', which is not on this map"
+                        )));
+                    }
+                }
             }
         }
         Ok(())

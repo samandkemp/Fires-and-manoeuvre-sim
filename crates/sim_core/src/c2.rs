@@ -72,6 +72,11 @@ pub struct C2Type {
     /// command post first" gets expressed.
     #[serde(default)]
     pub value: Option<f32>,
+    /// Free-form role this asset answers to in a target-priority list
+    /// (`docs/DESIGN.md` §13). Optional: the class `c2` always matches anyway, so
+    /// this is only needed to say something finer than that.
+    #[serde(default)]
+    pub role: Option<String>,
 }
 
 fn default_elements() -> u32 {
@@ -96,6 +101,7 @@ impl Default for C2Type {
             signature: std::collections::BTreeMap::new(),
             element_count: default_elements(),
             value: None,
+            role: None,
         }
     }
 }

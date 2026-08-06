@@ -165,15 +165,21 @@ impl Sim {
                 continue;
             }
 
-            // Commit new engagements, nearest first; ties break on index so the order is
-            // deterministic.
-            let mut candidates: Vec<(usize, f32)> = engageable
+            // Commit new engagements, **doctrine tier first, then nearest**; ties break on
+            // index so the order is deterministic. Being outside the net costs a battery
+            // its coordination, not its orders — a lone gun still shoots what it was told
+            // to shoot first, it just does not know what anyone else is shooting (§13.2).
+            // With no doctrine every tier is 0 and this is exactly nearest-first.
+            let side = self.air_defence[ad_idx].side;
+            let mut candidates: Vec<(usize, usize, f32)> = engageable
                 .iter()
                 .enumerate()
                 .filter(|(_, &e)| e)
-                .map(|(i, _)| (i, ranges[i]))
+                .map(|(i, _)| (self.air_tier(side, i), i, ranges[i]))
                 .collect();
-            candidates.sort_by(|a, b| a.1.total_cmp(&b.1).then(a.0.cmp(&b.0)));
+            candidates.sort_by(|a, b| a.0.cmp(&b.0).then(a.2.total_cmp(&b.2)).then(a.1.cmp(&b.1)));
+            let candidates: Vec<(usize, f32)> =
+                candidates.into_iter().map(|(_, i, r)| (i, r)).collect();
             for (a_idx, range) in candidates {
                 if !self.air[a_idx].alive {
                     continue;
@@ -286,18 +292,121 @@ impl Sim {
         }
 
         // Columns: slots on each airframe any coordinated battery can engage.
-        let mut targets: Vec<usize> = Vec::new();
+        let mut all_targets: Vec<usize> = Vec::new();
         for (_, engageable, _) in coordinated {
             for (a_idx, &ok) in engageable.iter().enumerate() {
-                if ok && self.air[a_idx].alive && !targets.contains(&a_idx) {
-                    targets.push(a_idx);
+                if ok && self.air[a_idx].alive && !all_targets.contains(&a_idx) {
+                    all_targets.push(a_idx);
                 }
             }
         }
-        if targets.is_empty() {
+        if all_targets.is_empty() {
             return;
         }
-        targets.sort_unstable();
+        all_targets.sort_unstable();
+
+        // Doctrine (§13.2). Without one this is a single group at weight 1 — exactly the
+        // pre-doctrine solve. Strict runs the assignment once per tier, highest first, so
+        // a free channel that can reach a priority airframe spends itself there before it
+        // is offered anything lower.
+        let side = self.air_defence[coordinated[0].0].side;
+        let (groups, weights) = self.air_target_groups(side, &all_targets);
+        let mut free_rows = rows;
+        for (targets, weight) in groups.iter().zip(&weights) {
+            if free_rows.is_empty() {
+                break;
+            }
+            let used = self.open_group(coordinated, &free_rows, targets, *weight, now);
+            free_rows = free_rows
+                .into_iter()
+                .enumerate()
+                .filter(|(i, _)| !used.contains(i))
+                .map(|(_, r)| r)
+                .collect();
+        }
+    }
+
+    /// Which doctrine tier an airframe sits in for `side`. Tier 0 for everything when the
+    /// side has no doctrine, which is what makes the undirected path unchanged.
+    fn air_tier(&self, side: Side, a_idx: usize) -> usize {
+        self.doctrine_of(side).map_or(0, |doc| {
+            doc.tier_of(&crate::doctrine::TargetNames {
+                id: &self.air[a_idx].id,
+                role: self.air[a_idx].stats.role.as_deref(),
+                class: "air",
+            })
+        })
+    }
+
+    /// Split the engageable airframes into doctrine tiers, with the value multiplier each
+    /// group carries (`docs/DESIGN.md` §13.2).
+    ///
+    /// One group at weight 1 when the side has no doctrine, or when its mode is
+    /// `Weighted` — in the weighted case the multipliers ride on the per-target value
+    /// instead, so the solve stays a single problem and the payoff still decides.
+    fn air_target_groups(&self, side: Side, targets: &[usize]) -> (Vec<Vec<usize>>, Vec<f32>) {
+        let Some(doc) = self.doctrine_of(side) else {
+            return (vec![targets.to_vec()], vec![1.0]);
+        };
+        let tier_of = |a_idx: usize| {
+            doc.tier_of(&crate::doctrine::TargetNames {
+                id: &self.air[a_idx].id,
+                role: self.air[a_idx].stats.role.as_deref(),
+                class: "air",
+            })
+        };
+        if doc.mode == crate::doctrine::DoctrineMode::Weighted {
+            // A single solve; the tier only scales value. Handled by `open_group` reading
+            // the weight per target, so hand it the whole set and a sentinel weight.
+            return (vec![targets.to_vec()], vec![f32::NEG_INFINITY]);
+        }
+        let mut groups = Vec::new();
+        for tier in 0..doc.tier_count() {
+            let g: Vec<usize> = targets
+                .iter()
+                .copied()
+                .filter(|&a| tier_of(a) == tier)
+                .collect();
+            if !g.is_empty() {
+                groups.push(g);
+            }
+        }
+        let weights = vec![1.0; groups.len()];
+        (groups, weights)
+    }
+
+    /// Solve one assignment over `targets` and open the engagements it chose, returning
+    /// which rows were consumed.
+    ///
+    /// `weight` scales every target's value; the sentinel `-inf` means "look the weight up
+    /// per target from doctrine", which is how `Weighted` mode gets its per-tier scaling
+    /// without a second solve.
+    #[allow(clippy::too_many_lines)]
+    fn open_group(
+        &mut self,
+        coordinated: &[(usize, Vec<bool>, Vec<f32>)],
+        rows: &[(usize, f32)],
+        targets: &[usize],
+        weight: f32,
+        now: f64,
+    ) -> Vec<usize> {
+        if rows.is_empty() || targets.is_empty() {
+            return Vec::new();
+        }
+        let side = self.air_defence[coordinated[0].0].side;
+        let doc = self.doctrine_of(side);
+        let weight_of = |a_idx: usize| -> f32 {
+            if weight.is_finite() {
+                return weight;
+            }
+            doc.map_or(1.0, |d| {
+                d.weight_for_tier(d.tier_of(&crate::doctrine::TargetNames {
+                    id: &self.air[a_idx].id,
+                    role: self.air[a_idx].stats.role.as_deref(),
+                    class: "air",
+                }))
+            })
+        };
 
         let cap = self.max_batteries_per_air_target.max(1) as usize;
         let mut slot_target = Vec::new();
@@ -338,7 +447,8 @@ impl Sim {
                         let value = f64::from(
                             self.air[a_idx]
                                 .stats
-                                .threat_value(self.air[a_idx].munitions_left),
+                                .threat_value(self.air[a_idx].munitions_left)
+                                * weight_of(a_idx),
                         );
                         // Same geometric discount as ground fires (§10.2): a second
                         // battery on one drone only helps if the first misses.
@@ -349,6 +459,7 @@ impl Sim {
             .collect();
 
         let solver: Solver = self.allocation.into();
+        let mut used = Vec::new();
         for (row, slot) in allocation::solve(&payoff, solver).into_iter().enumerate() {
             let Some(j) = slot else { continue };
             let (ad_idx, _) = rows[row];
@@ -363,7 +474,9 @@ impl Sim {
                 continue;
             }
             ad.open(a_idx, now, range);
+            used.push(row);
         }
+        used
     }
 
     /// Probability this battery destroys this airframe **before it releases** — the

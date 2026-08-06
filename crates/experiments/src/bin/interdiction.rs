@@ -77,6 +77,7 @@ fn main() {
         signature: BTreeMap::from([("optical".to_owned(), 0.8)]),
         weapon: None, // pure interdiction target
         value: None,
+        role: None,
     };
 
     // Three lanes (south / centre / north). Each Blue overwatch sits mid-lane facing

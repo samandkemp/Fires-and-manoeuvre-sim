@@ -11,6 +11,7 @@
 # pin, larger fixed-wing airframes carve wide arcs, which is what makes an orbit legible.
 
 [recce_uas]
+role = "recce"
 height_m = 1.2
 silhouette_width_m = 3.0
 cruise_speed_m_s = 30.0
@@ -21,6 +22,7 @@ sensor = "uas_optical"
 optical = 0.25                 # small and high: hard to see, but not invisible
 
 [strike_uas]
+role = "strike"
 height_m = 1.5
 silhouette_width_m = 4.0
 cruise_speed_m_s = 45.0
@@ -38,6 +40,7 @@ release_range_m = 2500.0
 optical = 0.35
 
 [fpv]
+role = "strike"
 height_m = 0.4
 silhouette_width_m = 0.5
 cruise_speed_m_s = 30.0
@@ -49,3 +52,6 @@ expendable = true              # one-way attack munition
 release_range_m = 15.0         # flies into the target
 [fpv.signature]
 optical = 0.12                 # very hard to see, very short legs
+
+# `role` sorts a target-priority list (DESIGN §13.1) — air defence uses it to decide
+# whether to engage the spotter or the shooter first.

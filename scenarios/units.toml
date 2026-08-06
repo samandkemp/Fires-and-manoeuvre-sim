@@ -4,6 +4,7 @@
 # `weapon` (optional) references a weapon type in weapons.toml.
 
 [inf_section]
+role = "infantry"
 height_m = 1.8
 silhouette_width_m = 2.0
 element_count = 8       # a section of 8 dismounts
@@ -13,6 +14,7 @@ weapon = "small_arms"
 optical = 0.35
 
 [afv]
+role = "armour"
 height_m = 2.8
 silhouette_width_m = 3.2
 element_count = 3       # a troop of 3 vehicles
@@ -22,6 +24,7 @@ weapon = "afv_cannon"
 optical = 0.75
 
 [sp_gun]
+role = "artillery"
 height_m = 3.2
 silhouette_width_m = 6.0
 element_count = 2       # a pair of guns
@@ -29,3 +32,7 @@ speed_m_s = 0.0        # emplaced
 weapon = "howitzer_155"
 [sp_gun.signature]
 optical = 0.85
+
+# `role` is what a target-priority list sorts on (DESIGN §13.1). Free-form: invent whatever
+# categories a scenario needs. The asset's id and its class (`unit`) always match too, so a
+# role is only needed to say something finer than "a unit".

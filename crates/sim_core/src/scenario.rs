@@ -4,6 +4,7 @@
 use crate::air::{AirType, AltitudeRef, Terminal};
 use crate::air_defence::AirDefenceType;
 use crate::c2::C2Type;
+use crate::doctrine::{Doctrine, Order};
 use crate::fires::WeaponType;
 use crate::sensing::{SensorType, UnitType};
 use crate::terrain::{TerrainGrid, TerrainParamsTable, TerrainSource};
@@ -268,6 +269,15 @@ pub struct Force {
     /// Placed C2 posts, which coordinate nearby air defence (`docs/DESIGN.md` §11).
     #[serde(default)]
     pub c2: Vec<C2Instance>,
+    /// What this side has been told to shoot first (`docs/DESIGN.md` §13).
+    ///
+    /// Absent means the §10.2 payoff decides alone, exactly as before doctrine existed.
+    /// Present means it is **followed** — see [`crate::doctrine::DoctrineMode`].
+    #[serde(default)]
+    pub doctrine: Option<Doctrine>,
+    /// Engagements ordered outright, bypassing the assignment (`docs/DESIGN.md` §13.3).
+    #[serde(default)]
+    pub orders: Vec<Order>,
 }
 
 /// A placed C2 post: a type id from `c2.toml` plus where it is.

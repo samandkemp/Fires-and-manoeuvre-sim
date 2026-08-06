@@ -1,0 +1,124 @@
+# Directed targeting: what a side has been *told* to shoot first (DESIGN §13).
+#
+# One Blue gun pair, four Red targets, and only enough fire for one of them at a time. That
+# scarcity is the whole design: with enough guns to engage everything, a fire plan changes
+# nothing and there is nothing to measure.
+#
+# Left alone, Blue's allocation maximises P(kill) x value and shoots the **armour** — it is
+# the biggest thing on the field and the only thing armed, so it earns the highest derived
+# threat score (DESIGN §10.2). That is the payoff-optimal answer, and it never touches the
+# air-defence problem.
+#
+# Uncomment the `[blue.doctrine]` block and Blue does what it has been ordered to instead:
+# the command post first, then the battery, then armour. Same guns, same targets, opposite
+# opening move.
+#
+#   sweep kill_chain --param blue.doctrine.priority \
+#         --values '["armour"],["c2","air_defence","armour"]' \
+#         --seeds 500 --until 20 --metric red_losses
+#
+# Measured (500 paired seeds, 20 s):
+#
+#              armour first    c2 / air defence first
+#   red_losses     1.42                0.00      (t = -21.7)
+#   posts killed   0.00                0.60      (t = +27.2)
+#
+# The directed plan scores *worse* on casualties and better on what it was aiming at, which
+# is the trade a fire plan is: it is not trying to maximise the body count.
+#
+# One result worth knowing about, because it is not obvious and it is not a bug. Batteries
+# killed comes out slightly LOWER under the air-defence-first plan (0.15 vs 0.21). The cause
+# is the acquisition rule: a tank must be *found* — mean first detection here is 3.5 s —
+# whereas an emitting battery is locatable from the first tick (DESIGN §12.4). So in the
+# seeds where no tank has been detected by the first fires epoch, even the armour-first plan
+# opens on the battery, simply because it is the only thing Blue can shoot at. Doctrine
+# ranks what you can see; it cannot rank what you have not found yet.
+#
+# --- Why the pieces are what they are ---------------------------------------------------
+#
+# Red sits 4 km out: inside the howitzer's band (2-24 km) and outside the AFV cannon's
+# 2.5 km reach, so Red cannot shoot back. Deliberate — the question is what Blue *chooses*,
+# and a two-way firefight would bury that under attrition.
+#
+# The battery is a `ciws`, not a `sam`, because a CIWS carries its own radar and a SAM in
+# this library deliberately does not. Only an emplacement that **emits or has fired** can be
+# located by indirect fire (DESIGN §12.4), so a silent SAM is not in Blue's fire plan at all.
+# Set `self_cue = false` below and watch the `air_defence` tier go inert: that is the same
+# trade §12.3 poses against an anti-radiation missile, now costing artillery cover too.
+#
+# The post is findable because it is *talking* — it coordinates the battery, and a post with
+# nothing left to coordinate stops being locatable. Kill the battery first and the post
+# becomes invisible, which is a genuinely awkward consequence of the acquisition rule and
+# worth seeing.
+
+name = "kill_chain"
+default_seed = 11
+
+[sim]
+dt_s = 1.0
+epoch_s = 10.0
+# One shooter per target. With a single gun pair this is what forces a choice rather than
+# a spread.
+max_shooters_per_target = 1
+
+[terrain]
+cell_size_m = 10.0
+width_cells = 700
+height_cells = 300
+
+[terrain.source.flat]
+elevation_m = 0.0
+
+# --- Blue: one gun pair and the observer that feeds it ----------------------------------
+
+[[blue.units]]
+id = "gun-a"
+type = "sp_gun"
+pos = [800.0, 1500.0]
+
+# Indirect fire needs a track (DESIGN §2). Without this the guns would see nothing and the
+# doctrine would have nothing to sort.
+[[blue.sensors]]
+id = "obs-1"
+type = "mast_optical"
+pos = [1000.0, 1500.0]
+
+# --- Blue's fire plan -------------------------------------------------------------------
+#
+# Uncomment to direct the gun. Entries may name an id, a role or a class (DESIGN §13.1):
+# "c2" and "air_defence" are classes, "armour" is the role on the `afv` stat block, and
+# "red-cp" would name that one post.
+#
+# [blue.doctrine]
+# priority = ["c2", "air_defence", "armour"]
+# mode = "strict"
+#
+# Or bypass the decision entirely and simply order the engagement (DESIGN §13.3) — which is
+# how a gate states a pairing as a fact rather than a likely outcome:
+#
+# [[blue.orders]]
+# shooter = "gun-a"
+# target = "red-cp"
+
+# --- Red: the armour that attracts fire, and the air defence that should ----------------
+
+[[red.units]]
+id = "tank-1"
+type = "afv"
+pos = [4800.0, 1250.0]
+
+[[red.units]]
+id = "tank-2"
+type = "afv"
+pos = [4800.0, 1750.0]
+
+[[red.air_defence]]
+id = "ciws-1"
+type = "ciws"
+pos = [5200.0, 1500.0]
+self_cue = true
+
+[[red.c2]]
+id = "red-cp"
+type = "ad_command_post"
+pos = [5400.0, 1500.0]

@@ -75,6 +75,17 @@ impl Override {
 /// Integer **before** float, deliberately: `max_shooters_per_target` is a `u32` and would
 /// refuse a float, whereas every float dial in the schema accepts an integer (serde's
 /// numeric visitors widen). So `2` must stay an integer and `2.0` must stay a float.
+///
+/// Anything opening with `[` or `{` is parsed as a **TOML value expression**, so arrays and
+/// inline tables can be set from the command line:
+///
+/// ```text
+/// --set 'blue.doctrine.priority=["c2", "air_defence"]'
+/// --set 'red.units.0.pos=[4800.0, 1500.0]'
+/// ```
+///
+/// Without this, list-valued dials — a target priority, a position, a route — would be the
+/// one part of the schema a sweep could not reach.
 #[must_use]
 pub fn parse_value(text: &str) -> toml::Value {
     if let Ok(i) = text.parse::<i64>() {
@@ -82,6 +93,16 @@ pub fn parse_value(text: &str) -> toml::Value {
     }
     if let Ok(f) = text.parse::<f64>() {
         return toml::Value::Float(f);
+    }
+    if text.starts_with('[') || text.starts_with('{') {
+        // Wrap in a key so the fragment is a whole TOML document. A malformed literal
+        // falls through to being treated as a string, which then fails at load with the
+        // schema's own error rather than a parser message about a made-up key name.
+        if let Ok(doc) = toml::from_str::<toml::Value>(&format!("value = {text}")) {
+            if let Some(v) = doc.get("value") {
+                return v.clone();
+            }
+        }
     }
     match text {
         "true" => toml::Value::Boolean(true),
@@ -294,6 +315,26 @@ heading_deg = 90.0
         let ov = [Override::parse("sim.track_hold_s=30").unwrap()];
         let scn = scenario_with_overrides(SCN, &ov).expect("integers widen to floats");
         assert!((scn.sim.track_hold_s - 30.0).abs() < 1e-6);
+    }
+
+    /// List-valued dials — a target priority, a position, a route — are the one part of
+    /// the schema a scalar-only parser could not reach.
+    #[test]
+    fn an_array_literal_sets_a_list_valued_dial() {
+        let v = parse_value(r#"["c2", "air_defence"]"#);
+        assert_eq!(
+            v.as_array().map(Vec::len),
+            Some(2),
+            "an array literal must stay an array, got {v:?}"
+        );
+        let ov = [Override::parse("red.air.0.pos=[500.0, 250.0]").unwrap()];
+        let scn = scenario_with_overrides(SCN, &ov).expect("patches cleanly");
+        assert!((scn.red.air[0].pos[0] - 500.0).abs() < 1e-6);
+        assert!((scn.red.air[0].pos[1] - 250.0).abs() < 1e-6);
+
+        // A malformed literal degrades to a string, so the schema reports it rather than
+        // the TOML parser complaining about a key this function invented.
+        assert!(parse_value("[not, valid").is_str());
     }
 
     #[test]

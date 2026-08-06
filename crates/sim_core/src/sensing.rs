@@ -71,6 +71,11 @@ pub struct UnitType {
     /// its own.
     #[serde(default)]
     pub value: Option<f32>,
+    /// Free-form role this asset answers to in a target-priority list
+    /// (`docs/DESIGN.md` §13). Optional: the asset class always matches anyway, so this is
+    /// only needed to say something finer than "unit".
+    #[serde(default)]
+    pub role: Option<String>,
 }
 
 fn default_silhouette_width() -> f32 {
@@ -94,6 +99,7 @@ impl Default for UnitType {
             signature: BTreeMap::new(),
             weapon: None,
             value: None,
+            role: None,
         }
     }
 }

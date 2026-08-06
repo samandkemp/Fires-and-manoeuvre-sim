@@ -20,6 +20,7 @@
 
 use super::{FireEvent, FireTarget, Side, Sim};
 use crate::allocation::{self, Solver};
+use crate::doctrine::{Doctrine, DoctrineMode, TargetNames};
 use crate::fires::{self, WeaponClass, WeaponType};
 use crate::los;
 use glam::Vec2;
@@ -73,6 +74,51 @@ pub(super) struct TargetState {
 }
 
 impl Sim {
+    /// The names a target answers to in a priority list (`docs/DESIGN.md` §13.1).
+    pub(super) fn target_names(&self, t: FireTarget) -> TargetNames<'_> {
+        match t {
+            FireTarget::Unit(i) => TargetNames {
+                id: &self.units[i].id,
+                role: self.units[i].stats.role.as_deref(),
+                class: "unit",
+            },
+            FireTarget::AirDefence(i) => TargetNames {
+                id: &self.air_defence[i].id,
+                role: self.air_defence[i].stats.role.as_deref(),
+                class: "air_defence",
+            },
+            FireTarget::C2(i) => TargetNames {
+                id: &self.c2[i].id,
+                role: self.c2[i].stats.role.as_deref(),
+                class: "c2",
+            },
+        }
+    }
+
+    /// Every name on the field, for the load-time doctrine check. Includes airframes and
+    /// shooters, which are not ground-fire *targets* but may be named by an order or by
+    /// air-defence doctrine.
+    pub(super) fn all_target_names(&self) -> Vec<TargetNames<'_>> {
+        let mut out: Vec<TargetNames<'_>> = (0..self.units.len())
+            .map(|i| self.target_names(FireTarget::Unit(i)))
+            .collect();
+        out.extend(
+            (0..self.air_defence.len()).map(|i| self.target_names(FireTarget::AirDefence(i))),
+        );
+        out.extend((0..self.c2.len()).map(|i| self.target_names(FireTarget::C2(i))));
+        out.extend(self.air.iter().map(|a| TargetNames {
+            id: &a.id,
+            role: a.stats.role.as_deref(),
+            class: "air",
+        }));
+        out
+    }
+
+    /// This side's declared target priority, if it has one.
+    pub(super) fn doctrine_of(&self, side: Side) -> Option<&Doctrine> {
+        self.doctrine[side as usize].as_ref()
+    }
+
     /// The fire-relevant facts about a target, whichever list it is in.
     pub(super) fn target_state(&self, t: FireTarget) -> TargetState {
         match t {
@@ -357,16 +403,133 @@ impl Sim {
                     .fire_effectiveness(self.suppressed_fire_factor)
                     > 0.0
         };
-        let all: Vec<usize> = (0..self.units.len()).filter(|&i| live_shooter(i)).collect();
+        let mut all: Vec<usize> = (0..self.units.len()).filter(|&i| live_shooter(i)).collect();
+
+        // Directly ordered engagements come out of the problem entirely, before anything
+        // else is decided (§13.3). A shooter under orders is not choosing.
+        let mut assigned = self.ordered_engagements(side, &all);
+        all.retain(|s| !assigned.iter().any(|(a, _)| a == s));
 
         if !self.fires_need_c2 {
-            return self.allocate_fires(side, &all, self.allocation.into());
+            assigned.extend(self.allocate_by_doctrine(side, &all, self.allocation.into()));
+            return assigned;
         }
         let (netted, alone): (Vec<usize>, Vec<usize>) =
             all.into_iter().partition(|&i| self.under_c2(i));
-        let mut orders = self.allocate_fires(side, &netted, self.allocation.into());
-        orders.extend(self.allocate_fires(side, &alone, Solver::Independent));
-        orders
+        assigned.extend(self.allocate_by_doctrine(side, &netted, self.allocation.into()));
+        assigned.extend(self.allocate_by_doctrine(side, &alone, Solver::Independent));
+        assigned
+    }
+
+    /// Engagements this side has ordered outright (`docs/DESIGN.md` §13.3).
+    ///
+    /// Both ends must still be alive and the shooter must still be able to shoot; an order
+    /// against a destroyed target simply lapses and the shooter rejoins the problem, which
+    /// is the only sensible reading — a standing order does not make a crew fire at a
+    /// wreck. Range and line of sight are **not** checked: an order is an order, and a
+    /// shooter that cannot reach its target wastes the epoch, which is exactly the cost of
+    /// giving a bad one.
+    fn ordered_engagements(&self, side: Side, shooters: &[usize]) -> Vec<(usize, FireTarget)> {
+        if self.orders[side as usize].is_empty() {
+            return Vec::new();
+        }
+        let mut out = Vec::new();
+        for order in &self.orders[side as usize] {
+            let Some(&s) = shooters
+                .iter()
+                .find(|&&i| self.units[i].id == order.shooter)
+            else {
+                continue;
+            };
+            // Already ordered elsewhere: the first order for a shooter wins, so a scenario
+            // listing two for the same gun gets the one it wrote first, not the last.
+            if out.iter().any(|(a, _)| *a == s) {
+                continue;
+            }
+            let Some(t) = self.named_fire_target(&order.target) else {
+                continue;
+            };
+            if self.target_state(t).elements > 0 {
+                out.push((s, t));
+            }
+        }
+        out
+    }
+
+    /// Resolve an id to a ground-fire target, searching units, batteries then posts — the
+    /// same one namespace `TargetSpec::Named` uses for strike targets (§12.1).
+    fn named_fire_target(&self, id: &str) -> Option<FireTarget> {
+        (0..self.units.len())
+            .find(|&i| self.units[i].id == id)
+            .map(FireTarget::Unit)
+            .or_else(|| {
+                (0..self.air_defence.len())
+                    .find(|&i| self.air_defence[i].id == id)
+                    .map(FireTarget::AirDefence)
+            })
+            .or_else(|| {
+                (0..self.c2.len())
+                    .find(|&i| self.c2[i].id == id)
+                    .map(FireTarget::C2)
+            })
+    }
+
+    /// Allocate `shooters` under this side's doctrine (`docs/DESIGN.md` §13.2).
+    ///
+    /// - **No doctrine**: one call, exactly the pre-doctrine behaviour (§7.4).
+    /// - **Weighted**: one call, with each target's value scaled by its tier — the payoff
+    ///   still decides, doctrine is a thumb on the scale.
+    /// - **Strict**: the assignment is solved **one tier at a time**, highest first. Any
+    ///   shooter that can reach a tier takes something in it; only those left unassigned
+    ///   fall through to the next.
+    ///
+    /// Solving tier by tier is what makes strict ordering *exact*. The obvious alternative
+    /// — a large bonus added to a higher tier's payoff — is the trap `allocation::INELIGIBLE`
+    /// already fell into once: at the magnitudes needed to dominate, `1e18 + 10.0 == 1e18`
+    /// in f64 and the payoff differences inside a tier vanish. A sequence of small exact
+    /// problems has no such failure mode.
+    fn allocate_by_doctrine(
+        &self,
+        side: Side,
+        shooters: &[usize],
+        solver: Solver,
+    ) -> Vec<(usize, FireTarget)> {
+        let targets = self.engageable_targets(side);
+        let Some(doc) = self.doctrine_of(side) else {
+            let weights = vec![1.0f32; targets.len()];
+            return self.allocate_fires(side, shooters, &targets, &weights, solver);
+        };
+        let tiers: Vec<usize> = targets
+            .iter()
+            .map(|&t| doc.tier_of(&self.target_names(t)))
+            .collect();
+
+        if doc.mode == DoctrineMode::Weighted {
+            let weights: Vec<f32> = tiers.iter().map(|&k| doc.weight_for_tier(k)).collect();
+            return self.allocate_fires(side, shooters, &targets, &weights, solver);
+        }
+
+        let mut remaining: Vec<usize> = shooters.to_vec();
+        let mut out = Vec::new();
+        for tier in 0..doc.tier_count() {
+            if remaining.is_empty() {
+                break;
+            }
+            let in_tier: Vec<FireTarget> = targets
+                .iter()
+                .zip(&tiers)
+                .filter(|(_, &k)| k == tier)
+                .map(|(&t, _)| t)
+                .collect();
+            if in_tier.is_empty() {
+                continue;
+            }
+            let weights = vec![1.0f32; in_tier.len()];
+            let taken = self.allocate_fires(side, &remaining, &in_tier, &weights, solver);
+            remaining.retain(|s| !taken.iter().any(|(a, _)| a == s));
+            out.extend(taken);
+        }
+        out
     }
 
     /// Is this unit inside a live friendly C2 post's (jammed) coordination radius?
@@ -390,9 +553,11 @@ impl Sim {
         &self,
         side: Side,
         shooters: &[usize],
+        targets: &[FireTarget],
+        doctrine_weights: &[f32],
         solver: Solver,
     ) -> Vec<(usize, FireTarget)> {
-        let targets = self.engageable_targets(side);
+        let _ = side;
         if shooters.is_empty() || targets.is_empty() {
             return Vec::new();
         }
@@ -421,7 +586,7 @@ impl Sim {
             } else {
                 engaging.iter().sum::<f64>() / engaging.len() as f64
             };
-            let value = f64::from(self.target_value(t, value_scale));
+            let value = f64::from(self.target_value(t, value_scale) * doctrine_weights[t_pos]);
             for k in 0..count {
                 slot_target.push(t_pos);
                 // Geometric discount: the (k+1)-th shooter only helps if the k before it

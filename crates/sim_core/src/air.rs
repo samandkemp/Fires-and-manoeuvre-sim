@@ -143,6 +143,11 @@ pub struct AirType {
     /// the case the derivation cannot know about.
     #[serde(default)]
     pub value: Option<f32>,
+    /// Free-form role this asset answers to in a target-priority list
+    /// (`docs/DESIGN.md` §13). Optional: the class `air` always matches anyway, so
+    /// this is only needed to say something finer than that.
+    #[serde(default)]
+    pub role: Option<String>,
 }
 
 fn default_silhouette_width() -> f32 {
@@ -173,6 +178,7 @@ impl Default for AirType {
             payload: None,
             munitions: 0,
             expendable: false,
+            role: None,
             release_range_m: default_release_range(),
             value: None,
         }
