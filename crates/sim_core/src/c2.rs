@@ -45,6 +45,14 @@ pub struct C2Type {
     /// concentration — which is what makes it findable.
     #[serde(default)]
     pub signature: std::collections::BTreeMap<String, f32>,
+    /// How many vehicles the post is made of; attrition removes them one at a time
+    /// (`docs/DESIGN.md` §12).
+    #[serde(default = "default_elements")]
+    pub element_count: u32,
+}
+
+fn default_elements() -> u32 {
+    1
 }
 
 fn default_height() -> f32 {
@@ -62,6 +70,7 @@ impl Default for C2Type {
             height_m: default_height(),
             silhouette_width_m: default_width(),
             signature: std::collections::BTreeMap::new(),
+            element_count: default_elements(),
         }
     }
 }
@@ -77,9 +86,9 @@ pub struct C2State {
     pub pos: Vec2,
     /// Resolved stat block.
     pub stats: C2Type,
-    /// Still functioning? Set false when destroyed; the defence it was coordinating
+    /// Vehicles remaining. Zero means destroyed, and the defence it was coordinating
     /// reverts to acting independently from the next tick.
-    pub alive: bool,
+    pub elements: u32,
 }
 
 impl C2State {
@@ -90,9 +99,15 @@ impl C2State {
             id: id.to_owned(),
             side,
             pos,
+            elements: stats.element_count.max(1),
             stats,
-            alive: true,
         }
+    }
+
+    /// Still functioning?
+    #[must_use]
+    pub fn alive(&self) -> bool {
+        self.elements > 0
     }
 
     /// Does this post coordinate an asset at `pos`?
@@ -103,6 +118,6 @@ impl C2State {
     /// the battery beneath it.
     #[must_use]
     pub fn covers(&self, pos: Vec2) -> bool {
-        self.alive && self.pos.distance(pos) <= self.stats.coordination_range_m
+        self.alive() && self.pos.distance(pos) <= self.stats.coordination_range_m
     }
 }

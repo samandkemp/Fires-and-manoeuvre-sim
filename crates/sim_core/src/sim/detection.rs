@@ -39,15 +39,25 @@ impl Sim {
         }
     }
 
-    /// Is this sensor currently able to sense at all? A carried sensor dies with its
-    /// airframe — so a shot-down recce drone's sensor must be excluded from coverage and
-    /// belief rasters too, not just from the detection loop.
+    /// Is this sensor currently able to sense at all?
+    ///
+    /// Two ways for a sensor to go dark, and both matter beyond the detection loop —
+    /// coverage and belief rasters must drop it too:
+    ///
+    /// - a **carried** sensor dies with its airframe (a shot-down recce drone);
+    /// - an **organic radar** dies with the battery that owns it (§12), which is what
+    ///   makes SEAD worth more than the launchers it destroys: killing a self-cueing
+    ///   battery also removes an emitter the rest of the network was using.
     #[must_use]
     pub fn sensor_active(&self, sensor_idx: usize) -> bool {
-        match self.sensors[sensor_idx].carrier {
-            Some(a) => self.air.get(a).is_some_and(|air| air.alive),
-            None => true,
+        if let Some(a) = self.sensors[sensor_idx].carrier {
+            return self.air.get(a).is_some_and(|air| air.alive);
         }
+        // A radar belonging to a destroyed battery stops emitting.
+        !self
+            .air_defence
+            .iter()
+            .any(|ad| ad.sensor_idx == Some(sensor_idx) && !ad.alive())
     }
 
     /// Copy each carried sensor's position and facing back from its airframe.

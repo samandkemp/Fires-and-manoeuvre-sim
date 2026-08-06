@@ -337,7 +337,7 @@ error on every figure.)
 | `crates/sim_core/` | Headless, deterministic OR engine — pure Rust, no Bevy. Where all the maths lives |
 | `crates/app/` | Bevy front-end: tactical map, pan/zoom, egui control panel |
 | `crates/experiments/` | Headless batch runs: sweeps, Monte Carlo, equilibria. Depends on `sim_core` only |
-| `crates/validation/` | The V1–V59 gates: every model checked against a closed form or a stated invariant |
+| `crates/validation/` | The V1–V60 gates: every model checked against a closed form or a stated invariant |
 | `scenarios/` | TOML scenarios and the unit/weapon/sensor stat blocks |
 | **`docs/HOW_IT_WORKS.md`** | **Start here if you are new.** How detection, engagement and scenarios actually work, with worked numbers |
 | `docs/DESIGN.md` | The deep spec: equations, state machines, and the validation gate for every model |
@@ -419,7 +419,7 @@ difference between two scenarios means anything.
 ## Validation
 
 Every model ships with a test checking it against a closed-form result or a documented
-invariant. The gates are numbered **V1–V59**, live in the `validation` crate, and each is
+invariant. The gates are numbered **V1–V60**, live in the `validation` crate, and each is
 stated in `docs/DESIGN.md` next to the model it constrains, for example:
 
 - **V14/V15** — the exponential detection law, Monte Carlo against `1 − e^(−λT)`
@@ -432,6 +432,7 @@ stated in `docs/DESIGN.md` next to the model it constrains, for example:
 - **V56** — the optimal allocation matches an exhaustive optimum, and beats no coordination
 - **V57** — belief-driven tasking finds what a fixed stare never does
 - **V59** — a C2 post makes air defence split a raid; killing it decoheres the defence
+- **V60** — SEAD: a strike drone kills a command post, and the defence comes apart
 
 `cargo run -p validation --bin validation_report` prints every gate beside the closed form
 it is checked against. That is the question the project actually cares about — not "are

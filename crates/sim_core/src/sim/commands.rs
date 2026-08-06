@@ -121,7 +121,7 @@ impl Sim {
     /// revert to each taking whatever is nearest, with the duplicated engagements and
     /// leakers that follow. This is the hook SEAD will pull on.
     pub fn remove_c2(&mut self, c2_idx: usize) {
-        self.c2[c2_idx].alive = false;
+        self.c2[c2_idx].elements = 0;
     }
 
     /// Index of the nearest live unit to `pos` within `max_dist_m`, or `None`.

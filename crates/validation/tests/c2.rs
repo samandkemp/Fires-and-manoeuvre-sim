@@ -237,5 +237,5 @@ fn v59_killing_the_post_decoheres_the_defence() {
         1,
         "the post should be tombstoned, not deleted"
     );
-    assert!(!sim.c2()[0].alive, "the post should be marked dead");
+    assert!(!sim.c2()[0].alive(), "the post should be marked dead");
 }

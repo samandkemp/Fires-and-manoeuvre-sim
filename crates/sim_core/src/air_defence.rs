@@ -77,6 +77,19 @@ pub struct AirDefenceType {
     /// Organic sensor type id (key into the sensor library), if the battery has its own.
     #[serde(default)]
     pub sensor: Option<String>,
+    /// How many launchers/mounts the battery is made of. Attrition removes them one at a
+    /// time, exactly as a unit's sub-elements do (§4.1), so a near miss degrades a
+    /// battery rather than only ever destroying or sparing it (`docs/DESIGN.md` §12).
+    #[serde(default = "default_ad_elements")]
+    pub element_count: u32,
+    /// Height above ground as a *target*, metres. A battery is something the enemy will
+    /// want to find and kill, so it needs a silhouette of its own — `mount_height_m` is
+    /// where its *sensor* sits, which is a different question.
+    #[serde(default = "default_ad_height")]
+    pub height_m: f32,
+    /// Silhouette width as a target, metres.
+    #[serde(default = "default_ad_width")]
+    pub silhouette_width_m: f32,
 }
 
 fn default_mount_height() -> f32 {
@@ -91,9 +104,24 @@ fn one_channel() -> u32 {
     1
 }
 
+fn default_ad_elements() -> u32 {
+    1
+}
+
+fn default_ad_height() -> f32 {
+    3.0
+}
+
+fn default_ad_width() -> f32 {
+    4.0
+}
+
 impl Default for AirDefenceType {
     fn default() -> Self {
         Self {
+            element_count: default_ad_elements(),
+            height_m: default_ad_height(),
+            silhouette_width_m: default_ad_width(),
             engagement: AdEngagement::Gun {
                 kill_rate_per_s: 0.0,
             },
@@ -141,6 +169,9 @@ pub struct AirDefenceState {
     pub sensor_idx: Option<usize>,
     /// Interceptors/bursts remaining (`u32::MAX` stands for an unlimited magazine).
     pub magazine_left: u32,
+    /// Launchers/mounts remaining. Zero means destroyed: the battery stops engaging and
+    /// its organic radar goes dark with it (`docs/DESIGN.md` §12).
+    pub elements: u32,
     /// Open engagements; never longer than `stats.channels`.
     pub engagements: Vec<Engagement>,
     /// Earliest time the next shot may be launched (reload gate), seconds.
@@ -167,6 +198,7 @@ impl AirDefenceState {
         } else {
             stats.magazine
         };
+        let elements = stats.element_count.max(1);
         Self {
             id: id.to_owned(),
             side,
@@ -175,10 +207,17 @@ impl AirDefenceState {
             self_cue,
             sensor_idx,
             magazine_left,
+            elements,
             engagements: Vec::new(),
             ready_at_s: 0.0,
             carrier: None,
         }
+    }
+
+    /// Still in action? A destroyed battery engages nothing and sees nothing.
+    #[must_use]
+    pub fn alive(&self) -> bool {
+        self.elements > 0
     }
 
     /// When a track becomes actionable to this battery (§9.5). Whichever route arrives

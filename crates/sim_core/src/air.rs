@@ -87,9 +87,13 @@ impl FlightPlan {
 /// selection is deferred to the kill-chain work.
 #[derive(Clone, Debug, PartialEq)]
 pub enum TargetSpec {
-    /// A named unit (matched against [`crate::sim::UnitState::id`]); the aim point
-    /// tracks the unit as it moves.
-    Unit(String),
+    /// A named **ground asset** — a unit, an air-defence battery, or a C2 post. Ids are
+    /// unique within a scenario, so one namespace covers all three, and the aim point
+    /// tracks the asset if it moves.
+    ///
+    /// Naming a battery or a post is what makes SEAD expressible without new syntax
+    /// (`docs/DESIGN.md` §12).
+    Named(String),
     /// A fixed ground point.
     Point(Vec2),
 }

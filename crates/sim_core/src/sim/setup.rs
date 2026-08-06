@@ -196,7 +196,7 @@ impl Sim {
                     terminal: a.terminal,
                 });
                 self.air[idx].target = a.target.as_ref().map(|t| match t {
-                    TargetConfig::Unit(id) => TargetSpec::Unit(id.clone()),
+                    TargetConfig::Unit(id) => TargetSpec::Named(id.clone()),
                     TargetConfig::Point(p) => TargetSpec::Point(Vec2::from(*p)),
                 });
             }

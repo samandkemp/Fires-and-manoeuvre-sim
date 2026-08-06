@@ -281,7 +281,10 @@ pub struct AirInstance {
 #[derive(Debug, Clone, serde::Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum TargetConfig {
-    /// A named unit; the aim point tracks it as it moves.
+    /// A named ground asset — a unit, an air-defence battery, or a C2 post. The TOML key
+    /// stays `unit` for compatibility with scenarios written before batteries and posts
+    /// were targetable; `asset` is the clearer alias and means the same thing.
+    #[serde(alias = "asset")]
     Unit(String),
     /// A fixed ground point `[x, y]`.
     Point([f32; 2]),

@@ -95,6 +95,10 @@ impl Sim {
         // Batteries under C2 defer their opening to one coordinated pass (§11).
         let mut coordinated: Vec<(usize, Vec<bool>, Vec<f32>)> = Vec::new();
         for ad_idx in 0..self.air_defence.len() {
+            // A destroyed battery does nothing at all (§12).
+            if !self.air_defence[ad_idx].alive() {
+                continue;
+            }
             // Which targets this battery may engage right now, and at what range.
             let mut engageable = vec![false; self.air.len()];
             let mut ranges = vec![0.0f32; self.air.len()];
@@ -382,13 +386,28 @@ impl Sim {
     fn strike_aim_point(&self, air_idx: usize) -> Option<Vec2> {
         match &self.air[air_idx].target {
             Some(TargetSpec::Point(p)) => Some(*p),
-            Some(TargetSpec::Unit(id)) => self
-                .units
-                .iter()
-                .find(|u| &u.id == id && u.alive())
-                .map(|u| u.pos),
+            Some(TargetSpec::Named(id)) => self.named_ground_asset(id),
             None => self.air[air_idx].plan.destination(),
         }
+    }
+
+    /// Where the ground asset called `id` is, if it is still alive.
+    ///
+    /// Searches units, then air-defence batteries, then C2 posts. Ids are unique within a
+    /// scenario, so one namespace is enough — and it means naming a SAM or a command post
+    /// as a strike target simply works, which is what makes SEAD expressible in a
+    /// scenario file rather than needing new syntax (`docs/DESIGN.md` §12).
+    fn named_ground_asset(&self, id: &str) -> Option<Vec2> {
+        if let Some(u) = self.units.iter().find(|u| u.id == id && u.alive()) {
+            return Some(u.pos);
+        }
+        if let Some(ad) = self.air_defence.iter().find(|a| a.id == id && a.alive()) {
+            return Some(ad.pos);
+        }
+        self.c2
+            .iter()
+            .find(|c| c.id == id && c.alive())
+            .map(|c| c.pos)
     }
 
     /// Apply one burst's area damage to every live enemy ground unit near it. Damage is
@@ -400,6 +419,11 @@ impl Sim {
     fn apply_area_damage(&mut self, burst: Vec2, weapon: &WeaponType, shooter_side: Side) -> u32 {
         let cutoff = 3.0 * weapon.lethal_radius_m;
         let mut casualties = 0u32;
+        // Air defence and C2 take the same kernel as a unit: they are vehicles sitting on
+        // the ground, and nothing about the maths cares which list they live in. This is
+        // what makes them SEAD-able (§12) — before it, a battery was simply immortal.
+        casualties += self.damage_air_defence(burst, weapon, shooter_side, cutoff);
+        casualties += self.damage_c2(burst, weapon, shooter_side, cutoff);
         for u_idx in 0..self.units.len() {
             let target = &self.units[u_idx];
             if !target.alive() || target.side == shooter_side {
@@ -431,5 +455,82 @@ impl Sim {
             }
         }
         casualties
+    }
+
+    /// Area damage against enemy air-defence batteries. Destroying one silences it *and*
+    /// its organic radar, which is handled by [`Sim::sensor_active`].
+    fn damage_air_defence(
+        &mut self,
+        burst: Vec2,
+        weapon: &WeaponType,
+        shooter_side: Side,
+        cutoff: f32,
+    ) -> u32 {
+        let mut killed_total = 0u32;
+        for i in 0..self.air_defence.len() {
+            let ad = &self.air_defence[i];
+            if !ad.alive() || ad.side == shooter_side {
+                continue;
+            }
+            let miss = ad.pos.distance(burst);
+            if miss > cutoff {
+                continue;
+            }
+            let cover = self.cover_at(self.air_defence[i].pos);
+            let damage = fires::carleton_damage(miss, weapon.lethal_radius_m) * (1.0 - cover);
+            let remaining = self.air_defence[i].elements;
+            let mut killed = 0u32;
+            for _ in 0..remaining {
+                if self.rng.random::<f32>() < damage {
+                    killed += 1;
+                }
+            }
+            if killed > 0 {
+                self.air_defence[i].elements = remaining.saturating_sub(killed);
+                killed_total += killed;
+                // A destroyed battery stops engaging: drop what it was holding so its
+                // channels are not left occupied by a corpse.
+                if !self.air_defence[i].alive() {
+                    self.air_defence[i].engagements.clear();
+                }
+            }
+        }
+        killed_total
+    }
+
+    /// Area damage against enemy C2 posts. A post shoots nothing, so killing it costs the
+    /// defender no firepower at all — only the coordination (§11).
+    fn damage_c2(
+        &mut self,
+        burst: Vec2,
+        weapon: &WeaponType,
+        shooter_side: Side,
+        cutoff: f32,
+    ) -> u32 {
+        let mut killed_total = 0u32;
+        for i in 0..self.c2.len() {
+            let post = &self.c2[i];
+            if !post.alive() || post.side == shooter_side {
+                continue;
+            }
+            let miss = post.pos.distance(burst);
+            if miss > cutoff {
+                continue;
+            }
+            let cover = self.cover_at(self.c2[i].pos);
+            let damage = fires::carleton_damage(miss, weapon.lethal_radius_m) * (1.0 - cover);
+            let remaining = self.c2[i].elements;
+            let mut killed = 0u32;
+            for _ in 0..remaining {
+                if self.rng.random::<f32>() < damage {
+                    killed += 1;
+                }
+            }
+            if killed > 0 {
+                self.c2[i].elements = remaining.saturating_sub(killed);
+                killed_total += killed;
+            }
+        }
+        killed_total
     }
 }

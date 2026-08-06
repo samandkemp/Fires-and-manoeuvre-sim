@@ -916,9 +916,10 @@ gun; it changes nothing today.
 
 Stated rather than hidden, each a clean later addition and none a refactor:
 
-- **Air-defence sites are not attritable** — they are standalone placed assets, so a
-  strike drone cannot yet conduct SEAD. `AirDefenceState.carrier` exists unused so that
-  mounting a launcher on a unit later is a small change.
+- ~~**Air-defence sites are not attritable.**~~ **Lifted by §12.** Batteries and C2 posts
+  now take area damage and can be named as strike targets, so SEAD runs inside the
+  simulation. `AirDefenceState.carrier` still exists unused, for mounting a launcher on a
+  unit later.
 - **No autonomous target selection.** Strike targets are assigned (§9.3); a drone will
   not opportunistically attack what its own sensor finds.
 - **No air-to-air.** Drones do not engage other drones.
@@ -1245,3 +1246,62 @@ falls out of the two engagement models rather than being asserted.
 | # | Property | Reference |
 |---|----------|-----------|
 | V59 | C2-coordinated air defence | with one drone nearest to every battery, nearest-first sends them all at it while a C2 post makes them cover one drone each; a scenario with **no** post is unchanged from the pre-C2 engine (the §7.4 identity discipline, so V50–V52 cannot move); a **dead** post coordinates nothing, costing no battery, magazine or envelope — only the coordination |
+
+## 12. SEAD: air defence as a target *(Phase 12)*
+
+§9.7 listed "air-defence sites are not attritable" as a deliberate v1 limitation, and §11
+then made it awkward: the model claimed a command post was the thing worth killing first,
+while providing no way to kill one from inside the simulation. This closes that.
+
+### 12.1 What changed
+
+**Batteries and posts have elements.** `AirDefenceType.element_count` and
+`C2Type.element_count` (both defaulting to 1) give them the same sub-element attrition as
+a unit (§4.1), so a near miss degrades a battery rather than only ever destroying or
+sparing it. `alive()` is `elements > 0` on both.
+
+**Any ground asset can be named as a target.** `TargetSpec::Named(id)` resolves against
+units, then air-defence batteries, then C2 posts. Ids are unique within a scenario, so one
+namespace covers all three and SEAD needs no new syntax — `target = { unit = "sam-1" }`
+simply works, with `asset` as the clearer alias. (The enum was `TargetSpec::Unit`; the
+rename is what the variant now means.)
+
+**Area damage sweeps them.** The §2.3 Carleton kernel is applied to batteries and posts
+exactly as to units, with terrain cover, rolled per surviving element. Nothing about the
+maths cared which list an asset lived in; only the sweep did.
+
+### 12.2 What death costs
+
+The interesting part is not the destruction but its consequences, and the two differ:
+
+| Asset destroyed | Firepower lost | Second-order effect |
+|---|---|---|
+| **Battery** | its launchers | **its organic radar goes dark** — an emitter the rest of the network was cueing from (§9.5) |
+| **C2 post** | **none at all** | the group it coordinated **decoheres** and reverts to nearest-first (§11) |
+
+A destroyed battery also drops its open engagements, so its channels are not left occupied
+by a corpse.
+
+The radar consequence is what makes SEAD worth more than the launchers it removes, and it
+falls out of existing structure rather than needing a special case: an organic radar is an
+ordinary entry in the sensor list, and `Sim::sensor_active` — which already knew a carried
+sensor dies with its airframe — now also knows a radar dies with its battery. Coverage and
+belief rasters drop it automatically, because they were already asking that question.
+
+### 12.3 Deliberate limitations (v1)
+
+- **Air-delivered SEAD only.** Ground fires still iterate the unit list, so artillery
+  cannot conduct counter-battery against a SAM. The allocation payoff (§10.2) would need a
+  notion of value for a battery, which the `AirType.value` work already sketches.
+- **Targeting is still assigned.** A strike drone attacks what a scenario named; it does
+  not find a radar for itself. Autonomous target selection remains the deferred kill-chain
+  work (§9.7).
+- **No emitter-seeking behaviour.** A real anti-radiation missile homes on a radar that is
+  *transmitting*, so switching the radar off is a counter. Here the aim point is the
+  asset's position regardless. The `self_cue` switch is the obvious seam.
+
+### 12.4 Validation gates (V60)
+
+| # | Property | Reference |
+|---|----------|-----------|
+| V60 | SEAD | a strike drone assigned a named C2 post destroys it **in-simulation** and the defence decoheres with no battery lost; a destroyed battery's organic radar stops emitting; a target id matching nothing yields no aim point, so the new asset lists are additive rather than a replacement (§7.4) |
