@@ -63,6 +63,15 @@ pub struct C2Type {
     /// (`docs/DESIGN.md` §12).
     #[serde(default = "default_elements")]
     pub element_count: u32,
+    /// How much destroying this is worth to enemy **ground** fires (`docs/DESIGN.md`
+    /// §12.4). Omit and it scores 1.0 per element.
+    ///
+    /// There is no derivation to fall back on, unlike a unit's. A post has **no firepower
+    /// at all** (§12.2), so there is nothing to score it by — its worth is entirely what it
+    /// holds together, which only the scenario knows. Setting this is how "shoot the
+    /// command post first" gets expressed.
+    #[serde(default)]
+    pub value: Option<f32>,
 }
 
 fn default_elements() -> u32 {
@@ -86,6 +95,7 @@ impl Default for C2Type {
             silhouette_width_m: default_width(),
             signature: std::collections::BTreeMap::new(),
             element_count: default_elements(),
+            value: None,
         }
     }
 }

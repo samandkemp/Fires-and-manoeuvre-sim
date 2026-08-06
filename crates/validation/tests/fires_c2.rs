@@ -136,7 +136,11 @@ fn two_on_two(fires_need_c2: bool, post: bool, coordination_range_m: f32) -> Sim
 /// *simultaneity*, so the measurement has to be simultaneous too.
 fn targets_hit_first_epoch(sim: &mut Sim) -> usize {
     sim.run_until(10.0);
-    let mut t: Vec<usize> = sim.fire_events().iter().map(|e| e.target).collect();
+    let mut t: Vec<usize> = sim
+        .fire_events()
+        .iter()
+        .filter_map(|e| e.target.unit())
+        .collect();
     t.sort_unstable();
     t.dedup();
     t.len()
@@ -167,7 +171,7 @@ fn v63_a_post_is_what_lets_ground_fires_coordinate() {
 // a post present *and* absent, since neither may make any difference.
 #[test]
 fn v63_the_dial_off_is_an_exact_identity() {
-    let log = |sim: &mut Sim| -> Vec<(usize, usize, u32)> {
+    let log = |sim: &mut Sim| -> Vec<(usize, sim_core::sim::FireTarget, u32)> {
         sim.run_until(60.0);
         sim.fire_events()
             .iter()

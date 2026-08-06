@@ -1448,11 +1448,50 @@ it is not free: the battery drops onto the network cueing chain and pays `cue_la
 every track (§9.5) — the same delay V50 shows deciding whether a SAM gets to fire at all.
 So the defender chooses: *survive the missile, or see the raid coming.* Not both.
 
-### 12.4 Deliberate limitations (v1)
+### 12.4 Ground counter-battery
 
-- **Air-delivered SEAD only.** Ground fires still iterate the unit list, so artillery
-  cannot conduct counter-battery against a SAM. The allocation payoff (§10.2) would need a
-  notion of value for a battery, which the `AirType.value` work already sketches.
+Air-delivered SEAD was the only kind, because ground fires iterated the unit list. Every
+asset class already had elements and already took §2.3 area damage identically, so the only
+thing missing was *which lists are searched*. `FireTarget` now names the list, and
+`TargetState` gathers the four facts a shell depends on — where, how big, how many left, is
+it locatable — so counter-battery arrived by widening a list rather than by writing a second
+fires model.
+
+Units come first in `engageable_targets`, batteries and posts are appended. A scenario with
+no enemy emplacements therefore produces exactly the list it always did (§7.4).
+
+**How an emplacement is found is the interesting part.** Neither batteries nor posts go
+through the §3.2 glimpse loop, so neither has a track, and indirect fire needs one. Inventing
+a stochastic acquisition here would have inserted draws into every scenario fielding air
+defence and shifted the stream under V50, V51, V59 and V60 for no modelling gain. So
+`Sim::emplacement_is_located` asks the question counter-battery acquisition actually asks —
+**has it given itself away?**
+
+| Asset | Located when |
+|---|---|
+| battery | it is transmitting (`self_cue` with a live radar) **or** it has fired |
+| post | it is coordinating at least one live battery |
+
+Those are the two real ways a site is fixed: ESM on its emissions, or a counter-battery
+track back along its rounds. A command post is found because it is *talking* — the same
+argument in a different band. All three are deterministic and draw no randomness.
+
+This joins the two halves of §12.3. Switching a radar off already made an ARM miss; it now
+also hides the battery from artillery. **One decision, two consequences** — and the cost
+stays what §12.3 said it was, a battery on the network cueing chain paying `cue_latency_s`.
+
+Direct fire is unchanged: line of sight and range, no track (§2.1). So going silent hides a
+battery from the guns behind the hill, not from the tank looking at it.
+
+**Value has no derivation across classes.** A unit's is `elements × (1 + threat/threat_max)`
+with threat `rof × lethality × reach`. A battery's danger is to *aircraft* and a post has no
+firepower at all, so neither has an output measurable on that scale, and a conversion would
+be arithmetic dressed as doctrine. Both fall back to 1.0 per element, and a scenario that
+wants artillery to prefer the SAM over the tanks says so with `value`. That is what the dial
+is for — "kill the radar first" is a judgement, not a derivation.
+
+### 12.5 Deliberate limitations (v1)
+
 - **Targeting is still assigned.** A strike drone attacks what a scenario named; even an
   ARM homes on the emitter it was *sent* at rather than scanning for the nearest
   transmitting radar. Autonomous target selection remains the deferred kill-chain work
@@ -1461,9 +1500,10 @@ So the defender chooses: *survive the missile, or see the raid coming.* Not both
   blinking to reduce exposure, and no memory of a position after the emitter goes quiet
   beyond the aim point itself.
 
-### 12.5 Validation gates (V60, V64)
+### 12.6 Validation gates (V60, V64, V65)
 
 | # | Property | Reference |
 |---|----------|-----------|
 | V64 | anti-radiation homing | the same missile lands with `cep_m` against a transmitting radar and `silent_cep_m` against a silent one, the mean miss scaling as the ratio of the two CEPs (`E|miss| = σ√(π/2)`, `σ = CEP/√(2 ln 2)`) and doing correspondingly less damage; a weapon without the flag ignores the emitter entirely and an undeclared `silent_cep_m` falls back to `cep_m`, so both are exact identities; only a named, live, self-cueing battery counts as an emitter |
+| V65 | ground counter-battery | a howitzer kills an emitting SAM and the fire log names what it hit; a battery that has neither transmitted nor fired is **not located**, so indirect fire has nothing to aim at; direct fire needs no track, so a silent battery in plain view is still a target; a post is located while it is coordinating and stops being so when it has nothing left to coordinate; a scenario with no enemy emplacements is unchanged (§7.4) |
 | V60 | SEAD | a strike drone assigned a named C2 post destroys it **in-simulation** and the defence decoheres with no battery lost; a destroyed battery's organic radar stops emitting; a target id matching nothing yields no aim point, so the new asset lists are additive rather than a replacement (§7.4) |

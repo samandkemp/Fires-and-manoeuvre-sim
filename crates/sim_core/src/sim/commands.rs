@@ -153,6 +153,20 @@ impl Sim {
         }
     }
 
+    /// The scenario id of whatever a fire event hit.
+    ///
+    /// Ground fires can now land on three different lists (`docs/DESIGN.md` §12.4), and
+    /// every reader that wants to *name* the target — the app's feed, an experiment's
+    /// report — would otherwise repeat the same three-armed match.
+    #[must_use]
+    pub fn fire_target_id(&self, target: super::FireTarget) -> &str {
+        match target {
+            super::FireTarget::Unit(i) => &self.units[i].id,
+            super::FireTarget::AirDefence(i) => &self.air_defence[i].id,
+            super::FireTarget::C2(i) => &self.c2[i].id,
+        }
+    }
+
     /// Index of the nearest live air-defence battery to `pos` within `max_dist_m`.
     #[must_use]
     pub fn nearest_air_defence(&self, pos: Vec2, max_dist_m: f32) -> Option<usize> {

@@ -571,12 +571,13 @@ impl Panel<'_, '_, '_> {
         }
         ui.label("Fires:");
         for e in sim.fire_events().iter().rev().take(6) {
-            let (sh, tg) = (&sim.units()[e.shooter], &sim.units()[e.target]);
+            // The target may be a battery or a post now, not only a unit (§12.4).
+            let (sh, tg) = (&sim.units()[e.shooter].id, sim.fire_target_id(e.target));
             ui.small(format!(
                 "t={:>4.0}s  {} hit {} \u{2013}{}{}",
                 e.time_s,
-                sh.id,
-                tg.id,
+                sh,
+                tg,
                 e.casualties,
                 if e.killed { " KILL" } else { "" }
             ));

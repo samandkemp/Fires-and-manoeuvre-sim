@@ -109,12 +109,12 @@ fn main() {
     }
     for e in sim.fire_events() {
         let sh = &sim.units()[e.shooter];
-        let tg = &sim.units()[e.target];
+        let tg = sim.fire_target_id(e.target);
         println!(
             "t={:>4.0}s  {} hit {} for {} casualties{}",
             e.time_s,
             sh.id,
-            tg.id,
+            tg,
             e.casualties,
             if e.killed { "  [DESTROYED]" } else { "" }
         );

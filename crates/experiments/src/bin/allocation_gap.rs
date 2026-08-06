@@ -178,8 +178,10 @@ fn run_one(sim: &mut Sim) -> Outcome {
 
     // How many distinct targets were being engaged in a typical firing epoch — the
     // concentration-versus-spread question allocation exists to answer.
-    let mut epochs: std::collections::BTreeMap<u64, std::collections::BTreeSet<usize>> =
-        std::collections::BTreeMap::new();
+    let mut epochs: std::collections::BTreeMap<
+        u64,
+        std::collections::BTreeSet<sim_core::sim::FireTarget>,
+    > = std::collections::BTreeMap::new();
     for e in sim.fire_events() {
         epochs.entry(e.time_s as u64).or_default().insert(e.target);
     }

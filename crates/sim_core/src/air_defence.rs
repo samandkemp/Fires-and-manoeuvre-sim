@@ -91,6 +91,16 @@ pub struct AirDefenceType {
     /// Silhouette width as a target, metres.
     #[serde(default = "default_ad_width")]
     pub silhouette_width_m: f32,
+    /// How much destroying this is worth to enemy **ground** fires (`docs/DESIGN.md`
+    /// §12.4). Omit and it scores 1.0 per element.
+    ///
+    /// There is no derivation to fall back on, unlike a unit's. A battery's danger is to
+    /// **aircraft**, which is not measurable on the same scale as a unit's
+    /// `rof × lethality × reach`, so the model declines to invent a conversion and leaves
+    /// the judgement to the scenario. Setting this is how "counter-battery before the
+    /// tanks" gets expressed.
+    #[serde(default)]
+    pub value: Option<f32>,
 }
 
 fn default_mount_height() -> f32 {
@@ -123,6 +133,7 @@ impl Default for AirDefenceType {
             element_count: default_ad_elements(),
             height_m: default_ad_height(),
             silhouette_width_m: default_ad_width(),
+            value: None,
             engagement: AdEngagement::Gun {
                 kill_rate_per_s: 0.0,
             },

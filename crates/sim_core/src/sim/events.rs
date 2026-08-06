@@ -23,6 +23,37 @@ pub struct DetectionEvent {
     pub unit_pos: Vec2,
 }
 
+/// What ground fires shot at (`docs/DESIGN.md` §12.4).
+///
+/// Ground fires used to iterate the unit list alone, which is what made counter-battery
+/// against a SAM impossible to express. Every asset class has elements and takes §2.3 area
+/// damage identically, so the only thing that had to change was *which lists are searched*
+/// — this names the list.
+///
+/// Ordered so a fire log sorts by target list then index, which keeps the ordering stable
+/// as new asset classes are added at the end.
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+pub enum FireTarget {
+    /// Index into `Sim::units`.
+    Unit(usize),
+    /// Index into `Sim::air_defence`.
+    AirDefence(usize),
+    /// Index into `Sim::c2`.
+    C2(usize),
+}
+
+impl FireTarget {
+    /// The unit index, if this was a unit. For readers that only care about the ground
+    /// fight — most metrics, and every gate written before counter-battery existed.
+    #[must_use]
+    pub fn unit(self) -> Option<usize> {
+        match self {
+            Self::Unit(i) => Some(i),
+            _ => None,
+        }
+    }
+}
+
 /// One resolved fires effect: a shooter's rounds killed elements of a target this epoch.
 #[derive(Clone, Debug, PartialEq)]
 pub struct FireEvent {
@@ -30,8 +61,8 @@ pub struct FireEvent {
     pub time_s: f64,
     /// Index of the shooting unit.
     pub shooter: usize,
-    /// Index of the target unit.
-    pub target: usize,
+    /// What was hit — a unit, an air-defence battery, or a C2 post.
+    pub target: FireTarget,
     /// Sub-elements destroyed this epoch.
     pub casualties: u32,
     /// Whether this reduced the target to 0 elements (killed).

@@ -39,7 +39,9 @@ mod setup;
 mod state;
 mod tasking;
 
-pub use events::{AirDefenceEvent, AirDetectionEvent, DetectionEvent, FireEvent, StrikeEvent};
+pub use events::{
+    AirDefenceEvent, AirDetectionEvent, DetectionEvent, FireEvent, FireTarget, StrikeEvent,
+};
 pub use state::{JammerState, SensorState, Side, UnitState};
 
 use detection::SensorView;

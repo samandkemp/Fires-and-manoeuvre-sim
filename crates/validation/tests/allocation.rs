@@ -200,7 +200,11 @@ fn two_on_two(allocation: AllocationChoice) -> Sim {
 fn targets_engaged_first_epoch(allocation: AllocationChoice) -> Vec<usize> {
     let mut sim = two_on_two(allocation);
     sim.run_until(10.0);
-    let mut t: Vec<usize> = sim.fire_events().iter().map(|e| e.target).collect();
+    let mut t: Vec<usize> = sim
+        .fire_events()
+        .iter()
+        .filter_map(|e| e.target.unit())
+        .collect();
     t.sort_unstable();
     t.dedup();
     t
@@ -239,17 +243,19 @@ fn v56_no_target_draws_more_shooters_than_it_has_slots() {
         let before = sim.fire_events().len();
         sim.run_until(sim.time_s() + 10.0);
         // Shooters engaging each target in this epoch's slice of the log.
-        let mut per_target: BTreeMap<usize, Vec<usize>> = BTreeMap::new();
+        let mut per_target: BTreeMap<sim_core::sim::FireTarget, Vec<usize>> = BTreeMap::new();
         for e in &sim.fire_events()[before..] {
             per_target.entry(e.target).or_default().push(e.shooter);
         }
         for (target, mut shooters) in per_target {
             shooters.sort_unstable();
             shooters.dedup();
-            let elements = sim.units()[target].elements as usize;
+            // This fixture fields only units, so every target must be one.
+            let idx = target.unit().expect("units-only fixture");
+            let elements = sim.units()[idx].elements as usize;
             assert!(
                 shooters.len() <= cap.min(elements.max(1)),
-                "target {target} drew {} shooters with {elements} elements (cap {cap})",
+                "target {target:?} drew {} shooters with {elements} elements (cap {cap})",
                 shooters.len()
             );
         }

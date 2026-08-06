@@ -18,7 +18,7 @@
 //! they still roll in shooter index order. That is what keeps the draw stream comparable
 //! with the pre-allocation engine (V58).
 
-use super::{FireEvent, Side, Sim};
+use super::{FireEvent, FireTarget, Side, Sim};
 use crate::allocation::{self, Solver};
 use crate::fires::{self, WeaponClass, WeaponType};
 use crate::los;
@@ -51,7 +51,133 @@ enum Shot {
     },
 }
 
+/// What ground fires need to know about a target, whichever list it lives in.
+///
+/// Units, air-defence batteries and C2 posts differ in what they *do* and in nothing that
+/// matters to a shell. Gathering the four facts a shot depends on — where, how big, how
+/// many left, is it locatable — is what let counter-battery be added by widening a list
+/// rather than by writing a second fires model (`docs/DESIGN.md` §12.4).
+#[derive(Clone, Copy)]
+pub(super) struct TargetState {
+    pub pos: Vec2,
+    pub height_m: f32,
+    pub silhouette_width_m: f32,
+    pub elements: u32,
+    /// Can the enemy put indirect fire on it? For a unit this is its track (§10.1); for a
+    /// battery or post see [`Sim::emplacement_is_located`].
+    pub located: bool,
+    /// `value` from the stat block, if the scenario set one.
+    pub declared_value: Option<f32>,
+    /// Raw threat score, for the derived value when none is declared.
+    pub threat: f32,
+}
+
 impl Sim {
+    /// The fire-relevant facts about a target, whichever list it is in.
+    pub(super) fn target_state(&self, t: FireTarget) -> TargetState {
+        match t {
+            FireTarget::Unit(i) => {
+                let u = &self.units[i];
+                TargetState {
+                    pos: u.pos,
+                    height_m: u.stats.height_m,
+                    silhouette_width_m: u.stats.silhouette_width_m,
+                    elements: u.elements,
+                    located: u.detected,
+                    declared_value: u.stats.value,
+                    threat: Self::raw_threat(u),
+                }
+            }
+            FireTarget::AirDefence(i) => {
+                let d = &self.air_defence[i];
+                TargetState {
+                    pos: d.pos,
+                    height_m: d.stats.height_m,
+                    silhouette_width_m: d.stats.silhouette_width_m,
+                    elements: d.elements,
+                    located: self.emplacement_is_located(t),
+                    declared_value: d.stats.value,
+                    // No derived threat: a battery's danger is to aircraft, which is not
+                    // measurable on the same scale as a unit's rof x lethality x reach.
+                    // See `target_value`.
+                    threat: 0.0,
+                }
+            }
+            FireTarget::C2(i) => {
+                let c = &self.c2[i];
+                TargetState {
+                    pos: c.pos,
+                    height_m: c.stats.height_m,
+                    silhouette_width_m: c.stats.silhouette_width_m,
+                    elements: c.elements,
+                    located: self.emplacement_is_located(t),
+                    declared_value: c.stats.value,
+                    // A post has no firepower at all (§12.2), so no derived threat either.
+                    threat: 0.0,
+                }
+            }
+        }
+    }
+
+    /// Remove `n` elements from whatever list the target lives in.
+    fn apply_casualties(&mut self, t: FireTarget, n: u32) {
+        match t {
+            FireTarget::Unit(i) => {
+                self.units[i].elements = self.units[i].elements.saturating_sub(n);
+            }
+            FireTarget::AirDefence(i) => {
+                self.air_defence[i].elements = self.air_defence[i].elements.saturating_sub(n);
+            }
+            FireTarget::C2(i) => {
+                self.c2[i].elements = self.c2[i].elements.saturating_sub(n);
+            }
+        }
+    }
+
+    /// Can the enemy put **indirect** fire on this emplacement (`docs/DESIGN.md` §12.4)?
+    ///
+    /// Neither batteries nor posts go through the §3.2 glimpse loop, so neither has a
+    /// track in the ordinary sense. Rather than invent one, this asks the question
+    /// counter-battery acquisition actually asks: **has it given itself away?**
+    ///
+    /// - A **battery** has, if it is transmitting (`self_cue` with a live radar) or has
+    ///   fired. Those are the two real ways a site is located: ESM on its emissions, or a
+    ///   counter-battery track back along its rounds.
+    /// - A **post** has, if it is coordinating anything — a command post is found because
+    ///   it is talking, which is the same argument in a different band.
+    ///
+    /// Deterministic, and draws **no randomness**. That is not just tidiness: a stochastic
+    /// acquisition here would insert draws into every scenario fielding air defence and
+    /// shift the stream underneath V50, V51, V59 and V60 for no modelling gain.
+    ///
+    /// It also joins the two halves of §12.3 — switching a radar off already made an ARM
+    /// miss; it now also hides the battery from artillery. One decision, two consequences.
+    ///
+    /// Public because it is a question worth asking from outside: it is what a gate checks
+    /// directly rather than inferring from a hit, and what a front-end would draw to show
+    /// which emplacements have given themselves away.
+    #[must_use]
+    pub fn emplacement_is_located(&self, t: FireTarget) -> bool {
+        match t {
+            FireTarget::Unit(_) => false,
+            FireTarget::AirDefence(i) => {
+                let d = &self.air_defence[i];
+                let emitting = d.self_cue && d.sensor_idx.is_some_and(|s| self.sensor_active(s));
+                let has_fired = self.air_defence_events.iter().any(|e| e.battery == i);
+                d.alive() && (emitting || has_fired)
+            }
+            FireTarget::C2(i) => {
+                let post = &self.c2[i];
+                post.alive()
+                    && self.air_defence.iter().any(|d| {
+                        d.side == post.side
+                            && d.alive()
+                            && post.covers_jammed(d.pos, self.link_quality_at(post.pos, post.side))
+                    })
+            }
+        }
+    }
+
     /// One epoch of fires. Each side allocates all its shooters, then they fire in index
     /// order.
     pub(super) fn resolve_fires(&mut self) {
@@ -63,13 +189,13 @@ impl Sim {
         // Both sides allocate against the same board, before anyone shoots — so neither
         // side gets to react to casualties the other has not taken yet. Sorted by shooter
         // so rounds still resolve in unit index order, which is the determinism unit.
-        let mut orders: Vec<(usize, usize)> = [Side::Blue, Side::Red]
+        let mut orders: Vec<(usize, FireTarget)> = [Side::Blue, Side::Red]
             .into_iter()
             .flat_map(|side| self.allocate_side(side))
             .collect();
         orders.sort_unstable();
 
-        for (s_idx, t_idx) in orders {
+        for (s_idx, target) in orders {
             let shooter = &self.units[s_idx];
             // The allocation was made against the board as it stood at the start of the
             // epoch; a shooter killed by an earlier shooter this epoch does not fire.
@@ -84,13 +210,15 @@ impl Sim {
             };
             let (shooter_pos, elements) = (shooter.pos, shooter.elements);
 
-            let shot = self.prepare_shot(&weapon, shooter_pos, t_idx, effectiveness);
+            let shot = self.prepare_shot(&weapon, shooter_pos, target, effectiveness);
             // Every live element fires the weapon's per-element round count.
             let per_element = (weapon.rof_rounds_per_min * self.epoch_s / 60.0).round() as u32;
             let rounds = per_element.saturating_mul(elements);
-            let target_pos = self.units[t_idx].pos;
+            let (target_pos, mut remaining) = {
+                let t = self.target_state(target);
+                (t.pos, t.elements)
+            };
 
-            let mut remaining = self.units[t_idx].elements;
             let mut casualties = 0u32;
             for _ in 0..rounds {
                 if remaining == 0 {
@@ -99,19 +227,24 @@ impl Sim {
                 let (killed, near) = self.fire_one_round(&shot, target_pos, remaining);
                 remaining -= killed;
                 casualties += killed;
-                near_misses[t_idx] += near;
+                // Only *units* have a suppression state to be shaken. A battery or a post
+                // is either intact or not (§4.3 is a model of people under fire, and its
+                // Free/Suppressed/Pinned chain gates movement and outgoing fire, neither
+                // of which an emplacement does).
+                if let FireTarget::Unit(i) = target {
+                    near_misses[i] += near;
+                }
             }
 
             if casualties > 0 {
-                let target = &mut self.units[t_idx];
-                let before = target.elements;
-                target.elements = target.elements.saturating_sub(casualties);
+                let before = self.target_state(target).elements;
+                self.apply_casualties(target, casualties);
                 self.fire_events.push(FireEvent {
                     time_s: self.time_s,
                     shooter: s_idx,
-                    target: t_idx,
+                    target,
                     casualties,
-                    killed: before > 0 && target.elements == 0,
+                    killed: before > 0 && self.target_state(target).elements == 0,
                 });
             }
         }
@@ -133,10 +266,10 @@ impl Sim {
         &self,
         weapon: &WeaponType,
         shooter_pos: Vec2,
-        t_idx: usize,
+        t: FireTarget,
         effectiveness: f32,
     ) -> Shot {
-        let target = &self.units[t_idx];
+        let target = self.target_state(t);
         let cover = self.cover_at(target.pos);
         match weapon.class {
             WeaponClass::Direct => {
@@ -146,13 +279,13 @@ impl Sim {
                     shooter_pos,
                     SHOOTER_HEIGHT_M,
                     target.pos,
-                    target.stats.height_m,
+                    target.height_m,
                 );
                 let p_hit = fires::direct_p_hit(
                     weapon.dispersion_mrad,
                     range,
-                    target.stats.silhouette_width_m,
-                    target.stats.height_m,
+                    target.silhouette_width_m,
+                    target.height_m,
                 );
                 Shot::Direct {
                     p_kill: p_hit * weapon.p_kill_given_hit * (1.0 - cover) * effectiveness,
@@ -213,7 +346,7 @@ impl Sim {
     /// it.
     ///
     /// Deterministic, and draws no randomness.
-    fn allocate_side(&self, side: Side) -> Vec<(usize, usize)> {
+    fn allocate_side(&self, side: Side) -> Vec<(usize, FireTarget)> {
         let live_shooter = |i: usize| {
             let u = &self.units[i];
             u.side == side
@@ -258,10 +391,8 @@ impl Sim {
         side: Side,
         shooters: &[usize],
         solver: Solver,
-    ) -> Vec<(usize, usize)> {
-        let targets: Vec<usize> = (0..self.units.len())
-            .filter(|&i| self.units[i].side != side && self.units[i].alive())
-            .collect();
+    ) -> Vec<(usize, FireTarget)> {
+        let targets = self.engageable_targets(side);
         if shooters.is_empty() || targets.is_empty() {
             return Vec::new();
         }
@@ -279,7 +410,7 @@ impl Sim {
         let mut slot_target = Vec::new();
         let mut slot_weight = Vec::new();
         for (t_pos, &t) in targets.iter().enumerate() {
-            let elements = self.units[t].elements;
+            let elements = self.target_state(t).elements;
             let count = elements.min(self.max_shooters_per_target).max(1);
             // A representative kill probability for this target, over the shooters that
             // can actually engage it. Exact when they are identical, which is the case
@@ -328,12 +459,12 @@ impl Sim {
     /// Direct fire needs LOS and range; indirect fire needs a live track and range but no
     /// LOS. Range is checked before LOS deliberately: the range test is a couple of
     /// terrain samples, an LOS traversal walks the grid.
-    fn kill_fraction(&self, s: usize, t: usize) -> Option<f64> {
+    fn kill_fraction(&self, s: usize, t: FireTarget) -> Option<f64> {
         let shooter = &self.units[s];
-        let target = &self.units[t];
+        let target = self.target_state(t);
         let weapon = shooter.weapon.as_ref()?;
 
-        if weapon.class == WeaponClass::Indirect && !target.detected {
+        if weapon.class == WeaponClass::Indirect && !target.located {
             return None;
         }
         // Slant range (docs/DESIGN.md §9.1) — the one range convention.
@@ -342,7 +473,7 @@ impl Sim {
             shooter.pos,
             SHOOTER_HEIGHT_M,
             target.pos,
-            target.stats.height_m,
+            target.height_m,
         );
         if range > weapon.max_range_m || range < weapon.min_range_m {
             return None;
@@ -362,15 +493,15 @@ impl Sim {
                     shooter.pos,
                     SHOOTER_HEIGHT_M,
                     target.pos,
-                    target.stats.height_m,
+                    target.height_m,
                 ) {
                     return None;
                 }
                 let p_hit = fires::direct_p_hit(
                     weapon.dispersion_mrad,
                     range,
-                    target.stats.silhouette_width_m,
-                    target.stats.height_m,
+                    target.silhouette_width_m,
+                    target.height_m,
                 );
                 // Each round removes at most one element.
                 let p_kill =
@@ -421,16 +552,47 @@ impl Sim {
     /// the most dangerous thing on the field. Deriving from size *and* threat means an
     /// unscored stat block still ranks sensibly — an unarmed truck is worth something, a
     /// full-strength gun battery a great deal more.
-    fn target_value(&self, t: usize, threat_scale: f32) -> f32 {
-        let unit = &self.units[t];
-        let per_element = unit.stats.value.unwrap_or_else(|| {
+    ///
+    /// **An emplacement scores no derived threat** (§12.4). A battery's danger is to
+    /// aircraft and a post's is to nobody at all, so neither has an output measurable on
+    /// the same scale as a unit's `rof × lethality × reach` — and inventing a conversion
+    /// would be arithmetic dressed as doctrine. They fall back to `1.0` per element, and a
+    /// scenario that wants artillery to prefer the SAM over the tanks says so with `value`.
+    /// That is what the dial is for: expressing "kill the radar first" is a judgement, not
+    /// a derivation.
+    fn target_value(&self, t: FireTarget, threat_scale: f32) -> f32 {
+        let target = self.target_state(t);
+        let per_element = target.declared_value.unwrap_or_else(|| {
             if threat_scale > 0.0 {
-                1.0 + Self::raw_threat(unit) / threat_scale
+                1.0 + target.threat / threat_scale
             } else {
                 1.0
             }
         });
-        unit.elements as f32 * per_element.max(0.0)
+        target.elements as f32 * per_element.max(0.0)
+    }
+
+    /// Every enemy asset `side` may shoot at, in a fixed list-then-index order.
+    ///
+    /// Units first, so a scenario with no air defence and no posts produces exactly the
+    /// list it always did and every existing result is untouched (§7.4). Batteries and
+    /// posts are appended, which is the same additive posture §12 took for strike targets.
+    fn engageable_targets(&self, side: Side) -> Vec<FireTarget> {
+        let mut out: Vec<FireTarget> = (0..self.units.len())
+            .filter(|&i| self.units[i].side != side && self.units[i].alive())
+            .map(FireTarget::Unit)
+            .collect();
+        out.extend(
+            (0..self.air_defence.len())
+                .filter(|&i| self.air_defence[i].side != side && self.air_defence[i].alive())
+                .map(FireTarget::AirDefence),
+        );
+        out.extend(
+            (0..self.c2.len())
+                .filter(|&i| self.c2[i].side != side && self.c2[i].alive())
+                .map(FireTarget::C2),
+        );
+        out
     }
 
     /// Terrain cover `∈ [0, 1]` at a world position (0 outside the grid).
