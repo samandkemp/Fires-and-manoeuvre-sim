@@ -176,8 +176,9 @@ pub struct AirDefenceState {
     pub engagements: Vec<Engagement>,
     /// Earliest time the next shot may be launched (reload gate), seconds.
     pub ready_at_s: f64,
-    /// Seam for mounting the launcher on a unit, so a strike drone could later SEAD it.
-    /// Unused in v1: batteries are standalone and not attritable (§9.7).
+    /// Seam for mounting the launcher on a *unit*, so a battery could ride a vehicle and
+    /// move with it. Still unused: batteries are standalone. Attritability no longer needs
+    /// it — Phase 12 gave the battery its own `elements`, so SEAD kills it directly (§12).
     pub carrier: Option<usize>,
 }
 

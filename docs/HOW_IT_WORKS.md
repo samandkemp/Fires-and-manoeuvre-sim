@@ -101,6 +101,24 @@ scenario and switches between them live. A scenario is told apart from a stat-bl
 library by *being parseable as one* — it needs a `name` and a `[terrain]` block, which
 `units.toml` and friends do not have. So adding a new library never confuses the picker.
 
+### Watching one
+
+A battle is over in a couple of hundred seconds of sim time, so the clock panel is built
+around actually seeing it:
+
+- **speed** is in *sim seconds per real second*. Drop it to 0.2× to watch a duel. The sim
+  still advances only in whole `dt_s` ticks — the wall clock decides *when* a tick happens,
+  never how big it is — so speed cannot change the outcome. 0.2× and 60× give the same
+  event log.
+- **+1 s / +10 s** step one integration tick or one decision epoch: the two units the model
+  actually has. **Space** runs and pauses, **.** steps one tick, without leaving the map.
+- **pause on** *contact* / *loss* / *air* sets a breakpoint. The moments worth watching last
+  a single tick, so slowing down is not enough on its own — you also have to be looking at
+  the right pixel. A breakpoint stops *on* the tick that produced the event.
+- **Run to** jumps ahead at headless speed, and **Re-run at seed** replays the same battle.
+
+### Studying one
+
 Headlessly, over many random seeds:
 
 ```
@@ -108,7 +126,15 @@ cargo run -p experiments --release --bin batch -- scenarios --seeds 50
 ```
 
 That writes `out/<scenario>.csv` (a row per seed) and `out/summary.csv` (mean and
-standard error per scenario).
+standard error per scenario). To vary a *dial* rather than compare scenarios:
+
+```
+cargo run -p experiments --release --bin sweep -- air_raid \
+    --param sim.track_hold_s --values 10,20,45,90 --seeds 500
+```
+
+Ten thousand trials take under twenty seconds, and every comparison is paired over a shared
+seed set. `docs/EXPERIMENTS.md` is the full guide.
 
 ### The two kinds of file
 

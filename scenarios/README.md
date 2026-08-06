@@ -122,3 +122,17 @@ isolate one model from another:
   as meant. Turn it on to let sensors search (see `sensor_search.toml`), but note it
   dissolves any scenario whose premise is a *committed* sensor posture — the interdiction
   game being the example that caught this.
+
+You do not have to edit a file to try a different value. `sweep` patches any dotted path
+into the scenario TOML before it is parsed, and runs every arm over the same seed set:
+
+```
+cargo run -p experiments --release --bin sweep -- air_raid \
+    --param sim.track_hold_s --values 10,20,45,90 --seeds 500
+```
+
+See `docs/EXPERIMENTS.md`.
+
+**Unknown keys are rejected.** Nearly every dial above has a default, so a misspelt one —
+`track_hold` for `track_hold_s` — used to parse perfectly, take the default, and quietly
+change what the scenario meant. The loader now refuses it and names the key.

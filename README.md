@@ -341,6 +341,7 @@ error on every figure.)
 | `scenarios/` | TOML scenarios and the unit/weapon/sensor stat blocks |
 | **`docs/HOW_IT_WORKS.md`** | **Start here if you are new.** How detection, engagement and scenarios actually work, with worked numbers |
 | `docs/DESIGN.md` | The deep spec: equations, state machines, and the validation gate for every model |
+| `docs/EXPERIMENTS.md` | How to run a study: batch, sweeps, paired comparisons, what every column means |
 | `SETUP.md` | Environment setup (Rust + Bevy + VSCode), written for a Rust beginner |
 
 Inside `sim_core`, `sim/` is the engine that drives everything else: `sim/mod.rs` holds
@@ -384,11 +385,41 @@ cargo run -p experiments --release --bin fires_bench     # the fires path alone
 cargo run -p experiments --release --bin batch -- scenarios --seeds 50   # batch a folder
 ```
 
-`batch` runs every scenario in a folder for N seeds and writes `out/<scenario>.csv` (a row
-per seed) plus `out/summary.csv` (mean and standard error per scenario) — losses each
-side, detections, time to first contact, and for air: launched, downed, leakers, munitions
-released. The standard error sits beside every mean, because that is what says whether a
-difference between two scenarios means anything.
+### Studies
+
+Two general tools sit on a shared harness. `batch` compares **scenarios**; `sweep` compares
+**dials**.
+
+```
+cargo run -p experiments --release --bin batch -- scenarios --only air_raid --seeds 10000
+
+cargo run -p experiments --release --bin sweep -- fire_allocation \
+    --param sim.allocation --values independent,greedy,optimal \
+    --seeds 500 --metric red_cleared_s
+```
+
+```
+--- red_cleared_s, paired against sim.allocation = independent ---
+  sim.allocation = independent  baseline 75.080
+  sim.allocation = greedy      -11.300 +- 0.473 (t = -23.9, n = 500, 93 tied) significant
+  sim.allocation = optimal     -11.180 +- 0.487 (t = -23.0, n = 500, 90 tied) significant
+```
+
+`--param` is a dotted path into the scenario, patched into the TOML before it is parsed, so
+any dial is sweepable — including ones added later — and the patched scenario goes through
+exactly the same validation as a file on disk.
+
+Trials run in parallel, one sim per worker thread: **10,000 trials in under 20 seconds**,
+and byte-identical to a serial run (there is a test that says so, because "we parallelised
+it and the answer changed" is otherwise discovered by a confusing result months later).
+
+Every comparison is **paired** — all arms run the same seed set, so the map and most of the
+luck cancel. This crate offers no unpaired comparison, because an unpaired one once
+produced a confident and entirely spurious finding about the allocation solvers. The report
+gives the difference, its standard error, the t statistic, how many seeds gave *identical*
+answers, and whether to believe it.
+
+See `docs/EXPERIMENTS.md` for the columns, the statistics, and how to add a metric.
 
 ## Subsystems
 

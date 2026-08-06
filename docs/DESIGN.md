@@ -1187,6 +1187,27 @@ the ground one. They answer different questions: a ground target is a multi-elem
 that genuinely absorbs several shooters, while an airframe is a single object, so a second
 battery is insurance against the first missing and a third is nearly always waste.
 
+**Measured (10,000 paired trials on `ad_c2`, 2026-08-06).** That reasoning was a claim, so
+it was swept. Against a cap of 1:
+
+| cap | drones downed | rounds left |
+|---|---|---|
+| 2 | −0.002 ± 0.007 — **not significant** | −0.252 ± 0.040 (t = −6.3) |
+| 3 | −0.028 ± 0.008 (t = −3.7) | −0.642 ± 0.042 (t = −15.2) |
+| 4 | identical to 3 (the scenario has three batteries) | identical to 3 |
+
+So the second battery buys **nothing** and costs a quarter of a round — a genuine null at
+2,500 paired seeds, not an effect too small to see. The third is actively worse: it spends
+0.64 rounds *and* kills fewer drones, because a battery committed to an airframe another
+battery has already covered is not covering a different one. The default of 2 is therefore
+defensible but unearned on this scenario; whether it earns its keep when batteries are
+scarcer relative to the raid is the open question. Reproduce with:
+
+```
+sweep ad_c2 --param sim.max_batteries_per_air_target --values 1,2,3,4 --seeds 2500 \
+      --metric ad_rounds_left
+```
+
 Rows of the assignment are **free engagement channels**, not batteries — a two-channel
 battery contributes two rows, so `channels` falls out of the structure rather than needing
 a special case. Columns are slots on each engageable airframe, discounted geometrically as
