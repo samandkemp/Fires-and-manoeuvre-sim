@@ -57,6 +57,42 @@ pub struct WeaponType {
     /// dual-role autocannon.
     #[serde(default)]
     pub engages_air: bool,
+    /// Does this munition home on a **transmitting** emitter (`docs/DESIGN.md` §12.3)?
+    ///
+    /// An anti-radiation missile rides the radar's own signal down, so its accuracy is
+    /// bought with the target's emissions. Switching the radar off should therefore be a
+    /// counter — which is the trade this flag exists to pose.
+    #[serde(default)]
+    pub anti_radiation: bool,
+    /// Circular error probable against a target that is **not** transmitting, metres.
+    ///
+    /// Only read when `anti_radiation` is set. The munition still arrives — it flies to
+    /// where the emitter was last known to be — but with nothing to home on it lands with
+    /// this dispersion instead of `cep_m`. Defaults to `cep_m`, so declaring
+    /// `anti_radiation` alone changes nothing until the degradation is stated.
+    ///
+    /// A dial rather than a rule, because "an ARM cannot engage a silent radar at all" is
+    /// just this with the value set very large — reachable, but as a scenario's choice
+    /// rather than the model's assumption.
+    #[serde(default)]
+    pub silent_cep_m: Option<f32>,
+}
+
+impl WeaponType {
+    /// The dispersion this munition lands with against a target that is or is not
+    /// currently transmitting (`docs/DESIGN.md` §12.3).
+    ///
+    /// For everything that is not an ARM this is `cep_m` regardless — the emitter state is
+    /// simply not part of a dumb shell's accuracy — which is what makes the whole mechanism
+    /// an exact identity for every existing weapon.
+    #[must_use]
+    pub fn cep_against(&self, emitting: bool) -> f32 {
+        if self.anti_radiation && !emitting {
+            self.silent_cep_m.unwrap_or(self.cep_m)
+        } else {
+            self.cep_m
+        }
+    }
 }
 
 fn one() -> f32 {
@@ -79,6 +115,8 @@ impl Default for WeaponType {
             cep_m: 0.0,
             lethal_radius_m: 0.0,
             engages_air: false,
+            anti_radiation: false,
+            silent_cep_m: None,
         }
     }
 }

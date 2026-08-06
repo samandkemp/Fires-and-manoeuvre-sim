@@ -428,7 +428,11 @@ impl Sim {
 
             let weapon = air.payload.clone().expect("can_strike checked the payload");
             let side = air.side;
-            let sigma = fires::sigma_from_cep(weapon.cep_m);
+            // An anti-radiation munition rides the target's own signal down, so what it
+            // hits depends on whether that signal is there (§12.3). For every other weapon
+            // `cep_against` returns `cep_m` whatever this says.
+            let emitting = self.target_is_emitting(a_idx);
+            let sigma = fires::sigma_from_cep(weapon.cep_against(emitting));
             let burst = fires::sample_burst(aim, sigma, &mut self.rng);
             let casualties = self.apply_area_damage(burst, &weapon, side);
 
@@ -456,6 +460,29 @@ impl Sim {
             Some(TargetSpec::Named(id)) => self.named_ground_asset(id),
             None => self.air[air_idx].plan.destination(),
         }
+    }
+
+    /// Is this strike drone's assigned target currently radiating (`docs/DESIGN.md`
+    /// §12.3)?
+    ///
+    /// True only for a **named air-defence battery** that is alive, has an organic radar,
+    /// and is using it. Everything else is `false`, which is the honest answer rather than
+    /// a permissive one: a unit, a command post or a bare map point emits nothing an ARM
+    /// could ride, so an ARM aimed at one is flying blind by definition.
+    ///
+    /// `self_cue` is therefore the counter, and it costs something to use: a battery that
+    /// switches its radar off drops onto the network cueing chain and pays `cue_latency_s`
+    /// for every track (§9.5). Survive the missile, or see the raid coming — not both.
+    fn target_is_emitting(&self, air_idx: usize) -> bool {
+        let Some(TargetSpec::Named(id)) = &self.air[air_idx].target else {
+            return false;
+        };
+        self.air_defence
+            .iter()
+            .find(|d| d.id == *id)
+            .is_some_and(|d| {
+                d.alive() && d.self_cue && d.sensor_idx.is_some_and(|s| self.sensor_active(s))
+            })
     }
 
     /// Where the ground asset called `id` is, if it is still alive.

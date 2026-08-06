@@ -1412,20 +1412,58 @@ ordinary entry in the sensor list, and `Sim::sensor_active` — which already kn
 sensor dies with its airframe — now also knows a radar dies with its battery. Coverage and
 belief rasters drop it automatically, because they were already asking that question.
 
-### 12.3 Deliberate limitations (v1)
+### 12.3 Anti-radiation homing: the radar buys its own accuracy
+
+§12.2 made a battery's radar the thing worth killing. This makes it the thing that makes
+killing it *possible*.
+
+A real anti-radiation missile rides the radar's own signal down, so its accuracy is bought
+with the target's emissions. Two dials on the weapon say so:
+
+```toml
+[weapons.arm]
+anti_radiation = true
+cep_m          = 5.0     # against a transmitting radar
+silent_cep_m   = 400.0   # against a silent one
+```
+
+`WeaponType::cep_against(emitting)` is the single place that decides, and for anything
+without the flag it returns `cep_m` whatever the emitter is doing — a dumb shell's accuracy
+does not depend on what its target is transmitting. So every existing munition is an exact
+identity (§7.4), and an ARM with no `silent_cep_m` stated falls back to `cep_m`, meaning
+declaring the flag alone changes nothing until the degradation is given a number.
+
+**A dispersion, not a veto.** The munition still arrives; with nothing to home on it flies
+to where the emitter was last known to be. "An ARM cannot engage a silent radar at all" is
+this with the value set very large — reachable as a scenario's choice, rather than baked in
+as the model's opinion. The veto version would also flatter the counter: switching a radar
+off would become a free and total defence.
+
+**What counts as an emitter.** Only a *named*, live, `self_cue` battery with a working
+organic radar. A command post, a unit or a bare map point radiates nothing an ARM could
+ride, so an ARM sent at one is flying blind by definition rather than by omission.
+
+**The trade this poses, and why it is a real one.** `self_cue = false` is the counter, and
+it is not free: the battery drops onto the network cueing chain and pays `cue_latency_s` on
+every track (§9.5) — the same delay V50 shows deciding whether a SAM gets to fire at all.
+So the defender chooses: *survive the missile, or see the raid coming.* Not both.
+
+### 12.4 Deliberate limitations (v1)
 
 - **Air-delivered SEAD only.** Ground fires still iterate the unit list, so artillery
   cannot conduct counter-battery against a SAM. The allocation payoff (§10.2) would need a
   notion of value for a battery, which the `AirType.value` work already sketches.
-- **Targeting is still assigned.** A strike drone attacks what a scenario named; it does
-  not find a radar for itself. Autonomous target selection remains the deferred kill-chain
-  work (§9.7).
-- **No emitter-seeking behaviour.** A real anti-radiation missile homes on a radar that is
-  *transmitting*, so switching the radar off is a counter. Here the aim point is the
-  asset's position regardless. The `self_cue` switch is the obvious seam.
+- **Targeting is still assigned.** A strike drone attacks what a scenario named; even an
+  ARM homes on the emitter it was *sent* at rather than scanning for the nearest
+  transmitting radar. Autonomous target selection remains the deferred kill-chain work
+  (§9.7).
+- **Emissions are binary.** A radar is on or off; there is no intermittent emission, no
+  blinking to reduce exposure, and no memory of a position after the emitter goes quiet
+  beyond the aim point itself.
 
-### 12.4 Validation gates (V60)
+### 12.5 Validation gates (V60, V64)
 
 | # | Property | Reference |
 |---|----------|-----------|
+| V64 | anti-radiation homing | the same missile lands with `cep_m` against a transmitting radar and `silent_cep_m` against a silent one, the mean miss scaling as the ratio of the two CEPs (`E|miss| = σ√(π/2)`, `σ = CEP/√(2 ln 2)`) and doing correspondingly less damage; a weapon without the flag ignores the emitter entirely and an undeclared `silent_cep_m` falls back to `cep_m`, so both are exact identities; only a named, live, self-cueing battery counts as an emitter |
 | V60 | SEAD | a strike drone assigned a named C2 post destroys it **in-simulation** and the defence decoheres with no battery lost; a destroyed battery's organic radar stops emitting; a target id matching nothing yields no aim point, so the new asset lists are additive rather than a replacement (§7.4) |
