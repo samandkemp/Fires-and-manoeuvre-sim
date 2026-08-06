@@ -1198,6 +1198,23 @@ envelope having already dropped its munition has won, so the window is the time 
 with nothing left to drop has no such deadline and is scored over the time to cross the
 envelope instead: still worth shooting, just not urgently.
 
+The window is capped at a **planning horizon** of 60 s. Two reasons, the second concrete:
+beyond about a minute, "how long this target will linger" stops discriminating usefully,
+since the defence will have reconsidered many times; and an uncapped window runs to
+hundreds of seconds for a distant loiterer, which drives `p_kill` to 1 for *every* pairing.
+The diminishing-return discount `(1 − p)^k` then collapses to 1 and stops separating
+"cover another drone" from "pile onto this one" — which is the entire job it is there to
+do. That degeneracy was observed while building V59, not theorised.
+
+One consequence is worth stating plainly rather than hiding, because it reads as
+counter-intuitive: a bomber seconds from release has a *short* window and therefore a
+*low* `P(kill before release)`, so it scores below a recce drone the battery can
+comfortably catch. That is the formulation being self-consistent, not a bug — maximising
+expected value destroyed says shoot what you can still stop, and a bomber past the point
+of interception is a lost cause. Whether it is the *right* objective is a separate
+question: making `value` reflect imminent harm, rather than only what an airframe carries,
+is the natural way to change the answer.
+
 `P(kill | window)` is `air_defence::p_kill_in_window`, which is the same §9.4 pair of laws
 V48 and V49 gate — exponential for a gun, geometric for a missile — evaluated forward over
 a window rather than sampled, so the two cannot drift apart. `value(air)` is the optional

@@ -16,6 +16,10 @@ use crate::{air_defence, fires, los};
 use glam::Vec2;
 use rand::Rng;
 
+/// Longest window the air-defence payoff will score a target over, seconds
+/// (`docs/DESIGN.md` §11.2).
+const AD_PLANNING_HORIZON_S: f32 = 60.0;
+
 impl Sim {
     /// The glimpse process against airborne targets (§9.1). Same as the ground loop
     /// except the target's actor height comes from its altitude and it contributes no
@@ -331,7 +335,15 @@ impl Sim {
             }
             // No munition to drop: score it over the time to cross the envelope.
             _ => ((range_m - ad.stats.min_range_m) / speed).max(0.0),
-        };
+        }
+        // Capped at a planning horizon, for two reasons. Beyond about a minute, "how long
+        // this target will linger" stops discriminating usefully — the defence will have
+        // reconsidered many times. More concretely, an uncapped window runs to hundreds of
+        // seconds for a distant loiterer, which drives `p_kill` to 1 for *every* pairing;
+        // the diminishing-return discount `(1 - p)^k` then collapses to 1 and stops
+        // separating "cover another drone" from "pile onto this one", which is the whole
+        // job it is there to do.
+        .min(AD_PLANNING_HORIZON_S);
         if window <= 0.0 {
             return 0.0; // already at its release point; nothing to be gained
         }
