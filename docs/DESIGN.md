@@ -1319,7 +1319,41 @@ will not be there for the next one. Coordination pays exactly where the shot is 
 *countable resource* — which is a sharper statement than "coordination is good", and it
 falls out of the two engagement models rather than being asserted.
 
-### 11.3 Deliberate limitations (v1)
+### 11.3 Ground fires and the net
+
+§10.2 let a side coordinate its ground fires for free while §11 made air defence pay for a
+post. That asymmetry was reasoned, not arbitrary — a battlegroup does share one fire-control
+net, where point-defence batteries genuinely are independent sites — but it was an
+*argument*, and an argument is not something you can measure.
+
+`[sim] fires_need_c2` makes it a modelled thing. With it on, `Sim::allocate_side` splits a
+side in two and solves **two** problems:
+
+| Shooter | Solver |
+|---|---|
+| inside a live friendly post's (jammed) radius | the scenario's `allocation` — the side-wide assignment |
+| outside it | `Independent` — picks for itself, the pre-Phase-10 rule |
+
+Two separate problems rather than one problem with constraints, deliberately. "Not in the
+net" means precisely "does not know what anyone else is doing", so an unnetted shooter must
+not be allowed to *avoid* a target because a netted one took it. Solving them together
+would leak exactly that information.
+
+Being outside the net costs coordination, not the ability to fight: a loose gun still
+engages, on its own judgement. What it loses is shown by V63's three-gun case — it opens on
+a target one of the netted guns has already destroyed, and its whole volley leaves no trace
+in the log. That wasted volley is what the net buys back.
+
+**Off by default.** Turning it on unconditionally would silently reduce every existing
+scenario to `independent`, re-baselining the §10.2 allocation result, V56 and V39 at once,
+for a reason invisible in the scenario files. As a dial the cost of losing the net is a
+number instead:
+
+```
+sweep <scn> --param sim.fires_need_c2 --values false,true --seeds 1000 --metric red_cleared_s
+```
+
+### 11.4 Deliberate limitations (v1)
 
 - **The post is not attritable yet.** `Sim::remove_c2` exists and V59 uses it, but nothing
   in the simulation targets a post: strike drones engage assigned ground units (§9.3), and
@@ -1330,7 +1364,7 @@ falls out of the two engagement models rather than being asserted.
 - **A post cannot be handed off.** There is no notion of a deputy taking over, so killing
   the only post decoheres the defence permanently rather than for a reorganisation delay.
 
-### 11.4 Validation gates (V59, V62)
+### 11.5 Validation gates (V59, V62, V63)
 
 | # | Property | Reference |
 |---|----------|-----------|

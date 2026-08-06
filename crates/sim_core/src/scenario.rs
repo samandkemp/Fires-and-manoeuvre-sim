@@ -117,6 +117,21 @@ pub struct SimConfig {
     /// insurance against the first missing and a third is nearly always waste.
     #[serde(default = "default_max_batteries_per_air_target")]
     pub max_batteries_per_air_target: u32,
+    /// Must a ground shooter be under a live friendly C2 post to join its side's
+    /// coordinated fire plan (`docs/DESIGN.md` §11.3)?
+    ///
+    /// **Off by default.** With it off, ground fires coordinate side-wide for free — the
+    /// §10.2 assumption, defensible for a battlegroup sharing one fire-control net. With it
+    /// on, a shooter inside a live post's (jammed) radius joins the side-wide assignment
+    /// and a shooter outside falls back to picking for itself, exactly as air defence
+    /// already works (§11.1).
+    ///
+    /// A dial rather than a change of rule, because flipping it unconditionally would
+    /// silently turn every existing scenario into `independent` — re-baselining the Phase
+    /// 10 allocation result, V56 and V39 at once, for a reason invisible in the scenario
+    /// files. As a dial the cost of losing the net is *measurable* instead: sweep it.
+    #[serde(default)]
+    pub fires_need_c2: bool,
     /// Should steerable sensors re-point themselves each epoch to maximise expected
     /// information gain (`docs/DESIGN.md` §10.3)?
     ///
@@ -224,6 +239,7 @@ impl Default for SimConfig {
             allocation: AllocationChoice::default(),
             max_shooters_per_target: default_max_shooters_per_target(),
             max_batteries_per_air_target: default_max_batteries_per_air_target(),
+            fires_need_c2: false,
             sensor_tasking: default_sensor_tasking(),
             belief_cells: default_belief_cells(),
         }

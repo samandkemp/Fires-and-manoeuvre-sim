@@ -65,7 +65,7 @@ impl Sim {
         // so rounds still resolve in unit index order, which is the determinism unit.
         let mut orders: Vec<(usize, usize)> = [Side::Blue, Side::Red]
             .into_iter()
-            .flat_map(|side| self.allocate_fires(side))
+            .flat_map(|side| self.allocate_side(side))
             .collect();
         orders.sort_unstable();
 
@@ -201,28 +201,64 @@ impl Sim {
         }
     }
 
-    /// Assign every one of `side`'s shooters to an enemy, as `(shooter, target)` pairs.
+    /// Assign every one of `side`'s shooters, splitting them by whether they are in the
+    /// side's fire-control net (`docs/DESIGN.md` §11.3).
+    ///
+    /// With `[sim] fires_need_c2` off — the default — this is one call with the whole
+    /// side, exactly as before, and the C2 lists are never consulted. With it on, the side
+    /// solves **two** problems: the netted shooters coordinate, and the rest each pick for
+    /// themselves. They are solved separately rather than as one problem with constraints,
+    /// because "not in the net" means precisely "does not know what anyone else is doing" —
+    /// an unnetted shooter must not be allowed to avoid a target because a netted one took
+    /// it.
+    ///
+    /// Deterministic, and draws no randomness.
+    fn allocate_side(&self, side: Side) -> Vec<(usize, usize)> {
+        let live_shooter = |i: usize| {
+            let u = &self.units[i];
+            u.side == side
+                && u.alive()
+                && u.weapon.is_some()
+                // Pinned units emit nothing (V31), so they are not in the problem.
+                && u.suppression
+                    .fire_effectiveness(self.suppressed_fire_factor)
+                    > 0.0
+        };
+        let all: Vec<usize> = (0..self.units.len()).filter(|&i| live_shooter(i)).collect();
+
+        if !self.fires_need_c2 {
+            return self.allocate_fires(side, &all, self.allocation.into());
+        }
+        let (netted, alone): (Vec<usize>, Vec<usize>) =
+            all.into_iter().partition(|&i| self.under_c2(i));
+        let mut orders = self.allocate_fires(side, &netted, self.allocation.into());
+        orders.extend(self.allocate_fires(side, &alone, Solver::Independent));
+        orders
+    }
+
+    /// Is this unit inside a live friendly C2 post's (jammed) coordination radius?
+    /// The same test air defence uses, so "in the net" means one thing (§11.1).
+    fn under_c2(&self, unit_idx: usize) -> bool {
+        let u = &self.units[unit_idx];
+        self.c2.iter().any(|post| {
+            post.side == u.side
+                && post.covers_jammed(u.pos, self.link_quality_at(post.pos, post.side))
+        })
+    }
+
+    /// Assign `shooters` to enemies of `side`, as `(shooter, target)` pairs.
     /// `docs/DESIGN.md` §10.2.
     ///
     /// The old rule was "each shooter takes the nearest enemy it can engage", decided
     /// independently. That wastes fire in the obvious way: three tanks all engage the one
-    /// nearest target while a second, equally dangerous one is left alone. Here the side
+    /// nearest target while a second, equally dangerous one is left alone. Here the group
     /// solves for all its shooters at once.
-    ///
-    /// Deterministic, and draws no randomness.
-    fn allocate_fires(&self, side: Side) -> Vec<(usize, usize)> {
-        let shooters: Vec<usize> = (0..self.units.len())
-            .filter(|&i| {
-                let u = &self.units[i];
-                u.side == side
-                    && u.alive()
-                    && u.weapon.is_some()
-                    // Pinned units emit nothing (V31), so they are not in the problem.
-                    && u.suppression
-                        .fire_effectiveness(self.suppressed_fire_factor)
-                        > 0.0
-            })
-            .collect();
+    fn allocate_fires(
+        &self,
+        side: Side,
+        shooters: &[usize],
+        solver: Solver,
+    ) -> Vec<(usize, usize)> {
         let targets: Vec<usize> = (0..self.units.len())
             .filter(|&i| self.units[i].side != side && self.units[i].alive())
             .collect();
@@ -279,7 +315,6 @@ impl Sim {
             })
             .collect();
 
-        let solver: Solver = self.allocation.into();
         allocation::solve(&payoff, solver)
             .into_iter()
             .enumerate()

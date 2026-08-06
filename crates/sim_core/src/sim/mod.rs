@@ -62,6 +62,8 @@ pub struct Sim {
     allocation: AllocationChoice,
     max_shooters_per_target: u32,
     max_batteries_per_air_target: u32,
+    // Does a ground shooter need a C2 post to join the side-wide plan (§11.3)?
+    fires_need_c2: bool,
     // Sensor-tasking dials and state (§10.3).
     sensor_tasking: bool,
     tasking: tasking::Tasking,
