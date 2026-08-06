@@ -2677,7 +2677,9 @@ dependencies = [
  "glam",
  "ndarray",
  "rand 0.9.5",
+ "rayon",
  "sim_core",
+ "toml",
 ]
 
 [[package]]
