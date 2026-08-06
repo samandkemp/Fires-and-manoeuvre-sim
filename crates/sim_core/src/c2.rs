@@ -34,6 +34,19 @@ pub struct C2Type {
     /// radius makes that legible on the map. A comms model with terrain masking is a
     /// clean later refinement — the §9.5 cue-latency machinery is the natural seam.
     pub coordination_range_m: f32,
+    /// How long an asset must have been inside the radius before it is actually in the
+    /// net, seconds (`docs/DESIGN.md` §11.2).
+    ///
+    /// Joining a fire-control net is not instantaneous: the battery has to be handed the
+    /// air picture and told what it is now responsible for. **Defaults to zero**, so the
+    /// pre-latency behaviour is exactly recovered — and so a sweep can turn this on
+    /// *alone*, without the jamming effect confounding it.
+    ///
+    /// Matters mainly for a post or battery that moves. Emplaced assets pay it once at
+    /// t = 0 and then never again, which is the honest answer: a static defence is set up
+    /// before the raid arrives.
+    #[serde(default)]
+    pub link_latency_s: f32,
     /// Height above ground, metres — for LOS as a *target*, since a post is something
     /// the enemy will want to find and kill.
     #[serde(default = "default_height")]
@@ -68,6 +81,7 @@ impl Default for C2Type {
     fn default() -> Self {
         Self {
             coordination_range_m: 5000.0,
+            link_latency_s: 0.0,
             height_m: default_height(),
             silhouette_width_m: default_width(),
             signature: std::collections::BTreeMap::new(),
@@ -119,6 +133,22 @@ impl C2State {
     /// the battery beneath it.
     #[must_use]
     pub fn covers(&self, pos: Vec2) -> bool {
-        self.alive() && self.pos.distance(pos) <= self.stats.coordination_range_m
+        self.covers_jammed(pos, 1.0)
+    }
+
+    /// As [`C2State::covers`], with the post's link degraded by EW.
+    ///
+    /// `link_quality` is the [`crate::ew::jamming_factor`] at the post: `1` clear, `→ 0`
+    /// blinded. It scales the **radius**, so jamming does not flip the link off — it pulls
+    /// it in, and a battery sitting on top of the post keeps talking to it while the ones
+    /// on the flanks fall out of the net first. That is the right shape: a comms link
+    /// degrades with range against a noise floor, and raising the floor is what a jammer
+    /// does.
+    ///
+    /// With no jammers the factor is exactly `1` and this is bit-for-bit [`C2State::covers`]
+    /// — the same identity posture EW takes everywhere else (§8, V40).
+    #[must_use]
+    pub fn covers_jammed(&self, pos: Vec2, link_quality: f32) -> bool {
+        self.alive() && self.pos.distance(pos) <= self.stats.coordination_range_m * link_quality
     }
 }

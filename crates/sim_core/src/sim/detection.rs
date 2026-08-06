@@ -105,6 +105,28 @@ impl Sim {
         factor
     }
 
+    /// Communications-link quality at `pos` for an asset on `side`: the product of the
+    /// **enemy's** jammers there (1 if none — the EW-off identity again).
+    ///
+    /// The mirror image of [`Sim::jamming_at`], and the difference is the point. A jammer
+    /// protecting its own side degrades the *enemy's sensing of it*; a jammer degrading a
+    /// link degrades the *enemy's own* communications. Same asset, same dials, opposite
+    /// side of the argument — so a Red jammer both hides Red units from Blue eyes and cuts
+    /// the Blue C2 net (§11.2).
+    #[must_use]
+    pub fn link_quality_at(&self, pos: Vec2, side: Side) -> f32 {
+        if self.jammers.is_empty() {
+            return 1.0;
+        }
+        let mut factor = 1.0f32;
+        for js in &self.jammers {
+            if js.side != side {
+                factor *= ew::jamming_factor(pos, std::slice::from_ref(&js.jammer));
+            }
+        }
+        factor
+    }
+
     /// The effective glimpse rate of one sensor against one target: the §3.2 rate times
     /// the §8.1 jamming factor. Zero when blocked, out of range, or outside the field of
     /// regard.

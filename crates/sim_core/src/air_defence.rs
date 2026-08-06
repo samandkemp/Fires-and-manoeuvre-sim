@@ -177,6 +177,14 @@ pub struct AirDefenceState {
     pub engagements: Vec<Engagement>,
     /// Earliest time the next shot may be launched (reload gate), seconds.
     pub ready_at_s: f64,
+    /// When this battery's C2 link becomes usable, seconds — `None` when it is not under
+    /// a live friendly post at all (`docs/DESIGN.md` §11.2).
+    ///
+    /// Set to `now + link_latency_s` the moment the battery comes under coverage, and
+    /// cleared the moment it drops out — so a battery that is jammed out of the net and
+    /// then recovers pays the joining cost again, which is the behaviour that makes
+    /// intermittent jamming worse than its duty cycle suggests.
+    pub net_ready_at_s: Option<f64>,
     /// Seam for mounting the launcher on a *unit*, so a battery could ride a vehicle and
     /// move with it. Still unused: batteries are standalone. Attritability no longer needs
     /// it — Phase 12 gave the battery its own `elements`, so SEAD kills it directly (§12).
@@ -212,6 +220,7 @@ impl AirDefenceState {
             elements,
             engagements: Vec::new(),
             ready_at_s: 0.0,
+            net_ready_at_s: None,
             carrier: None,
         }
     }

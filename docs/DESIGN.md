@@ -1200,6 +1200,33 @@ coordination: from the next tick the group **decoheres** and every battery rever
 nearest-first. That is what makes "kill the command post" a better opening move than "kill
 one more launcher", and the model produces it without being told to.
 
+**The link is not all-or-nothing.** Two things bear on it besides the post being alive.
+
+*Jamming pulls the radius in.* The effective coordination range is
+
+```
+r_eff = coordination_range_m · g(post),   g = ew::jamming_factor at the post
+```
+
+so an enemy jammer near the post does not flip the link off — it shrinks it, and the
+batteries on the flanks fall out of the net while the one sitting on top of the post keeps
+talking. That is the right shape: a link degrades with range against a noise floor, and
+raising the floor is what a jammer does. It also gives the raid a **soft** counter beside
+SEAD's hard one — same effect on the defence, no ordnance spent, and nothing on the map to
+show it happened.
+
+Note the sign. `Sim::jamming_at` folds a side's **own** jammers, because a jammer protecting
+Red degrades *Blue's sensing of Red*. `Sim::link_quality_at` folds the **enemy's**, because
+a jammer degrades *Blue's own communications*. Same asset, same dials, opposite side of the
+argument — so one Red jammer both hides Red units and cuts the Blue net.
+
+*Joining costs time.* `link_latency_s` (default **0**) is how long a battery must have been
+inside the radius before it is in the net. Defaulting to zero recovers the pre-latency
+behaviour exactly, and — the reason it matters for study design — lets a sweep turn either
+effect on **alone**, without the other confounding it. The consequence worth noting is that
+a battery not yet in the net falls back to nearest-first and commits its channel: a link
+that arrives late cannot retrospectively undo the duplicated engagements already made.
+
 ### 11.2 The air-defence payoff
 
 The overkill cap is its own dial, `max_batteries_per_air_target` (default 2), rather than
@@ -1298,17 +1325,17 @@ falls out of the two engagement models rather than being asserted.
   in the simulation targets a post: strike drones engage assigned ground units (§9.3), and
   ground fires iterate the unit list. Making posts and batteries strikeable is the SEAD
   work this phase is built to enable, and is the agreed next focus.
-- **Coordination is binary and instant.** Inside the radius or not; no partial link, no
-  latency, no degradation under jamming. The §9.5 cue-latency machinery is the obvious
-  place to grow this.
-- **Ground fires still coordinate for free.** The asymmetry with air defence is deliberate
-  for now, but a C2 requirement on ground allocation is the natural symmetry to consider.
+- **The link ignores terrain.** Jamming and latency now bear on it, but a ridge between the
+  post and a battery does not. A terrain-aware comms model is the natural next refinement.
+- **A post cannot be handed off.** There is no notion of a deputy taking over, so killing
+  the only post decoheres the defence permanently rather than for a reorganisation delay.
 
-### 11.4 Validation gates (V59)
+### 11.4 Validation gates (V59, V62)
 
 | # | Property | Reference |
 |---|----------|-----------|
 | V59 | C2-coordinated air defence | with one drone nearest to every battery, nearest-first sends them all at it while a C2 post makes them cover one drone each; a scenario with **no** post is unchanged from the pre-C2 engine (the §7.4 identity discipline, so V50–V52 cannot move); a **dead** post coordinates nothing, costing no battery, magazine or envelope — only the coordination |
+| V62 | the link degrades, not only dies | an enemy jammer on the post scales its radius by the EW factor, so the flanking batteries drop out and the defence decoheres with nothing destroyed; a *friendly* jammer does not cut its own net; a **zero-power** jammer runs the whole arithmetic and changes nothing (§7.4); `link_latency_s` delays joining, and a battery not yet in the net commits its channel nearest-first, so a late link cannot undo it |
 
 ## 12. SEAD: air defence as a target *(Phase 12)*
 

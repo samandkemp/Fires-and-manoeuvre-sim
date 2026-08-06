@@ -119,7 +119,10 @@ impl Sim {
         // 5. Suppression recovery: memoryless per-tick step-down (fixed unit order).
         self.recover_suppression();
 
-        // 6, 7. Counter-air and strike — both no-ops without air assets.
+        // 6, 7. Counter-air and strike — both no-ops without air assets. The C2 link is
+        // refreshed first, because who is in the net decides how the batteries allocate;
+        // it is a no-op without C2 posts and draws no randomness either way (§11.2).
+        self.update_c2_links();
         self.resolve_air_defence();
         self.resolve_strikes();
 

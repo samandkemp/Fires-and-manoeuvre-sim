@@ -192,12 +192,67 @@ impl Sim {
         self.open_coordinated(&coordinated, now);
     }
 
-    /// Is this battery under a live friendly C2 post (`docs/DESIGN.md` §11)?
-    fn coordinated(&self, ad_idx: usize) -> bool {
-        let ad = &self.air_defence[ad_idx];
-        self.c2
+    /// Refresh every battery's C2 link (`docs/DESIGN.md` §11.2).
+    ///
+    /// Two things can take a battery out of the net without touching the battery:
+    ///
+    /// - **The post dies** — `covers_jammed` is false for a dead post, so the group
+    ///   decoheres from the next tick (§12.2).
+    /// - **The link is jammed** — an enemy jammer near the post pulls its effective radius
+    ///   in, so the batteries on the flanks fall out first and the ones sitting on top of
+    ///   it keep talking. SEAD hard-kills the post; EW soft-kills its reach.
+    ///
+    /// Coming *into* coverage is not instantaneous: the battery is in the net at
+    /// `now + link_latency_s`, and dropping out clears that, so a battery jammed out and
+    /// back in pays the joining cost again.
+    ///
+    /// Draws no randomness, and is exactly a no-op when there are no posts — which is what
+    /// keeps a post-free scenario bit-identical to the pre-C2 engine (V59).
+    pub(super) fn update_c2_links(&mut self) {
+        if self.c2.is_empty() {
+            return;
+        }
+        let now = self.time_s;
+        // The link quality at each post, computed once: it depends on the post's position
+        // and the enemy's jammers, neither of which varies per battery.
+        let quality: Vec<f32> = self
+            .c2
             .iter()
-            .any(|post| post.side == ad.side && post.covers(ad.pos))
+            .map(|post| self.link_quality_at(post.pos, post.side))
+            .collect();
+
+        for i in 0..self.air_defence.len() {
+            let ad_side = self.air_defence[i].side;
+            let ad_pos = self.air_defence[i].pos;
+            // The best link on offer: the shortest latency among the posts that reach it.
+            // A battery inside two posts' radii joins on whichever is quicker, which is
+            // the only sensible reading of "it has two headquarters".
+            let best = self
+                .c2
+                .iter()
+                .zip(&quality)
+                .filter(|(post, &q)| post.side == ad_side && post.covers_jammed(ad_pos, q))
+                .map(|(post, _)| post.stats.link_latency_s)
+                .fold(f32::INFINITY, f32::min);
+
+            self.air_defence[i].net_ready_at_s = if best.is_finite() {
+                // Already in the net: keep the ready time it earned rather than restarting
+                // the clock every tick, which would make any latency permanent.
+                self.air_defence[i]
+                    .net_ready_at_s
+                    .or(Some(now + f64::from(best.max(0.0))))
+            } else {
+                None
+            };
+        }
+    }
+
+    /// Is this battery in a live friendly C2 net *and* through its joining latency
+    /// (`docs/DESIGN.md` §11)?
+    fn coordinated(&self, ad_idx: usize) -> bool {
+        self.air_defence[ad_idx]
+            .net_ready_at_s
+            .is_some_and(|t| self.time_s >= t)
     }
 
     /// Open engagements for every C2-coordinated battery at once, so the group splits the
