@@ -8,7 +8,14 @@
 //! until it is a number, and if the number turns out to be zero on realistic scenarios,
 //! that is worth knowing too — greedy is `O(nm log nm)` and Hungarian is `O(n²m)`.
 //!
-//! Run: `cargo run -p experiments --release --bin allocation_gap`
+//! **Every figure carries a standard error, and differences are compared *paired*.** Each
+//! rule is run on the same seeds, so the per-seed difference cancels the map and the dice
+//! and leaves only the effect of the rule. Reporting bare means here once produced a
+//! confident claim that greedy beat the optimal solver; the paired test showed the two
+//! were indistinguishable and agreed outright on 88% of seeds. An experiment that reports
+//! a mean without its uncertainty invites exactly that mistake.
+//!
+//! Run: `cargo run -p experiments --release --bin allocation_gap [seeds]`
 
 use sim_core::scenario::{AllocationChoice, Libraries, Scenario};
 use sim_core::sim::{Side, Sim};
@@ -47,8 +54,9 @@ fn main() {
     };
 
     println!("=== allocation gap: {seeds} seeds per scenario ===");
+    println!("finish = time to destroy Red, lower is better; spread = targets engaged per epoch");
     println!(
-        "finish = time to destroy Red (lower is better); spread = targets engaged per epoch
+        "differences are PAIRED on seed, +- is one standard error
 "
     );
 
@@ -65,7 +73,7 @@ fn main() {
         }
 
         println!("{name}");
-        let mut baseline: Option<f64> = None;
+        let mut baseline: Option<Vec<f64>> = None;
         for choice in [
             AllocationChoice::Independent,
             AllocationChoice::Greedy,
@@ -90,25 +98,38 @@ fn main() {
             }
             let n = runs.len() as f64;
             let mean = |f: fn(&Outcome) -> f64| runs.iter().map(f).sum::<f64>() / n;
-            let (red, blue, spread, finish) = (
-                mean(|o| o.enemy_losses),
-                mean(|o| o.own_losses),
-                mean(|o| o.spread),
-                mean(|o| o.finish_s),
-            );
-            // Everything is measured against the old rule, so the gap is the headline.
-            // Faster is better, hence the sign.
-            let delta = match baseline {
+            let (red, spread) = (mean(|o| o.enemy_losses), mean(|o| o.spread));
+            let finishes: Vec<f64> = runs.iter().map(|o| o.finish_s).collect();
+            let (finish, finish_se) = mean_and_se(&finishes);
+
+            // Compared against the old rule **paired on seed**: the per-seed difference
+            // cancels the map and the dice, leaving only the effect of the rule. An
+            // unpaired comparison of two noisy means is what hid the truth here before.
+            let delta = match &baseline {
                 None => {
-                    baseline = Some(finish);
-                    String::from("  (baseline)")
+                    baseline = Some(finishes.clone());
+                    String::from("(baseline)")
                 }
-                Some(b) if b > 0.0 => format!("  {:+.1}% time", (finish - b) / b * 100.0),
-                Some(_) => String::new(),
+                Some(b) => {
+                    let diffs: Vec<f64> =
+                        finishes.iter().zip(b).map(|(f, base)| f - base).collect();
+                    let (d, d_se) = mean_and_se(&diffs);
+                    let same = diffs.iter().filter(|x| x.abs() < 1e-9).count();
+                    let verdict = if d_se > 0.0 && (d / d_se).abs() > 2.0 {
+                        "significant"
+                    } else {
+                        "n.s."
+                    };
+                    format!(
+                        "{d:+6.2} +-{d_se:.2} s vs independent ({verdict}, identical on {}/{})",
+                        same,
+                        diffs.len()
+                    )
+                }
             };
             println!(
-                "  {:<12} finish {finish:>6.1} s   red {red:>6.2}   blue {blue:>5.2}   \
-                 spread {spread:>4.2}{delta}",
+                "  {:<12} finish {finish:>6.1} +-{finish_se:<4.1} s   red {red:>6.2}   \
+                 spread {spread:>4.2}   {delta}",
                 format!("{choice:?}").to_lowercase()
             );
         }
@@ -185,4 +206,16 @@ fn find_scenarios(dir: &Path) -> Vec<(String, PathBuf)> {
         .collect();
     found.sort();
     found
+}
+
+/// Mean and standard error of the mean. Without the SE, two noisy means look like a
+/// finding — which is how this experiment once reported one that was not there.
+fn mean_and_se(xs: &[f64]) -> (f64, f64) {
+    let n = xs.len() as f64;
+    if n < 2.0 {
+        return (xs.first().copied().unwrap_or(0.0), 0.0);
+    }
+    let mean = xs.iter().sum::<f64>() / n;
+    let var = xs.iter().map(|x| (x - mean) * (x - mean)).sum::<f64>() / (n - 1.0);
+    (mean, (var / n).sqrt())
 }

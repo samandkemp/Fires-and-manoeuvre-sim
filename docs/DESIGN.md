@@ -937,33 +937,44 @@ afterwards. A large negative sentinel would have been worse than wrong: `1e18 + 
 is `1e18` in `f64`, so every matching with the same number of forbidden cells would have
 scored identically.
 
-#### Measured: the optimum is not the fastest *(2026-08-04)*
+#### Measured: coordination pays, optimality does not *(2026-08-04)*
 
-`experiments/allocation_gap` runs each scenario under all three rules. On
-`scenarios/fire_allocation.toml` (four shooters that can all reach all four targets),
-200 seeds:
+`experiments/allocation_gap` runs each scenario under all three rules on the same seeds,
+and compares **paired** — the per-seed difference cancels the map and the dice, leaving
+only the effect of the rule. On `scenarios/fire_allocation.toml` (four shooters that can
+all reach all four targets), 500 seeds:
 
-| Rule | Time to destroy Red | Targets engaged per epoch |
-|---|---|---|
-| `independent` (the old rule) | 75.2 s | 1.00 |
-| `greedy` | **64.2 s** (−14.6%) | 3.00 |
-| `optimal` | 64.7 s (−14.0%) | 3.00 |
+| Rule | Time to destroy Red | vs `independent`, paired | Targets engaged per epoch |
+|---|---|---|---|
+| `independent` (the old rule) | 75.1 ± 0.4 s | baseline | 1.00 |
+| `greedy` | 63.8 ± 0.4 s | **−11.30 ± 0.47 s** (significant) | 3.02 |
+| `optimal` | 63.9 ± 0.4 s | **−11.18 ± 0.49 s** (significant) | 3.02 |
 
-Coordination is worth ~15%, and the mechanism is visible in the spread column: the old
-rule sent every gun at the nearest target while three others stood untouched.
+**Coordinating is worth ~15%**, unambiguously, and the mechanism is visible in the spread
+column: the old rule sent every gun at the nearest target while three others stood
+untouched.
 
-But **greedy beats the optimal solver**, consistently and outside the noise. That is not
-a bug in the solver (V56 checks it against an exhaustive optimum). It is the surrogate:
-Hungarian maximises *one epoch's modelled payoff*, and that is not the same objective as
-finishing the battle quickly. The geometric slot discount is an approximation, and
-maximising an approximation exactly can do slightly worse than a heuristic that happens
-to hedge. Keeping greedy is what made this measurable rather than assumed — and the
-honest reading is that the *coordination* is worth 15%, while the *optimality* is worth
-nothing here.
+**Optimality is worth nothing measurable.** Greedy and Hungarian differ by 0.12 s against
+a standard error of ~0.5, and produce *identical* outcomes on the large majority of seeds
+(they diverge at all on well under a fifth). On instances this size — a handful of
+shooters against a handful of similar targets — greedy's myopia costs it essentially
+nothing, because there is rarely a case where taking the locally best pairing forecloses
+a better global one. The optimal solver is kept because it is the reference V56 checks
+against and because the gap should be re-measured as scenarios grow, not because it is
+currently earning its extra complexity.
 
-On the other shipped scenarios the gap is exactly 0.0%: with one or two shooters that can
-each reach one enemy, all three rules agree. Allocation only matters when there is a real
-choice to make.
+> **A methodological correction worth recording.** This section previously claimed greedy
+> *beat* the optimal solver "consistently and outside the noise". It did not. That came
+> from comparing two unpaired means (30 and 200 seeds) whose difference sat inside the
+> sampling error, with no standard error reported to make that visible. A paired test over
+> 500 seeds gives a mean difference of −0.12 s with SE 0.22 (t = −0.55): no effect.
+> `allocation_gap` now reports a standard error on every figure and pairs every
+> comparison, because a bare mean is precisely what invited the wrong conclusion.
+
+On the other shipped scenarios the difference is exactly zero on every seed: with one or
+two shooters that can each reach one enemy, all three rules agree. Allocation only matters
+when there is a real choice to make, which is why `fire_allocation.toml` had to be built
+for this experiment to have anything to measure at all.
 
 ### 10.3 Belief-driven sensor tasking *(landed)*
 

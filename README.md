@@ -311,12 +311,17 @@ helps if the `k` before it all failed. Expressing it as extra columns is what ke
 a plain linear assignment — solved optimally by Kuhn–Munkres — instead of a submodular
 problem needing a bespoke solver.
 
-A greedy allocator ships alongside, and it earns its place. On a scenario built to
-present a real choice, coordination is worth **~15%** off the time to destroy the enemy —
-but **greedy beats the "optimal" solver**, consistently. That is not a solver bug: the
-Hungarian maximises *one epoch's modelled payoff*, which is not the same objective as
-winning the battle quickly. Keeping the baseline is what turned that from an assumption
-into a number.
+A greedy allocator ships alongside, and it earns its place by settling what the optimal
+solver is actually worth. On a scenario built to present a real choice, 500 seeds compared
+paired: **coordinating is worth −11.3 ± 0.5 s (~15%)** off the time to destroy the enemy,
+unambiguously. **Optimality is worth nothing measurable** — greedy and Hungarian differ by
+0.12 s against a standard error of ~0.5, and agree outright on most seeds. At this scale
+greedy's myopia costs it essentially nothing.
+
+That is the useful kind of negative result, and it only exists because the baseline was
+kept. (An earlier version of this claimed greedy *beat* the optimal solver; it did not —
+that came from unpaired means with no error bars. The experiment now reports a standard
+error on every figure.)
 
 *Lives in* [`allocation.rs`](crates/sim_core/src/allocation.rs) *·  gate V56*
 
