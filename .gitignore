@@ -23,3 +23,6 @@
 *~
 .DS_Store
 Thumbs.db
+
+# VSCode Counter output (tool-generated line-count reports)
+.VSCodeCounter/
