@@ -8,10 +8,50 @@
 
 use super::Sim;
 use crate::air::{AirState, FlightPlan};
+use crate::scenario::AllocationChoice;
 use crate::suppression::Suppression;
 use glam::Vec2;
 
 impl Sim {
+    /// Which allocation rule the sides are using (`docs/DESIGN.md` §10.2).
+    #[must_use]
+    pub fn allocation(&self) -> AllocationChoice {
+        self.allocation
+    }
+
+    /// Switch allocation rule mid-run.
+    ///
+    /// Safe between ticks and genuinely useful: running the same battle under `optimal`
+    /// and `independent` is how the value of coordinating is *seen* rather than argued.
+    /// The decision layer holds no state across epochs, so there is nothing to migrate.
+    pub fn set_allocation(&mut self, choice: AllocationChoice) {
+        self.allocation = choice;
+    }
+
+    /// Are steerable sensors re-pointing themselves (`docs/DESIGN.md` §10.3)?
+    #[must_use]
+    pub fn sensor_tasking(&self) -> bool {
+        self.sensor_tasking
+    }
+
+    /// Turn belief-driven sensor tasking on or off mid-run. Switching it off leaves each
+    /// sensor pointed wherever it last chose.
+    pub fn set_sensor_tasking(&mut self, on: bool) {
+        self.sensor_tasking = on;
+    }
+
+    /// Most shooters that may be assigned to one target in an epoch.
+    #[must_use]
+    pub fn max_shooters_per_target(&self) -> u32 {
+        self.max_shooters_per_target
+    }
+
+    /// Set the overkill cap. Clamped to at least 1 — a cap of zero would silence the
+    /// whole side rather than doing anything interesting.
+    pub fn set_max_shooters_per_target(&mut self, cap: u32) {
+        self.max_shooters_per_target = cap.max(1);
+    }
+
     /// Assign a movement route (world waypoints) to a placed unit.
     pub fn set_route(&mut self, unit_idx: usize, route: Vec<Vec2>) {
         self.units[unit_idx].route = route;

@@ -11,6 +11,7 @@
 use bevy::prelude::*;
 use bevy_egui::egui;
 use sim_core::air::AltitudeRef;
+use sim_core::scenario::AllocationChoice;
 use sim_core::sim::{Side, Sim};
 use sim_core::suppression::Suppression;
 
@@ -42,6 +43,7 @@ impl Panel<'_, '_, '_> {
         self.selection_readout(ui);
         self.type_pickers(ui);
         self.air_section(ui);
+        self.decision_section(ui);
         self.overlay_buttons(ui);
         self.probe_readout(ui);
         self.force_summary(ui);
@@ -289,7 +291,66 @@ impl Panel<'_, '_, '_> {
         }
     }
 
-    /// The two map overlays and the exposure window they are computed over.
+    /// The Phase 10 decision layer: how fire is allocated, and whether sensors search.
+    /// `docs/DESIGN.md` §10.
+    ///
+    /// All three are live: switching between `optimal` and `independent` mid-battle is
+    /// how the value of coordinating gets *seen* rather than argued about.
+    fn decision_section(&mut self, ui: &mut egui::Ui) {
+        ui.separator();
+        egui::CollapsingHeader::new("Decisions")
+            .default_open(false)
+            .show(ui, |ui| {
+                let mut allocation = self.sim.sim.allocation();
+                egui::ComboBox::from_label("fire allocation")
+                    .selected_text(match allocation {
+                        AllocationChoice::Optimal => "optimal (Hungarian)",
+                        AllocationChoice::Greedy => "greedy",
+                        AllocationChoice::Independent => "independent (pre-Phase-10)",
+                    })
+                    .show_ui(ui, |ui| {
+                        for (value, label) in [
+                            (AllocationChoice::Optimal, "optimal (Hungarian)"),
+                            (AllocationChoice::Greedy, "greedy"),
+                            (AllocationChoice::Independent, "independent (pre-Phase-10)"),
+                        ] {
+                            ui.selectable_value(&mut allocation, value, label);
+                        }
+                    });
+                if allocation != self.sim.sim.allocation() {
+                    self.sim.sim.set_allocation(allocation);
+                }
+
+                let mut cap = self.sim.sim.max_shooters_per_target();
+                if ui
+                    .add(egui::Slider::new(&mut cap, 1..=8).text("max shooters/target"))
+                    .changed()
+                {
+                    self.sim.sim.set_max_shooters_per_target(cap);
+                }
+
+                let mut tasking = self.sim.sim.sensor_tasking();
+                if ui
+                    .checkbox(&mut tasking, "sensors search by belief")
+                    .changed()
+                {
+                    self.sim.sim.set_sensor_tasking(tasking);
+                }
+                ui.small(
+                    "Only steerable sensors (a field of regard) can be tasked. Try the \
+                     sensor_search scenario.",
+                );
+                let (blue, red) = (
+                    self.sim.sim.belief_of(Side::Blue).entropy(),
+                    self.sim.sim.belief_of(Side::Red).entropy(),
+                );
+                ui.small(format!(
+                    "belief entropy: blue {blue:.2} / red {red:.2} nats"
+                ));
+            });
+    }
+
+    /// The map overlays and the exposure window they are computed over.
     fn overlay_buttons(&mut self, ui: &mut egui::Ui) {
         ui.separator();
         ui.add(
@@ -306,7 +367,10 @@ impl Panel<'_, '_, '_> {
                 self.images,
             );
         }
-        if ui.button("Belief overlay (where Red could hide)").clicked() {
+        if ui
+            .button("Belief snapshot (where Red could hide)")
+            .clicked()
+        {
             overlays::rebuild_belief_overlay(
                 self.sim,
                 exposure,
@@ -315,7 +379,18 @@ impl Panel<'_, '_, '_> {
                 self.images,
             );
         }
-        ui.label("(coverage/belief from Blue sensors, vs 'afv')");
+        // The sim's own running filter, as opposed to the snapshot above — this is what
+        // the tasking layer actually reads when deciding where to look.
+        if ui.button("Belief the sim is flying on (Blue)").clicked() {
+            overlays::rebuild_sim_belief_overlay(
+                self.sim,
+                Side::Blue,
+                self.overlay,
+                self.commands,
+                self.images,
+            );
+        }
+        ui.label("(coverage/snapshot from Blue sensors, vs 'afv')");
     }
 
     /// The last LOS probe result.

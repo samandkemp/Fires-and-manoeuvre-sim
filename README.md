@@ -373,7 +373,9 @@ cargo run -p experiments --bin sensor_siting   # sensor placement value
 cargo run -p experiments --bin risk_path       # least-risk pathing
 cargo run -p experiments --bin interdiction    # fires against a moving force
 cargo run -p experiments --release --bin air_raid # drone raid vs air defence
+cargo run -p experiments --release --bin allocation_gap  # coordinated vs uncoordinated fire
 cargo run -p experiments --release --bin bench # hot-path timings
+cargo run -p experiments --release --bin fires_bench     # the fires path alone
 cargo run -p experiments --release --bin batch -- scenarios --seeds 50   # batch a folder
 ```
 

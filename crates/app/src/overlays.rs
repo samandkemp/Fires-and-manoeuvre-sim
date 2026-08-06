@@ -91,6 +91,58 @@ pub fn rebuild_coverage_overlay(
     );
 }
 
+/// The simulation's **own** running belief for `side`, painted over the map.
+///
+/// Distinct from [`rebuild_belief_overlay`], and worth keeping both. That one is a
+/// *snapshot*: given where the sensors are right now, where could an undetected enemy be?
+/// This one is the *filter the sim is actually flying on* — a posterior accumulated over
+/// every epoch of negative information and diffused between them (`docs/DESIGN.md`
+/// §10.3). It is what the tasking layer reads when it decides where to look.
+///
+/// It only says anything once `[sim] sensor_tasking` is on; with tasking off the sim
+/// never updates a belief, and this paints the uniform prior it started with.
+pub fn rebuild_sim_belief_overlay(
+    sim: &SimRes,
+    side: Side,
+    overlay: &mut Overlay,
+    commands: &mut Commands,
+    images: &mut Assets<Image>,
+) {
+    let belief = sim.sim.belief_of(side);
+    let raster = belief.belief();
+    let (ch, cw) = raster.dim();
+    info!(
+        "sim belief for {side:?}: {cw}x{ch}, entropy {:.3} nats",
+        belief.entropy()
+    );
+
+    let terrain = sim.sim.terrain();
+    let cell = terrain.transform().cell_size_m();
+    let (ex, ey) = (
+        terrain.width() as f32 * cell,
+        terrain.height() as f32 * cell,
+    );
+    let handle = images.add(terrain_view::belief_image(raster));
+    if let Some(e) = overlay.0.take() {
+        commands.entity(e).despawn();
+    }
+    overlay.0 = Some(
+        commands
+            .spawn((
+                Sprite::from_image(handle),
+                Transform {
+                    translation: Vec3::new(ex / 2.0, ey / 2.0, 1.0),
+                    // The belief grid is coarse and covers the whole map, so one cell of
+                    // it spans the map extent divided by the grid edge — not the terrain
+                    // cell size.
+                    scale: Vec3::new(ex / cw as f32, ey / ch as f32, 1.0),
+                    ..default()
+                },
+            ))
+            .id(),
+    );
+}
+
 /// Belief overlay: assuming Blue has *not* detected Red, where could an `afv` be hiding?
 /// The product of each Blue sensor's no-detection likelihood (including Red jamming),
 /// normalised — mass concentrates in dead ground and inside Red's EW bubbles. This is the
