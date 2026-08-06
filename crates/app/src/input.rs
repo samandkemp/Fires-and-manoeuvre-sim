@@ -42,11 +42,14 @@ pub fn handle_map(
             .cursor_position()
             .and_then(|c| cam.viewport_to_world_2d(cam_tf, c).ok())
     };
-    // egui gets first refusal: a click it wants is not a click on the map.
+    // egui gets first refusal: a click it wants is not a click on the map, and a keypress
+    // it wants is someone typing in the seed box, not a map shortcut.
     let wants_pointer = ctx.wants_pointer_input();
     let shift = keys.pressed(KeyCode::ShiftLeft) || keys.pressed(KeyCode::ShiftRight);
 
-    keyboard(sim, ui_state, keys);
+    if !ctx.wants_keyboard_input() {
+        keyboard(sim, ui_state, keys);
+    }
     left_click(sim, ui_state, buttons, wants_pointer, shift, &world_cursor);
 
     if buttons.just_pressed(MouseButton::Right) && !wants_pointer {
@@ -56,8 +59,19 @@ pub fn handle_map(
     }
 }
 
-/// Escape clears, Ctrl+A selects all, Delete removes.
+/// Escape clears, Ctrl+A selects all, Delete removes, Space runs, `.` steps.
+///
+/// Space and `.` are here rather than only on the panel because inspecting a battle means
+/// keeping your eyes on the map: reaching for a button loses the moment you paused for.
 fn keyboard(sim: &mut SimRes, ui_state: &mut UiState, keys: &ButtonInput<KeyCode>) {
+    if keys.just_pressed(KeyCode::Space) {
+        ui_state.running = !ui_state.running;
+        ui_state.tick_budget_s = 0.0;
+    }
+    if keys.just_pressed(KeyCode::Period) {
+        ui_state.running = false;
+        sim.sim.step_one();
+    }
     if keys.just_pressed(KeyCode::Escape) {
         ui_state.selected.clear();
     }

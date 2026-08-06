@@ -70,6 +70,81 @@ pub enum ResetKind {
     Reseed,
 }
 
+/// What stops the clock the instant it happens.
+///
+/// A battle resolves in a couple of hundred seconds of sim time, and the moments worth
+/// watching — first contact, the round that kills, the missile leaving the rail — each
+/// last a single tick. Slowing playback down is not enough on its own: you still have to
+/// be looking at the right pixel at the right moment. A breakpoint pauses *on* the tick
+/// that produced the event, leaving the map showing the instant it happened.
+///
+/// Detected by watching the sim's own event logs grow, so a breakpoint can never
+/// disagree with what the feed reports.
+#[derive(Default, Clone, Copy)]
+pub struct Breakpoints {
+    /// Any new detection, ground or air, either side.
+    pub detection: bool,
+    /// Any ground sub-element destroyed, by fires or by an air-delivered munition.
+    pub casualty: bool,
+    /// Any air-defence shot, or any munition released by a strike drone.
+    pub air_action: bool,
+}
+
+impl Breakpoints {
+    /// Is anything armed? Used to skip the log snapshot entirely when nothing is.
+    pub fn any(self) -> bool {
+        self.detection || self.casualty || self.air_action
+    }
+}
+
+/// Log lengths before a tick, so what the tick *added* can be read off afterwards.
+#[derive(Clone, Copy)]
+pub struct LogMarks {
+    pub detections: usize,
+    pub air_detections: usize,
+    pub fires: usize,
+    pub air_defence: usize,
+    pub strikes: usize,
+}
+
+impl LogMarks {
+    /// Snapshot where every log currently ends.
+    pub fn take(sim: &Sim) -> Self {
+        Self {
+            detections: sim.events().len(),
+            air_detections: sim.air_events().len(),
+            fires: sim.fire_events().len(),
+            air_defence: sim.air_defence_events().len(),
+            strikes: sim.strike_events().len(),
+        }
+    }
+
+    /// Did anything armed in `bp` happen since this mark?
+    pub fn tripped(self, sim: &Sim, bp: Breakpoints) -> bool {
+        if bp.detection
+            && (sim.events().len() > self.detections
+                || sim.air_events().len() > self.air_detections)
+        {
+            return true;
+        }
+        // Casualties, not shots: a burst that hurt nobody is not a moment worth stopping
+        // for, and the fires log records an entry only when rounds actually told.
+        if bp.casualty
+            && (sim.fire_events()[self.fires..]
+                .iter()
+                .any(|e| e.casualties > 0)
+                || sim.strike_events()[self.strikes..]
+                    .iter()
+                    .any(|e| e.casualties > 0))
+        {
+            return true;
+        }
+        bp.air_action
+            && (sim.air_defence_events().len() > self.air_defence
+                || sim.strike_events().len() > self.strikes)
+    }
+}
+
 /// Panel state: interaction mode, selected types, clock control.
 #[derive(Resource)]
 pub struct UiState {
@@ -82,7 +157,23 @@ pub struct UiState {
     pub c2_type_id: String,
     /// Is the clock running?
     pub running: bool,
-    pub ticks_per_frame: u32,
+    /// Sim seconds per real second while running.
+    ///
+    /// The sim still advances only in whole `dt_s` ticks — the wall clock decides *when*
+    /// a tick happens, never how big it is — so playback speed changes nothing about the
+    /// result. Below 1× the same run simply takes longer to watch.
+    pub speed_x: f32,
+    /// Fraction of a tick carried over from the previous frame, so a speed that does not
+    /// divide the frame time evenly still advances at the right average rate.
+    pub tick_budget_s: f32,
+    /// Screenshot rig only: step exactly this many ticks per rendered frame, ignoring the
+    /// wall clock. The capture must land at a reproducible sim time, and a wall-clock
+    /// rate would make it depend on how fast the machine happens to be.
+    pub ticks_per_frame: Option<u32>,
+    /// What pauses the clock automatically.
+    pub breakpoints: Breakpoints,
+    /// Target for the "run to" button, in sim seconds.
+    pub run_to_s: f32,
     /// Everything currently selected — units and air together.
     pub selected: Vec<Selected>,
     /// Where a left-drag box-select started, in world metres.
@@ -149,3 +240,17 @@ pub struct PendingLoad(pub Option<String>);
 pub const PROBE_HEIGHT_M: f32 = 2.0;
 /// Exposure time for the Pd coverage overlay: colour shows P(detect by this long).
 pub const COVERAGE_EXPOSURE_S: f32 = 60.0;
+
+/// Playback speed the app starts at, in sim seconds per real second.
+///
+/// 10× is roughly the fastest a battle can be followed by eye: at 60× — what one
+/// tick per frame used to give — a ten-minute engagement is over in ten seconds and the
+/// detections that decide it flick past in one or two frames.
+pub const DEFAULT_SPEED_X: f32 = 10.0;
+/// Most ticks one frame may run, whatever the speed. A frame that stalls (a scenario
+/// load, a window drag) hands back a huge delta; without this the next frame would try
+/// to swallow the whole gap at once and appear to hang.
+pub const MAX_TICKS_PER_FRAME: u32 = 64;
+/// Longest frame delta the clock will honour, seconds. Same reason as above, applied
+/// before the multiply rather than after, so it holds at every speed.
+pub const MAX_FRAME_DELTA_S: f32 = 0.25;

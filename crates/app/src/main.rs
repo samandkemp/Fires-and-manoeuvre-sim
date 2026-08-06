@@ -31,8 +31,9 @@ mod terrain_view;
 mod ui;
 
 use state::{
-    CameraFrameQuery, CameraQuery, ClickMode, MapSprite, MapSpriteQuery, Overlay, PendingLoad,
-    Probe, ResetKind, SimRes, UiState, WindowQuery, COVERAGE_EXPOSURE_S,
+    Breakpoints, CameraFrameQuery, CameraQuery, ClickMode, MapSprite, MapSpriteQuery, Overlay,
+    PendingLoad, Probe, ResetKind, SimRes, UiState, WindowQuery, COVERAGE_EXPOSURE_S,
+    DEFAULT_SPEED_X, MAX_FRAME_DELTA_S, MAX_TICKS_PER_FRAME,
 };
 
 fn main() {
@@ -141,9 +142,15 @@ fn setup(mut commands: Commands, mut images: ResMut<Assets<Image>>) {
             .unwrap_or_default(),
         c2_type_id: data.libs.c2.keys().next().cloned().unwrap_or_default(),
         running: screenshot_mode,
-        // In screenshot mode, one tick/frame so the capture lands mid-bombardment
-        // (suppression visible on the target) rather than in the aftermath.
-        ticks_per_frame: 1,
+        speed_x: DEFAULT_SPEED_X,
+        tick_budget_s: 0.0,
+        // In screenshot mode, one tick per *frame* so the capture lands mid-bombardment
+        // (suppression visible on the target) rather than in the aftermath. Frame-locked
+        // rather than wall-clocked so the captured sim time does not depend on the
+        // machine's frame rate.
+        ticks_per_frame: screenshot_mode.then_some(1),
+        breakpoints: Breakpoints::default(),
+        run_to_s: 300.0,
         selected: Vec::new(),
         drag_start: None,
         seed: data.scenario.default_seed,
@@ -225,12 +232,44 @@ fn apply_scenario_load(
     info!("loaded scenario '{}'", sim.data.scenario_name);
 }
 
-/// Advance the sim clock: `ticks_per_frame` ticks of `dt_s` per rendered frame while
-/// running (1 tick/frame ≈ 60× real time at 60 fps).
-fn advance_sim(mut sim: ResMut<SimRes>, ui: Res<UiState>) {
-    if ui.running {
-        for _ in 0..ui.ticks_per_frame {
-            sim.sim.step_one();
+/// Advance the sim clock at the panel's playback speed.
+///
+/// The rate is in **sim seconds per real second**, accumulated into a budget and spent in
+/// whole `dt_s` ticks. Two consequences worth being explicit about:
+///
+/// - The wall clock only decides *when* a tick happens, never how big it is, so playback
+///   speed cannot change the outcome of a run. Slowing down to 0.2× to watch a duel gives
+///   the same event log as running it at 60×.
+/// - The leftover fraction of a tick carries to the next frame, so a speed that does not
+///   divide the frame time evenly (0.7× at 60 fps) still advances at the right *average*
+///   rate instead of rounding down to nothing.
+///
+/// Armed breakpoints stop the clock on the tick that tripped them, so a moment lasting
+/// one tick can be looked at.
+fn advance_sim(mut sim: ResMut<SimRes>, mut ui: ResMut<UiState>, time: Res<Time>) {
+    if !ui.running {
+        return;
+    }
+    let dt = sim.sim.dt_s().max(f32::EPSILON);
+    let ticks = match ui.ticks_per_frame {
+        Some(n) => n,
+        None => {
+            ui.tick_budget_s += time.delta_secs().min(MAX_FRAME_DELTA_S) * ui.speed_x;
+            let whole = (ui.tick_budget_s / dt).floor();
+            ui.tick_budget_s -= whole * dt;
+            (whole.max(0.0) as u32).min(MAX_TICKS_PER_FRAME)
+        }
+    };
+    let breakpoints = ui.breakpoints;
+    for _ in 0..ticks {
+        let mark = state::LogMarks::take(&sim.sim);
+        sim.sim.step_one();
+        if breakpoints.any() && mark.tripped(&sim.sim, breakpoints) {
+            ui.running = false;
+            // Drop the carried fraction: resuming should start a fresh tick, not
+            // immediately spend a leftover accumulated before the pause.
+            ui.tick_budget_s = 0.0;
+            break;
         }
     }
 }

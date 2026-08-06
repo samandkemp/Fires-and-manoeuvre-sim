@@ -192,6 +192,13 @@ impl Sim {
         self.dt_s
     }
 
+    /// Decision-epoch length, seconds (`docs/DESIGN.md` §3.3). Exposed so a front-end can
+    /// step by the unit the *decisions* happen on, not just by the integration tick.
+    #[must_use]
+    pub fn epoch_s(&self) -> f32 {
+        self.epoch_s
+    }
+
     /// Decision epochs resolved so far (`docs/DESIGN.md` §3.3). One per `epoch_s` of sim
     /// time crossed, so it is the count of fires resolutions the run has performed.
     #[must_use]
