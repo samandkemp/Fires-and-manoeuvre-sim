@@ -139,6 +139,7 @@ fn setup(mut commands: Commands, mut images: ResMut<Assets<Image>>) {
             .next()
             .cloned()
             .unwrap_or_default(),
+        c2_type_id: data.libs.c2.keys().next().cloned().unwrap_or_default(),
         running: screenshot_mode,
         // In screenshot mode, one tick/frame so the capture lands mid-bombardment
         // (suppression visible on the target) rather than in the aftermath.

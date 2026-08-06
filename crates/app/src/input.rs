@@ -149,6 +149,7 @@ fn right_click(
         }
         ClickMode::PlaceRedAir => place_drone(sim, ui_state, world),
         ClickMode::PlaceBlueAirDefence => place_air_defence(sim, ui_state, world),
+        ClickMode::PlaceBlueC2 => place_c2(sim, ui_state, world),
         ClickMode::PlaceBlueSensor => {
             sim.placed += 1;
             let id = format!("obs-p{}", sim.placed);
@@ -204,6 +205,17 @@ fn place_drone(sim: &mut SimRes, ui_state: &mut UiState, world: Vec2) {
     );
     sim.sim.air_mut(idx).speed_m_s = ui_state.air_speed_m_s;
     ui_state.selected = vec![Selected::Air(idx)];
+}
+
+/// Place a Blue C2 post. Coordinates every friendly battery inside its radius (§11) —
+/// and, being unarmed and conspicuous, is the obvious thing for the other side to attack.
+fn place_c2(sim: &mut SimRes, ui_state: &UiState, world: Vec2) {
+    let Some(stats) = sim.data.libs.c2.get(&ui_state.c2_type_id).cloned() else {
+        return;
+    };
+    sim.placed += 1;
+    let id = format!("cp-p{}", sim.placed);
+    sim.sim.add_c2(&id, Side::Blue, world, stats);
 }
 
 /// Place a self-cueing Blue air-defence battery.

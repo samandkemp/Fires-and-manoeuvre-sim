@@ -69,9 +69,45 @@ pub fn draw_markers(
         gizmos.circle_2d(Isometry2d::from_translation(j.jammer.pos), 6.0 * px, c);
     }
 
+    // C2 posts: the coordination radius, drawn under everything else because it is the
+    // largest ring on the map and would otherwise bury the envelopes inside it. Every
+    // battery within it allocates as one group (docs/DESIGN.md §11) — so this circle is
+    // literally the boundary of who is cooperating with whom.
+    for post in sim.sim.c2() {
+        let alive = post.alive();
+        let c = if alive {
+            Color::srgb(0.95, 0.75, 0.2)
+        } else {
+            Color::srgb(0.45, 0.42, 0.35)
+        };
+        gizmos.circle_2d(
+            Isometry2d::from_translation(post.pos),
+            post.stats.coordination_range_m,
+            c.with_alpha(if alive { 0.22 } else { 0.07 }),
+        );
+        if alive {
+            // A small square, so a post reads as neither a shooter nor a sensor.
+            let d = 7.0 * px;
+            gizmos.rect_2d(
+                Isometry2d::from_translation(post.pos),
+                Vec2::splat(d * 2.0),
+                c,
+            );
+            gizmos.circle_2d(Isometry2d::from_translation(post.pos), 3.0 * px, c);
+        } else {
+            cross(&mut gizmos, post.pos, 8.0 * px);
+        }
+    }
+
     // Air defence: the engagement envelope as a ring, plus a live line to whatever it is
     // currently engaging — the counter-air fight made visible.
     for ad in sim.sim.air_defence() {
+        // A destroyed battery keeps its marker (greyed) but loses its envelope: the ring
+        // means "this ground is covered", and once the battery is dead it is not.
+        if !ad.alive() {
+            cross(&mut gizmos, ad.pos, 9.0 * px);
+            continue;
+        }
         let c = Color::srgb(0.2, 0.85, 0.75);
         gizmos.circle_2d(
             Isometry2d::from_translation(ad.pos),
@@ -87,6 +123,16 @@ pub fn draw_markers(
         }
         gizmos.circle_2d(Isometry2d::from_translation(ad.pos), 9.0 * px, c);
         gizmos.circle_2d(Isometry2d::from_translation(ad.pos), 5.0 * px, c);
+        // Battle damage: a battery is N launchers, and losing some is not the same as
+        // losing all of them (docs/DESIGN.md §12).
+        if ad.elements < ad.stats.element_count {
+            strength_bar(
+                &mut gizmos,
+                ad.pos,
+                px,
+                ad.elements as f32 / ad.stats.element_count.max(1) as f32,
+            );
+        }
         for e in &ad.engagements {
             if let Some(target) = sim.sim.air().get(e.target).filter(|a| a.alive) {
                 gizmos.line_2d(ad.pos, target.pos, Color::srgb(1.0, 0.85, 0.2));
@@ -99,10 +145,7 @@ pub fn draw_markers(
     for (i, a) in sim.sim.air().iter().enumerate() {
         let c = side_color(a.side);
         if !a.alive {
-            let g = Color::srgb(0.45, 0.45, 0.45);
-            let d = 7.0 * px;
-            gizmos.line_2d(a.pos + Vec2::new(-d, -d), a.pos + Vec2::new(d, d), g);
-            gizmos.line_2d(a.pos + Vec2::new(-d, d), a.pos + Vec2::new(d, -d), g);
+            cross(&mut gizmos, a.pos, 7.0 * px); // shot down
             continue;
         }
         // Remaining flight plan.
@@ -180,11 +223,7 @@ pub fn draw_markers(
     }
     for u in sim.sim.units() {
         if !u.alive() {
-            // Killed: a dim grey cross.
-            let g = Color::srgb(0.4, 0.4, 0.4);
-            let d = 8.0 * px;
-            gizmos.line_2d(u.pos + Vec2::new(-d, -d), u.pos + Vec2::new(d, d), g);
-            gizmos.line_2d(u.pos + Vec2::new(-d, d), u.pos + Vec2::new(d, -d), g);
+            cross(&mut gizmos, u.pos, 8.0 * px); // killed
             continue;
         }
         let c = side_color(u.side);
@@ -216,19 +255,7 @@ pub fn draw_markers(
         }
         // A strength bar appears once the unit has lost an element.
         if u.strength() < 0.999 {
-            let w = 24.0 * px;
-            let y = u.pos.y - 16.0 * px;
-            let left = u.pos.x - w / 2.0;
-            gizmos.line_2d(
-                Vec2::new(left, y),
-                Vec2::new(left + w, y),
-                Color::srgb(0.2, 0.2, 0.2),
-            );
-            gizmos.line_2d(
-                Vec2::new(left, y),
-                Vec2::new(left + w * u.strength(), y),
-                Color::srgb(0.2, 0.9, 0.3),
-            );
+            strength_bar(&mut gizmos, u.pos, px, u.strength());
         }
     }
 }
@@ -287,4 +314,39 @@ pub fn draw_probe(
         );
     }
     probe.last = Some(r);
+}
+
+/// The universal "this is destroyed" mark: a dim grey cross.
+///
+/// One helper rather than four copies — units, airframes, batteries and posts all die,
+/// and a reader should not have to check whether they die *differently* on the map.
+fn cross(gizmos: &mut Gizmos, pos: Vec2, half: f32) {
+    let g = Color::srgb(0.45, 0.45, 0.45);
+    gizmos.line_2d(
+        pos + Vec2::new(-half, -half),
+        pos + Vec2::new(half, half),
+        g,
+    );
+    gizmos.line_2d(
+        pos + Vec2::new(-half, half),
+        pos + Vec2::new(half, -half),
+        g,
+    );
+}
+
+/// A remaining-strength bar under an asset, `fraction` in `[0, 1]`.
+fn strength_bar(gizmos: &mut Gizmos, pos: Vec2, px: f32, fraction: f32) {
+    let w = 24.0 * px;
+    let y = pos.y - 16.0 * px;
+    let left = pos.x - w / 2.0;
+    gizmos.line_2d(
+        Vec2::new(left, y),
+        Vec2::new(left + w, y),
+        Color::srgb(0.2, 0.2, 0.2),
+    );
+    gizmos.line_2d(
+        Vec2::new(left, y),
+        Vec2::new(left + w * fraction.clamp(0.0, 1.0), y),
+        Color::srgb(0.2, 0.9, 0.3),
+    );
 }

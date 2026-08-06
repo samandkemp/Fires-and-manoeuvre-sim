@@ -134,6 +134,7 @@ impl Panel<'_, '_, '_> {
             (ClickMode::PlaceRedJammer, "Place Red jammer (EW)"),
             (ClickMode::PlaceRedAir, "Place Red drone"),
             (ClickMode::PlaceBlueAirDefence, "Place Blue air defence"),
+            (ClickMode::PlaceBlueC2, "Place Blue C2 post"),
             (ClickMode::AirOrbit, "Drone orbit here (radius below)"),
         ] {
             ui.radio_value(mode, value, label);
@@ -245,6 +246,17 @@ impl Panel<'_, '_, '_> {
                     ui.selectable_value(chosen, key.clone(), key);
                 }
             });
+        let c2 = &self.sim.data.libs.c2;
+        if !c2.is_empty() {
+            let chosen = &mut self.ui_state.c2_type_id;
+            egui::ComboBox::from_label("C2 type")
+                .selected_text(chosen.clone())
+                .show_ui(ui, |ui| {
+                    for key in c2.keys() {
+                        ui.selectable_value(chosen, key.clone(), key);
+                    }
+                });
+        }
     }
 
     /// The selected drone's readout, and the button that pushes the dials above onto
@@ -479,18 +491,38 @@ impl Panel<'_, '_, '_> {
             sim.air_defence().len()
         ));
         for ad in sim.air_defence() {
+            if !ad.alive() {
+                ui.small(format!("  {}: DESTROYED", ad.id));
+                continue;
+            }
             let mag = if ad.stats.magazine == 0 {
                 "∞".to_owned()
             } else {
                 ad.magazine_left.to_string()
             };
             ui.small(format!(
-                "  {}: {} rounds, {} engaging{}",
+                "  {}: {}/{} up, {} rounds, {} engaging{}",
                 ad.id,
+                ad.elements,
+                ad.stats.element_count,
                 mag,
                 ad.engagements.len(),
                 if ad.self_cue { "" } else { " (net-cued)" }
             ));
+        }
+        // C2 (docs/DESIGN.md §11): which batteries are coordinating, and whether the post
+        // holding them together is still alive.
+        for post in sim.c2() {
+            let covered = sim
+                .air_defence()
+                .iter()
+                .filter(|ad| ad.side == post.side && ad.alive() && post.covers(ad.pos))
+                .count();
+            ui.small(if post.alive() {
+                format!("  {}: C2 post, coordinating {covered}", post.id)
+            } else {
+                format!("  {}: C2 post DESTROYED — defence decohered", post.id)
+            });
         }
         ui.label("Air events:");
         for e in sim.air_defence_events().iter().rev().take(4) {
@@ -527,6 +559,7 @@ impl Panel<'_, '_, '_> {
                 "faint wedge = sensor field of regard (swings when tasked)",
                 "magenta bubble = EW jammer",
                 "teal ring = air-defence envelope",
+                "amber square + wide ring = C2 post and its coordination radius",
                 "yellow line = air-defence engagement",
                 "drone triangle grows with altitude",
             ] {

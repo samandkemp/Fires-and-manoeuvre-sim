@@ -49,6 +49,8 @@ pub enum ClickMode {
     PlaceRedAir,
     /// Place a Blue air-defence battery of the selected type.
     PlaceBlueAirDefence,
+    /// Place a Blue C2 post, which coordinates nearby air defence (DESIGN §11).
+    PlaceBlueC2,
     /// Send the selected drone(s) to orbit the click at the panel's radius.
     AirOrbit,
 }
@@ -77,6 +79,7 @@ pub struct UiState {
     pub unit_type_id: String,
     pub air_type_id: String,
     pub air_defence_type_id: String,
+    pub c2_type_id: String,
     /// Is the clock running?
     pub running: bool,
     pub ticks_per_frame: u32,
