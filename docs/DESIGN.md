@@ -1109,9 +1109,28 @@ per-cell rate is computed once per sensor with the arc removed, cached against t
 was built for, and each of the twelve candidate facings is then a cheap arc mask over that
 raster. Without this, one epoch would cost a viewshed per facing per sensor.
 
-Carried sensors are excluded: a drone-mounted sensor moves every tick, so it would rebuild
-its raster every epoch and never get a cache hit — and it has nothing to steer anyway,
-since it faces where its airframe points.
+**Carried sensors, and the cache key that pays for them.** A drone-mounted sensor moves
+every tick, so an exact pose key would rebuild its raster every epoch and never hit — which
+is why carried sensors were originally excluded from this layer altogether. That was wrong
+in a specific way: *not finding anything is evidence*, negative information is the whole
+point of the POMDP layer (§8.2), and the most mobile observer on the field was the one
+asset excluded from it. A recce drone could fly the length of the map and leave its side's
+belief unchanged.
+
+They are now included, keyed on a pose **quantised to the coarse belief grid** (and to a
+25 m altitude band). This is not a fudge: the raster *is* a coarse-grid object — every
+entry is a rate at a coarse cell centre — so keying it on the coarse cell the sensor stands
+in is consistent with the resolution the whole layer runs at. The cost becomes proportional
+to how far the drone has flown rather than to how long it has been airborne. Quantisation
+is integer arithmetic, so the rebuild schedule is identical on every run.
+
+Emplaced sensors keep their **exact** pose as the key. They do not move, so the cache hits
+every epoch after the first and there is nothing to buy by approximating — and V57 stays
+pinned to the real geometry.
+
+A carried sensor still has nothing to *steer*: it faces where its airframe points, and
+`sync_carried_sensors` would overwrite any choice made here on the next tick. So it
+contributes coverage without participating in the facing decision.
 
 **Off by default (`[sim] sensor_tasking`).** A `facing_deg` written in a scenario is a
 statement of intent, and silently overriding it would change what every existing scenario
@@ -1125,7 +1144,7 @@ belief-driven sweep finds **5 of 5**. Nothing about the sweep is scripted — ea
 drains its own belief out of ground it has cleared, so the best-information facing moves
 on by itself.
 
-### 10.4 Validation gates (V54–V58)
+### 10.4 Validation gates (V54–V58, V61)
 
 | # | Property | Reference |
 |---|----------|-----------|
@@ -1134,6 +1153,7 @@ on by itself.
 | V56 | allocation optimality | Hungarian matches an exhaustive brute-force optimum for n ≤ 7; its total payoff is never below greedy's; no target draws more shooters than it has slots; an ineligible pairing is never chosen |
 | V57 | tasking beats staring | against an enemy hidden outside its initial arc, a belief-tasked sensor detects where a fixed stare never does, with a shorter mean time-to-detect; belief stays a normalised non-negative distribution with finite entropy across many updates (extends V42); tasking draws no randomness |
 | V58 | decision-layer identity | with one shooter and one reachable target, every allocation rule and both tasking settings produce the identical detection and fire logs — the decision phases draw zero randomness, so the stream cannot shift |
+| V61 | carried sensors inform belief | a recce drone that overflies ground and finds nothing drains its side's belief out of that ground, against a control with no drone; belief stays normalised; an emplaced-only scenario is unchanged (only carried poses are quantised); the cleared ground moves with the drone, so the raster is genuinely refreshed |
 
 **Regression risk, as predicted and as found.** Allocation changes what units shoot at, so
 V24, V30 (Lanchester), V31 and V39 were flagged as able to move. **V24, V30 and V31 did

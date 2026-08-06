@@ -47,6 +47,13 @@ const CANDIDATE_FACINGS: usize = 12;
 /// unobserved enemy that may have moved.
 const DIFFUSION_PER_EPOCH: f32 = 0.12;
 
+/// Altitude band a **carried** sensor's cached coverage is keyed on, metres.
+///
+/// See [`Sim::cache_pose`]: a drone's height above ground changes every tick as the ground
+/// under it changes, so an exact key would never hit. 25 m is well inside the scale over
+/// which a slant-range detection rate varies for an airborne observer.
+const CARRIED_HEIGHT_STEP_M: f32 = 25.0;
+
 /// One sensor's facing-independent coverage, and the pose it was computed for.
 struct Coverage {
     pos: Vec2,
@@ -112,6 +119,45 @@ impl Sim {
         )
     }
 
+    /// The pose a sensor's coverage raster is cached against.
+    ///
+    /// **Emplaced sensors use their exact pose.** Anything else would be an approximation
+    /// where none is needed — they do not move, so the cache hits every epoch after the
+    /// first, and exactness keeps V57 pinned to the real geometry.
+    ///
+    /// **Carried sensors are quantised to the coarse belief grid.** A raster costs `cells²`
+    /// line-of-sight walks, affordable precisely because an emplaced sensor pays it once. A
+    /// drone moves every tick, so an exact key would rebuild in full every epoch and never
+    /// hit — which is why carried sensors used to be excluded from belief altogether. But
+    /// the raster *is* a coarse-grid object: every entry is already a rate at a coarse cell
+    /// centre. Keying it on the coarse cell the sensor is standing in is therefore
+    /// consistent with the resolution the whole layer runs at, not a fudge, and it makes
+    /// the cost proportional to how far the drone has flown rather than to how long it has
+    /// been airborne.
+    ///
+    /// Quantisation is exact integer arithmetic, so this stays deterministic: the same
+    /// flight path produces the same rebuild schedule on every run.
+    fn cache_pose(&self, s_idx: usize, cells: usize) -> (Vec2, f32) {
+        let (pos, height, _) = self.sensor_view(s_idx);
+        if self.sensors[s_idx].carrier.is_none() {
+            return (pos, height);
+        }
+        let extent_x = self.terrain.width() as f32 * self.terrain.transform().cell_size_m();
+        let extent_y = self.terrain.height() as f32 * self.terrain.transform().cell_size_m();
+        let cell_of = |v: f32, extent: f32| -> usize {
+            let frac = (v / extent.max(f32::EPSILON)).clamp(0.0, 1.0);
+            ((frac * cells as f32) as usize).min(cells.saturating_sub(1))
+        };
+        let quantised = Self::coarse_centre(
+            &self.terrain,
+            cells,
+            cell_of(pos.x, extent_x),
+            cell_of(pos.y, extent_y),
+        );
+        let band = (height / CARRIED_HEIGHT_STEP_M).round() * CARRIED_HEIGHT_STEP_M;
+        (quantised, band)
+    }
+
     /// Update each side's belief, then point every steerable sensor where it will learn
     /// the most (`docs/DESIGN.md` §10.3). Runs at the decision epoch.
     ///
@@ -125,19 +171,11 @@ impl Sim {
         tasking.coverage.resize_with(self.sensors.len(), || None);
 
         // Refresh any coverage raster whose sensor has moved (or was never built).
-        //
-        // Carried sensors are skipped entirely. A raster costs `cells²` line-of-sight
-        // walks, which is affordable exactly because an emplaced sensor pays it once; a
-        // drone-mounted one moves every tick, so it would pay in full every epoch and
-        // never get a cache hit. It also has nothing to steer — a carried sensor faces
-        // where its airframe is pointing. The cost is that its coverage does not inform
-        // belief, which is the right trade while it is the expensive case and the
-        // transient one.
         for s_idx in 0..self.sensors.len() {
-            if !self.sensor_active(s_idx) || self.sensors[s_idx].carrier.is_some() {
+            if !self.sensor_active(s_idx) {
                 continue;
             }
-            let (pos, height, _) = self.sensor_view(s_idx);
+            let (pos, height) = self.cache_pose(s_idx, cells);
             let stale = tasking.coverage[s_idx]
                 .as_ref()
                 .is_none_or(|c| c.pos != pos || c.height_m != height);
