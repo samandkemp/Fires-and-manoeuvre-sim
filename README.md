@@ -405,9 +405,15 @@ cargo run -p experiments --release --bin sweep -- fire_allocation \
   sim.allocation = optimal     -11.180 +- 0.487 (t = -23.0, n = 500, 90 tied) significant
 ```
 
-`--param` is a dotted path into the scenario, patched into the TOML before it is parsed, so
-any dial is sweepable — including ones added later — and the patched scenario goes through
-exactly the same validation as a file on disk.
+`--param` is a dotted path, patched into the TOML before it is parsed, so any dial is
+sweepable — including ones added later — and the patched file goes through exactly the same
+validation as one on disk. It reaches the **stat blocks** as well as the scenario, which is
+where the models actually live:
+
+```
+sweep air_raid --param sensors.mast_optical.lambda0_per_s --values 0.05,0.1,0.35,1.0 --seeds 1000
+sweep default  --param weapons.mortar.cep_m --from 20 --to 140 --steps 7 --seeds 2000
+```
 
 Trials run in parallel, one sim per worker thread: **10,000 trials in under 20 seconds**,
 and byte-identical to a serial run (there is a test that says so, because "we parallelised
