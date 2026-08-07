@@ -31,6 +31,15 @@ jammed cells get ~1. Multiplying an uninformative prior by the exposure-window
 no-detection likelihood is "where an undetected enemy could be" — the app's belief
 heatmap (green = cleared coverage, magenta = plausible hiding ground).
 
+**`predict` is not mass-conserving at the map edge.** It mixes each cell with the *mean of
+its existing neighbours*, which conserves mass in the interior but leaks at the boundary,
+where a cell has fewer neighbours than the cells feeding it; the renormalisation afterwards
+absorbs the difference. Two consequences, both small and both worth knowing before a rim
+artefact is read as a finding: the diffusion rate is not exactly the fraction of mass that
+moves, and repeated prediction drifts belief slightly toward the map interior with no
+evidence behind it. At the §10.3 grid (48×48) over a few dozen epochs this is far below the
+resolution any decision is taken at.
+
 ### 8.3 Validation gates (V40–V43)
 
 | # | Property | Reference |

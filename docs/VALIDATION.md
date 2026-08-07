@@ -1,7 +1,7 @@
 # Validation
 
 Every model in this project ships with a **gate**: a test that checks it against a
-closed-form result or a stated invariant. There are 66 of them, V1–V66, and they are the
+closed-form result or a stated invariant. There are 67 of them, V1–V67, and they are the
 backbone of the whole thing.
 
 ## Why a gate is not a regression test
@@ -167,7 +167,7 @@ not of any one function. Nothing was written to produce it.
 
 | Gate | Property | Reference |
 |---|---|---|
-| V59 | C2-coordinated air defence | A post makes batteries cover one drone each where nearest-first sends them all at one; a dead post costs no battery, only the coordination |
+| V59 | C2-coordinated air defence | A post makes batteries cover one drone each where nearest-first sends them all at one; a dead post costs no battery, only the coordination; and a post coordinates its **own side only** — with both sides coordinated each still follows its own doctrine and chooses as it would with the enemy's post removed |
 | V62 | The link degrades, not only dies | An enemy jammer scales the post's radius, decohering the defence with nothing destroyed; a zero-power jammer is an exact **identity** |
 | V63 | Fires can be made to need C2 | With `fires_need_c2` on, guns under a post coordinate and guns outside do not; with it off, the fire log is bit-identical |
 
@@ -184,6 +184,26 @@ not of any one function. Nothing was written to produce it.
 | Gate | Property | Reference |
 |---|---|---|
 | V66 | Directed targeting | Strict doctrine is *followed*, not weighed — a gun takes a 3% shot at a priority SAM over a 46% shot at a tank; weighted mode does not overturn it; a priority naming nothing is a load error; LOS and range **block** a pairing so a masked priority falls through; and a shooter holds its target until it is dead or unengageable, the held lock still consuming a slot |
+
+### The input contract — [§7.6](design/07-the-simulation-loop.md)
+
+| Gate | Property | Reference |
+|---|---|---|
+| V67 | A dial the model cannot run on is refused at load | `dt_s = 0` never advances the clock and `epoch_s = 0` makes `time_s/epoch_s` infinite — where `as u64` **saturates**, handing the epoch loop `u64::MAX` boundaries — so both fail to *terminate*; probabilities outside `[0,1]`, negative durations and radii, and `belief_cells = 0` are refused too, as are the stat-block dials that reach a divisor (`range_half_m`, an indirect weapon's `lethal_radius_m`) where a zero yields `NaN` and `NaN` loses every comparison it is in. Legitimate zeros still load, and every shipped scenario and library satisfies the contract |
+
+This is the value-level twin of `deny_unknown_fields`. A misspelt *key* takes its default
+and answers a different question; a *value* outside its domain does the same thing, and
+until V67 nothing checked one. The failure mode that motivated it is reachable from an
+ordinary `sweep --param sim.epoch_s --from 0`, whose first arm hangs with no diagnostic.
+
+The list is deliberately short — see §7.6 for why refusing every zero would be enforcing
+taste rather than tractability.
+
+### The input contract — [§7.6](design/07-the-simulation-loop.md)
+
+| Gate | Property | Reference |
+|---|---|---|
+| V67 | The input contract | A dial the model cannot run on is refused **at load**, naming it. `dt_s = 0` never advances the clock and `epoch_s = 0` makes `time_s/epoch_s` infinite — where `as u64` *saturates*, so the epoch loop is handed `u64::MAX` boundaries and hangs. Probabilities must lie in `[0,1]`, durations and radii must not be negative, and the two stat-block dials that reach a **divisor** (a sensor's `range_half_m`, an indirect weapon's `lethal_radius_m`) must be positive, because a zero there gives `NaN` and `NaN` loses every comparison it is in — the subsystem goes silently *inert* rather than visibly wrong. Legitimate zeros still load, and every shipped scenario satisfies the contract |
 
 ## Running them
 
@@ -206,7 +226,7 @@ Two reasons:
    from outside has the wrong interface, and putting the gates in a crate that *cannot*
    see private state makes that a structural fact rather than an intention.
 2. **The maths reads without its tests.** `sim_core` is meant to be read as a statement of
-   the models; 128 test functions interleaved with it would bury that.
+   the models; 133 test functions interleaved with it would bury that.
 
 There is exactly one exception. V52's zero-draw half asserts a property of the **RNG
 stream** — that empty air phases consume no random numbers — which is genuinely internal,

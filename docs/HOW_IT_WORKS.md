@@ -15,7 +15,7 @@ This is deliberately a different job from its neighbours:
 | [`docs/OPERATIONS.md`](OPERATIONS.md) | How do I *run* it? Every command, and the app's controls |
 | [`docs/SCENARIOS.md`](SCENARIOS.md) | How do I *build* one? Stat blocks and scenario files |
 | [`docs/EXPERIMENTS.md`](EXPERIMENTS.md) | How do I *study* it? Batch runs, sweeps, paired statistics |
-| [`docs/VALIDATION.md`](VALIDATION.md) | How do I know it is right? The V1–V66 gates |
+| [`docs/VALIDATION.md`](VALIDATION.md) | How do I know it is right? The V1–V67 gates |
 | **this file** | *How does it actually work*, and where is the code? |
 
 Every number below was computed by the real functions, not by hand.
@@ -36,7 +36,7 @@ structural fact about the project:
         ▼               ▼               ▼
    ┌─────────┐   ┌─────────────┐   ┌────────────┐
    │   app   │   │ experiments │   │ validation │
-   │  (Bevy) │   │  (headless) │   │ (V1–V66)   │
+   │  (Bevy) │   │  (headless) │   │ (V1–V67)   │
    └─────────┘   └─────────────┘   └────────────┘
 ```
 
@@ -80,7 +80,7 @@ sim/setup.rs        building a Sim and placing assets into it
 sim/commands.rs     what the app's mouse can change between ticks
 sim/detection.rs    the glimpse process, EW, and the track lifecycle
 sim/engagement.rs   ground fires: picking a target, resolving rounds
-sim/counter_air.rs  the air phases
+sim/counter_air/    the air phases: detect, engage, coordinate, strike, damage
 sim/tasking.rs      belief, and where each sensor should look next
 sim/los_cache.rs    a speed-up (see §10); no effect on results
 ```
@@ -583,7 +583,7 @@ cargo run -p validation --release --bin validation_report    # the gate table
 cargo clippy --workspace                                     # lints
 ```
 
-The **V-gates** (V1-V66) are the project's backbone. Each one checks a model against a
+The **V-gates** (V1-V67) are the project's backbone. Each one checks a model against a
 closed-form result or a stated invariant — not against a previously recorded output. The
 difference matters: a regression test tells you the answer changed, while a gate tells you
 the answer is *wrong*.

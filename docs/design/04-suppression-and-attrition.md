@@ -47,6 +47,22 @@ down one level (a memoryless recovery timer). Effects:
 Dials (`scenarios/*.toml`, placeholders): `suppression_radius_m`, `p_suppress`,
 `recover_per_s`, `suppressed_fire_factor`.
 
+**What counts as a near-miss differs by weapon class, and the difference is a
+simplification worth stating.** Indirect fire samples an impact point and tests it:
+a round is a near-miss when `‖burst − target‖ < suppression_radius_m`. **Direct fire does
+not.** It resolves a single hit/kill roll and treats *every* miss as a near-miss, whatever
+the range, so `suppression_radius_m` does not enter the direct-fire path at all.
+
+At the shipped dials this is very nearly exact — 0.4 mrad at 3 km is σ ≈ 1.2 m, so
+essentially every direct-fire miss really does land inside a 35 m radius. It stops being
+exact for a high-dispersion or very long-range direct weapon, where suppression would scale
+with *rounds fired* rather than with rounds landing close.
+
+It is left as it is deliberately. Sampling an impact point for direct fire would change the
+number of RNG draws per round, which re-baselines V24, V30 and V31 — a real cost for an
+effect the current dials cannot resolve. Recorded here so the assumption is visible rather
+than discovered.
+
 ### 4.4 Validation gates (V28–V31)
 
 | # | Property | Reference |

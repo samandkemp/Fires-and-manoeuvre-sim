@@ -115,3 +115,43 @@ Stated so the boundaries are visible rather than assumed:
 - **No variable time step.** A finer `dt_s` costs proportionally more; because detection
   is modelled as a rate rather than a per-tick probability (§3.2), it buys no accuracy in
   the detection statistics, which is exactly what V17 checks.
+
+### 7.6 The input contract
+
+The schema's `deny_unknown_fields` refuses a **key** the model does not know, on the
+grounds that a misspelt dial takes its default and produces a study of a different
+question — a failure that is invisible because the run succeeds. A **value** outside its
+domain fails in exactly the same way, and until V67 nothing checked one.
+
+`Scenario::validate` and `Libraries::validate` now refuse both, naming the offending dial.
+Two of the refusals are of a different order from the rest, and are the reason the section
+exists:
+
+```
+dt_s    = 0   ⇒  the clock never advances, so `run_until` never returns
+epoch_s = 0   ⇒  time_s / epoch_s is +∞, and `as u64` **saturates** rather than wrapping,
+                 so the epoch loop is handed u64::MAX boundaries to resolve
+```
+
+Neither is exotic. `experiments/sweep` exists precisely to set any dotted path in a file
+from the command line, so `--param sim.epoch_s --from 0 --to 30` is an ordinary-looking
+sweep whose first arm hangs with no diagnostic.
+
+The rest are ordinary domain checks — probabilities in `[0, 1]`, durations and radii
+non-negative, `belief_cells ≥ 1` — plus the small set of stat-block dials that reach a
+**divisor**: a sensor's `range_half_m` in the §3.2 falloff, an indirect weapon's
+`lethal_radius_m` in the §2.3 Carleton kernel. Those two are singled out because a zero
+there does not give a small answer, it gives `NaN`, and `NaN` loses every comparison it
+appears in — so the subsystem goes silently *inert* rather than visibly wrong, which is
+the hardest kind of failure to notice.
+
+**The list is deliberately short.** Most dials being zero is a legitimate statement, and
+refusing them would break real fixtures: a drone with `cruise_speed_m_s = 0` is
+stationary, which V59 and V62 depend on to keep their geometry from drifting; a battery
+with `max_range_m = 0` engages nothing; a direct weapon never touches the Carleton kernel,
+so its unused `lethal_radius_m` of zero means nothing at all. A validator that refused
+those would be enforcing taste rather than tractability.
+
+`Libraries::validate` runs both at load and again inside `Sim::new`, so a library patched
+in memory — which is what `sweep` does — is held to the same contract as one read from
+disk.

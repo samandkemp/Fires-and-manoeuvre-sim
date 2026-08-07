@@ -25,7 +25,7 @@ phase.
 | 4 | [Suppression & attrition](04-suppression-and-attrition.md) | Units as N elements; the Free/Suppressed/Pinned chain; Lanchester | V28–V31 |
 | 5 | [Movement as DP](05-movement-as-dp.md) | Least-risk pathing as Bellman over the grid; the risk raster; the exchange rate `w` | V25–V27 |
 | 6 | [Game theory](06-game-theory.md) | The zero-sum solver by fictitious play, and the interdiction payoff | V32–V39 |
-| 7 | [The simulation loop](07-the-simulation-loop.md) | Two clocks and why; phase order; **the determinism contract and the identity discipline** | — |
+| 7 | [The simulation loop](07-the-simulation-loop.md) | Two clocks and why; phase order; **the determinism contract and the identity discipline**; the input contract | V67 |
 | 8 | [EW & partial observability](08-ew-and-partial-observability.md) | Jamming as a modifier on the rate; the belief filter and negative information | V40–V43 |
 | 9 | [Air & counter-air](09-air-and-counter-air.md) | Altitude and the slant-range convention; flight kinematics; strike; two AD models; the cueing timeline | V44–V52 |
 | 10 | [The decision layer](10-the-decision-layer.md) | Track lifecycle; side-wide fire allocation; belief-driven sensor tasking | V54–V58, V61 |
@@ -59,6 +59,7 @@ rather than adding a section of its own.
 | 12 | SEAD — air defence becomes attritable | §12 |
 | 13 | Closing the §11/§12 gaps (V61–V65) | **amended §10.4, §11.2–§11.5, §12.3–§12.6** |
 | 14 | The kill chain: directed targeting | §13 |
+| — | Review pass: the input contract (V67), and a confirmed §11.2 two-sided bug | **§7.6**, and §11.2 |
 
 Note the collision worth knowing about: **§13 is the work of Phase 14**, not Phase 13.
 Phase 13 lifted five limitations across three existing sections and so has no section of
@@ -76,6 +77,13 @@ its own. Section numbers and phase numbers agree up to §12 and part company aft
   fixed-step LOS oracle, the greedy allocator — the reference is kept.
 - **Dials are data.** Every number is a TOML dial with a default; the spec states the
   functional form, not the value.
+- **Notation: display equations are LaTeX, inline symbols are Unicode.** A standalone
+  equation is written `$$…$$`, which GitHub and the VSCode preview both typeset — fractions,
+  sums and stacked operators are worth the delimiters. Inline symbols in prose stay as
+  literal `λ`, `σ`, `τ`, because that keeps the prose greppable and matching the ~700
+  Unicode maths characters in the Rust doc comments, which rustdoc cannot typeset. Dial
+  names keep their TOML spelling in a gloss line under the equation, so the symbols never
+  lose their mapping back to the schema.
 
 See [`docs/VALIDATION.md`](../VALIDATION.md) for the gate table as a whole, and what each
 gate is checked *against*.

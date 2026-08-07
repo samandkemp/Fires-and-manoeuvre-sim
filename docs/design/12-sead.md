@@ -107,6 +107,23 @@ Those are the two real ways a site is fixed: ESM on its emissions, or a counter-
 track back along its rounds. A command post is found because it is *talking* — the same
 argument in a different band. All three are deterministic and draw no randomness.
 
+"Has fired" is read from `AirDefenceState::last_fired_s`, set when an engagement resolves.
+It used to be recovered by scanning the whole air-defence event log, inside a test that runs
+once per (shooter, target) pair per epoch — so the cost of an epoch grew with how long the
+battle had already lasted rather than with its size.
+
+Two things about that flag are **open questions rather than settled model**, and are worth
+knowing before a result leans on them:
+
+- **It never expires.** A battery that fired one round at t = 5 s is still located at
+  t = 600 s, with no re-acquisition. A *unit* seen once is not: §10.1 lapses its track after
+  `track_hold_s`. The two acquisition models therefore disagree about how long knowledge
+  lasts, and nothing yet says why.
+- **It records a resolution, not a trigger pull.** For a missile battery those coincide. For
+  a gun, `resolve_due` logs only a tick that *killed*, so a gun that has been firing steadily
+  and hitting nothing has not "fired" for this purpose — which is not what the prose above
+  claims.
+
 This joins the two halves of §12.3. Switching a radar off already made an ARM miss; it now
 also hides the battery from artillery. **One decision, two consequences** — and the cost
 stays what §12.3 said it was, a battery on the network cueing chain paying `cue_latency_s`.

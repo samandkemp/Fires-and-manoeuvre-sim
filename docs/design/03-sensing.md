@@ -28,13 +28,16 @@ model; dt = 1 s + 10 s epochs; static user-placed Red.
 
 Detection of unit `u` by sensor `s` is a Poisson process with rate
 
-```
-λ(s, u) = λ0 · f(r) · sig_modality(u) · τ(s, u) · (1 − concealment(cell(u)))
-f(r)    = 1 / (1 + (r / range_half)^range_exponent)
-```
+$$\begin{aligned}
+\lambda(s, u) &= \lambda_0 \cdot f(r) \cdot \sigma_m(u) \cdot \tau(s, u) \cdot \big(1 - c(u)\big) \\[2pt]
+f(r) &= \frac{1}{1 + \left(r / r_{1/2}\right)^{n}}
+\end{aligned}$$
 
-gated to zero when: LOS not `clear`, `r > max_range`, or `u` outside the field of
-regard. `τ` and `clear` come from the Phase 1 LOS query (sensor `mount_height_m` and
+with `λ0` = `lambda0_per_s`, `σ_m` the target's signature in the sensor's modality, `c` the
+terrain concealment at its cell, `r_½` = `range_half_m` and `n` = `range_exponent`.
+
+The rate is gated to zero when: LOS not `clear`, `r > max_range`, or `u` outside the field
+of regard. `τ` and `clear` come from the Phase 1 LOS query (sensor `mount_height_m` and
 unit `height_m` as the endpoint heights) — this is what the rich `LosResult` was built
 for. `P(detect by t) = 1 − e^{−λt}`; per tick of length `dt`, `p = 1 − e^{−λ·dt}`.
 Memoryless ⇒ results are **independent of the tick size** in distribution (V17 checks

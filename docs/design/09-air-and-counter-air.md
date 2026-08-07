@@ -26,10 +26,12 @@ own piece); munitions are dials (`munitions` + `expendable`).
 **Altitude is per instance**, with a reference frame, because the two behaviours differ
 in exactly the way that matters — whether terrain can mask the airframe:
 
-```
-h(p) = altitude_m                                 (altitude_ref = agl)
-h(p) = max(0, altitude_m − z(p))                  (altitude_ref = amsl)
-```
+$$h(p) = \begin{cases}
+a & (\texttt{altitude\_ref} = \texttt{agl}) \\[2pt]
+\max\big(0,\ a - z(p)\big) & (\texttt{altitude\_ref} = \texttt{amsl})
+\end{cases}$$
+
+where `a` = `altitude_m` and `z(p)` is the ground elevation under the airframe.
 
 `h` is precisely the **actor height** of §1.2, so LOS, viewshed, and sensing need no
 change: `line_of_sight(terrain, a, h_a, b, h_b)` already takes arbitrary endpoint
@@ -41,9 +43,8 @@ never negative.
 **Slant range replaces horizontal range** (a correction the air case forces, applied
 everywhere for one consistent rule):
 
-```
-r_slant(a, h_a, b, h_b) = √( ‖b − a‖² + ((z(b) + h_b) − (z(a) + h_a))² )
-```
+$$r_{\text{slant}}(a, h_a, b, h_b) =
+\sqrt{\ \lVert b - a \rVert^2 + \big((z(b) + h_b) - (z(a) + h_a)\big)^2\ }$$
 
 used for the detection cutoff and falloff `f(r)` of §3.2 and for both weapon range gates
 of §2. On flat ground with equal endpoint heights Δ = 0, so it reduces exactly to the old
@@ -116,18 +117,24 @@ arrive at rate `λ_k`; per tick `p = 1 − e^{−λ_k·dt}`. This is structurall
 the §3.2 glimpse model, so it inherits its tick-size invariance and its validation
 machinery:
 
-```
-TTK ~ Exp(λ_k)          E[TTK] = 1/λ_k          P(kill by t) = 1 − e^{−λ_k·t}
-```
+$$\text{TTK} \sim \mathrm{Exp}(\lambda_k) \qquad \mathbb{E}[\text{TTK}] = \frac{1}{\lambda_k} \qquad P(\text{kill by } t) = 1 - e^{-\lambda_k t}$$
 
 **Missile — discrete shoot-look-shoot.** A launch takes `t_f = r_slant / missile_speed`
 to arrive, then resolves as a Bernoulli trial with single-shot kill probability `p`; a
 miss is followed by `t_r` reload before the next launch. Shots-to-kill is Geometric(p),
 and the time to the N-th arrival is `N·t_f + (N−1)·t_r`, so
 
-```
-E[shots] = 1/p          E[TTK] = t_f/p + (1/p − 1)·t_r
-```
+$$\mathbb{E}[\text{shots}] = \frac{1}{p} \qquad \mathbb{E}[\text{TTK}] = \frac{t_f}{p} + \left(\frac{1}{p} - 1\right) t_r$$
+
+Note the asymmetry in the *simulation* of this: `resolve_due` charges `t_r` after a **miss**
+only, so a battery that kills cleanly may relaunch on the next tick. That reads as the
+reload being the *look* in shoot-look-shoot — you only re-engage a target you failed to
+kill — and it is self-consistent. It is not what the closed form above assumes: `E[TTK]`,
+`shot_opportunities` and therefore the §11.2 allocation payoff all price a `t_f + t_r` cycle
+per shot regardless of outcome. The payoff is thus very slightly pessimistic about a
+battery's throughput against a stream of targets. Stated rather than reconciled, because the
+two answer different questions — the closed form is about killing *one* target, the
+simulation about what a battery does next.
 
 *(Alternative considered for the missile: model interception kinematically, with the
 missile as a pursuing body and the kill depending on closing geometry. Rejected for v1 —
@@ -170,17 +177,13 @@ on**: the cueing chain begins at *detection*, not at envelope entry. Let a drone
 inside the envelope before reaching its release point. The battery is actionable from
 `t_entry − D + L + R`, so the effective engagement window is
 
-```
-W_eff = max(0, W − max(0, L + R − D))
-```
+$$W_{\text{eff}} = \max\big(0,\ W - \max(0,\ L + R - D)\big)$$
 
 The delay costs nothing until `L + R` outruns `D`: a cue that has already aged through
 the network while the drone was still inbound arrives ready. Consequently the **critical
 latency**, beyond which every drone leaks however lethal the battery is, is
 
-```
-L* = W + D − R
-```
+$$L^* = W + D - R$$
 
 and early warning raises it one second per second — early-warning range and comms latency
 trade *directly* against each other. For a gun `P(leak) = exp(−λ_k · W_eff)`; for a

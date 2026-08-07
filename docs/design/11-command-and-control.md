@@ -34,9 +34,7 @@ one more launcher", and the model produces it without being told to.
 
 *Jamming pulls the radius in.* The effective coordination range is
 
-```
-r_eff = coordination_range_m · g(post),   g = ew::jamming_factor at the post
-```
+$$r_{\text{eff}} = r_{\text{coord}} \cdot g(\text{post}), \qquad g = \texttt{ew::jamming\_factor} \text{ at the post}$$
 
 so an enemy jammer near the post does not flip the link off — it shrinks it, and the
 batteries on the flanks fall out of the net while the one sitting on top of the post keeps
@@ -90,9 +88,19 @@ battery contributes two rows, so `channels` falls out of the structure rather th
 a special case. Columns are slots on each engageable airframe, discounted geometrically as
 in §10.2.
 
-```
-payoff[channel][(air, k)] = P(kill before release) · value(air) · (1 − p)^k
-```
+**One assignment per side.** A post coordinates its own batteries and nobody else's, so
+when both sides are coordinated there are two problems, not one. This is not a refinement:
+solving them together has no well-defined answer, because a pooled group has no single
+doctrine to be scored under and no single `max_batteries_per_air_target` budget to spend.
+The implementation originally pooled them and took the side from the first battery in the
+list, which meant a side that fielded a post could inherit the *enemy's* fire plan — and,
+because the list is built in placement order, which side that happened to be depended on
+nothing more than who was written first in the scenario file. V59 now fields a mirrored
+two-sided engagement and requires each side to make the same choice it would make with the
+enemy's post removed.
+
+$$\text{payoff}\big[\text{channel}\big]\big[(\text{air}, k)\big] =
+P(\text{kill before release}) \cdot \text{value}(\text{air}) \cdot (1 - p)^{k}$$
 
 **The deadline is the release point, not the envelope edge.** A drone that leaves the
 envelope having already dropped its munition has won, so the window is the time to reach
@@ -215,5 +223,5 @@ sweep <scn> --param sim.fires_need_c2 --values false,true --seeds 1000 --metric 
 
 | # | Property | Reference |
 |---|----------|-----------|
-| V59 | C2-coordinated air defence | with one drone nearest to every battery, nearest-first sends them all at it while a C2 post makes them cover one drone each; a scenario with **no** post is unchanged from the pre-C2 engine (the §7.4 identity discipline, so V50–V52 cannot move); a **dead** post coordinates nothing, costing no battery, magazine or envelope — only the coordination |
+| V59 | C2-coordinated air defence | with one drone nearest to every battery, nearest-first sends them all at it while a C2 post makes them cover one drone each; a scenario with **no** post is unchanged from the pre-C2 engine (the §7.4 identity discipline, so V50–V52 cannot move); a **dead** post coordinates nothing, costing no battery, magazine or envelope — only the coordination; and a post coordinates its **own side only**, so with both sides coordinated each battery still follows its own doctrine and makes the same choice it would make with the enemy's post removed |
 | V62 | the link degrades, not only dies | an enemy jammer on the post scales its radius by the EW factor, so the flanking batteries drop out and the defence decoheres with nothing destroyed; a *friendly* jammer does not cut its own net; a **zero-power** jammer runs the whole arithmetic and changes nothing (§7.4); `link_latency_s` delays joining, and a battery not yet in the net commits its channel nearest-first, so a late link cannot undo it |

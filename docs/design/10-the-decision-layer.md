@@ -53,9 +53,7 @@ keeping eyes on something already found is not a coin flip. A track refreshes wh
 sensor's *effective* rate `λ_eff` — the §8.1 jammed rate, with concealment, range and
 canopy folded in — clears a `track_maintain_p` threshold:
 
-```
-refresh  ⟺  1 − e^{−λ_eff·Δt_epoch}  ≥  track_maintain_p
-```
+$$\text{refresh} \iff 1 - e^{-\lambda_{\text{eff}}\,\Delta t_{\text{epoch}}} \ \ge\ p_{\text{maintain}}$$
 
 Using the effective rate rather than bare geometry is what lets EW break a track:
 a jammer that drives `λ_eff` below the threshold ages the track out even with clean LOS.
@@ -67,9 +65,7 @@ Drawing nothing also leaves the per-tick RNG stream unperturbed.
 Replaces the nearest-enemy rule with a side-wide assignment, solved once per epoch per
 side before anyone shoots. For shooter `i` and slot `k` of target `j`,
 
-```
-payoff[i][(j,k)] = q(i,j) · value(j) · (1 − q̄(j))^k
-```
+$$\text{payoff}\big[i\big]\big[(j,k)\big] = q(i,j)\cdot \text{value}(j)\cdot \big(1 - \bar{q}(j)\big)^{k}$$
 
 `q(i,j)` is the **fraction of the target destroyed this epoch**, from the existing fires
 model — `direct_p_hit` or `expected_area_damage`, times cover, suppression factor and
@@ -83,12 +79,29 @@ sensibly — a unit is worth its size, doubled if it is the most dangerous thing
 field — and doctrine ("kill the radar first") can be stated when wanted. Per *element*,
 so a half-destroyed unit is correctly worth less.
 
+`q(i,j)` is an **expectation, clamped** — not a probability. For direct fire it is
+`rounds · p_kill / elements`; for indirect, `rounds · E[damage per round]`. Both are linear
+in the round count rather than the exact `1 − (1 − q)^rounds`, and both are clamped to
+`[0, 1]`. That is fine for *ordering* pairings, which is all the assignment needs, but it
+has a consequence worth naming because the same number is reused as `q̄` in the slot
+discount below: once `rounds · q` reaches 1 the clamp bites, `(1 − q̄)^k` collapses to zero
+for every slot past the first, and the diminishing return becomes a cliff rather than a
+curve. Scenarios where one shooter can expect to destroy a whole target in one epoch are
+therefore the ones where the discount does least work.
+
 **Slots and the discount.** A target with `E` elements offers `min(E, cap)` slots, and
 slot `k` is discounted by `(1 − q̄)^k` for a representative `q̄`: the (k+1)-th shooter
 only helps if the `k` before it all failed. This is the standard weapon–target-assignment
 decomposition and is exact when the shooters on a target are alike. It turns diminishing
 returns into extra columns, keeping the problem a plain linear assignment rather than a
 submodular one.
+
+`q̄` is averaged over the shooters that *could* engage the target, not over those actually
+assigned to it — which is the only thing available before the problem is solved. The bias
+has a direction: a distant shooter that will never be chosen drags `q̄` down, which
+under-discounts the later slots and so mildly *encourages* piling on. Exact when the
+shooters are alike, as above; worth re-checking with `allocation_gap` on a scenario with
+deliberately heterogeneous shooters.
 
 Solved by Hungarian (Kuhn–Munkres) over shooters × slots, with greedy and `independent`
 (the old per-shooter rule) alongside. `[sim] allocation` chooses.
@@ -153,10 +166,10 @@ observation is binary per cell: either a sensor detects something at cell `c`, w
 probability `b(c)·p(c)`, collapsing the belief to a point mass of zero entropy; or it sees
 nothing and the belief becomes `b'(c) ∝ b(c)(1 − p(c))`. So
 
-```
-E[H after] = (1 − Σ_c b(c)p(c)) · H(b')
-gain(facing) = H(b) − E[H after]
-```
+$$\begin{aligned}
+\mathbb{E}\big[H_{\text{after}}\big] &= \left(1 - \sum_c b(c)\,p(c)\right) H(b') \\[2pt]
+\text{gain}(\text{facing}) &= H(b) - \mathbb{E}\big[H_{\text{after}}\big]
+\end{aligned}$$
 
 and each steerable sensor takes the facing maximising `gain`. Sensors with no
 `for_width_deg` see all round and have nothing to choose.

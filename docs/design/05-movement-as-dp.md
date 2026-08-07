@@ -13,12 +13,19 @@ shortest-path / DP problem, so Dijkstra over the cell graph *is* the DP solution
 
 8-connected grid graph; each edge `from → to` costs
 
-```
-edge_cost = move_cost(from, to) + risk_weight · risk(to)
-```
+$$c(\text{from} \to \text{to}) = c_{\text{move}}(\text{from}, \text{to}) + w \cdot \text{risk}(\text{to})$$
 
 `move_cost` is the Phase 1 edge cost (mean mobility × slope factor × distance; ∞ =
-impassable). `risk(cell)` is a caller-supplied exposure raster in `[0, 1]`; `risk_weight`
+impassable). The slope factor is
+
+$$s(g) = 1 + 4\max(0, g) + 1.5\max(0, -g), \qquad g = \frac{\Delta z}{\text{horizontal distance}}$$
+
+so **flat ground is the cheapest case and both gradients cost more** — ascent about 2.7×
+harder than descent, not descent for free. That is the intended reading (a steep descent is
+slow for a tracked vehicle, not an advantage), but "penalises uphill harder than downhill"
+is easy to misread as "downhill is cheaper than flat", so: it is not. The two constants are
+still `const` in `terrain.rs` rather than dials in the movement TOML — the one piece of
+Phase 5 data-drivenness still owed. `risk(cell)` is a caller-supplied exposure raster in `[0, 1]`; `risk_weight`
 (metres of mobility-cost the mover will spend to avoid one unit of risk) tunes caution.
 The least-cost path minimises total `Σ edge_cost` — an **additive** cost so the problem
 is a clean shortest path. *(Alternative considered: multiplicative survival
