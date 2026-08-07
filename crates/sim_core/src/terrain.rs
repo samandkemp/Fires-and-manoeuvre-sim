@@ -453,14 +453,7 @@ impl TerrainSource {
                     let cy = rng.random_range(0.0..extent_y);
                     let half_x = rng.random_range(100.0..250.0f32);
                     let half_y = rng.random_range(100.0..250.0f32);
-                    for iy in 0..height {
-                        for ix in 0..width {
-                            let p = transform.cell_center(ix, iy);
-                            if (p.x - cx).abs() < half_x && (p.y - cy).abs() < half_y {
-                                terrain_type[[iy, ix]] = TerrainType::Urban;
-                            }
-                        }
-                    }
+                    paint_urban_block(&mut terrain_type, &transform, cx, cy, half_x, half_y);
                 }
 
                 TerrainGrid::from_layers(cell_size_m, elevation_m, terrain_type, params)
@@ -788,29 +781,48 @@ impl TerrainLayer {
                 max_size_m,
             } => {
                 let (lo, hi) = (min_size_m.max(1.0), max_size_m.max(min_size_m + 1.0));
-                let cell = transform.cell_size_m();
                 for _ in 0..blocks {
                     let cx = rng.random_range(0.0..extent_x);
                     let cy = rng.random_range(0.0..extent_y);
                     let half_x = rng.random_range(lo..hi) * 0.5;
                     let half_y = rng.random_range(lo..hi) * 0.5;
-                    // Walk only the block's own cell range. Scanning the whole grid per
-                    // block is O(blocks x cells) — 5 blocks on a 1000x1000 map is 5M
-                    // visits to paint a few thousand. Bounds are clamped, and the RNG
-                    // draws above are untouched, so the map is unchanged.
-                    let ix0 = (((cx - half_x) / cell).floor().max(0.0)) as usize;
-                    let iy0 = (((cy - half_y) / cell).floor().max(0.0)) as usize;
-                    let ix1 = (((cx + half_x) / cell).ceil().max(0.0) as usize).min(width);
-                    let iy1 = (((cy + half_y) / cell).ceil().max(0.0) as usize).min(height);
-                    for iy in iy0..iy1 {
-                        for ix in ix0..ix1 {
-                            let p = transform.cell_center(ix, iy);
-                            if (p.x - cx).abs() < half_x && (p.y - cy).abs() < half_y {
-                                terrain_type[[iy, ix]] = TerrainType::Urban;
-                            }
-                        }
-                    }
+                    paint_urban_block(terrain_type, transform, cx, cy, half_x, half_y);
                 }
+            }
+        }
+    }
+}
+
+/// Paint one rectangular urban block, centred on `(cx, cy)` with the given half-extents.
+///
+/// Walks only the block's **own cell range**. Scanning the whole grid per block is
+/// `O(blocks × cells)` — five blocks on a 1000×1000 map is five million visits to paint a
+/// few thousand cells. The bounds are clamped to the grid and the membership test is
+/// unchanged, so the painted set is identical to the full scan's.
+///
+/// Shared by [`TerrainSource::Hills`] and [`TerrainLayer::Urban`]. That is safe despite
+/// `Hills` being frozen for RNG-order reasons: the two arms still draw their own centres
+/// and half-extents from their own ranges, in the same order as before, and this touches
+/// only how the painted cells are *found*. Same draws, same map, less work.
+fn paint_urban_block(
+    terrain_type: &mut Array2<TerrainType>,
+    transform: &GridTransform,
+    cx: f32,
+    cy: f32,
+    half_x: f32,
+    half_y: f32,
+) {
+    let cell = transform.cell_size_m();
+    let (width, height) = (transform.width(), transform.height());
+    let ix0 = (((cx - half_x) / cell).floor().max(0.0)) as usize;
+    let iy0 = (((cy - half_y) / cell).floor().max(0.0)) as usize;
+    let ix1 = (((cx + half_x) / cell).ceil().max(0.0) as usize).min(width);
+    let iy1 = (((cy + half_y) / cell).ceil().max(0.0) as usize).min(height);
+    for iy in iy0..iy1 {
+        for ix in ix0..ix1 {
+            let p = transform.cell_center(ix, iy);
+            if (p.x - cx).abs() < half_x && (p.y - cy).abs() < half_y {
+                terrain_type[[iy, ix]] = TerrainType::Urban;
             }
         }
     }

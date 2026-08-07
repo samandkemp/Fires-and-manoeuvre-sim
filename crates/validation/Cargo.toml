@@ -19,3 +19,10 @@ sim_core = { path = "../sim_core" }
 glam = "0.32"     # sim_core's public APIs take glam::Vec2
 ndarray = { version = "0.16" }  # payoff matrices and raster gates
 rand = "0.9"      # seeded Monte Carlo draws (same version as sim_core)
+
+# There is no `unsafe` anywhere in this workspace; this makes that enforced rather than
+# incidental. In the manifest rather than as a `#![forbid(unsafe_code)]` crate attribute
+# because binaries and integration tests are each their own crate root, so an attribute in
+# `lib.rs` would cover only a fraction of this package.
+[lints.rust]
+unsafe_code = "forbid"

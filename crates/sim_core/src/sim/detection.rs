@@ -301,16 +301,14 @@ impl Sim {
             if unit.last_seen_s.is_none() || !unit.alive() {
                 continue;
             }
-            // Modality is per sensor, but every sensor is Optical today; take the
-            // signature from the first view so the rate reflects the real target.
             let target = GlimpseTarget {
                 kind: TargetKind::Ground,
                 idx: u_idx,
                 pos: unit.pos,
                 height_m: unit.stats.height_m,
-                signature: views.first().map_or(0.0, |&(i, _)| {
-                    unit.stats.signature_in(self.sensors[i].stats.modality)
-                }),
+                // Filled in per sensor by `holds_track` — signature is per *modality*, so
+                // it cannot be resolved until it is known which sensor is looking.
+                signature: 0.0,
                 concealment: sensing::concealment_at(&self.terrain, unit.pos),
                 side: unit.side,
             };
@@ -338,9 +336,7 @@ impl Sim {
                 idx: a_idx,
                 pos: air.pos,
                 height_m: air.actor_height(&self.terrain),
-                signature: views.first().map_or(0.0, |&(i, _)| {
-                    air.stats.signature_in(self.sensors[i].stats.modality)
-                }),
+                signature: 0.0,   // per sensor, as above
                 concealment: 0.0, // airborne: not standing in the cell below it (§9.1)
                 side: air.side,
             };
@@ -383,6 +379,21 @@ impl Sim {
             if self.sensors[i].side == target.side {
                 continue;
             }
+            // Signature is **per modality**, so it belongs to the (sensor, target) pair and
+            // not to the target alone. Reading it once for the whole pass — from whichever
+            // sensor happened to be at index 0, possibly a friendly one — is inert only
+            // while `Optical` is the sole modality; the moment `Acoustic` lands it would
+            // price every track in the wrong channel, silently. Resolved here instead,
+            // where the sensor is known.
+            let mut target = target;
+            target.signature = match target.kind {
+                TargetKind::Ground => self.units[target.idx]
+                    .stats
+                    .signature_in(self.sensors[i].stats.modality),
+                TargetKind::Air => self.air[target.idx]
+                    .stats
+                    .signature_in(self.sensors[i].stats.modality),
+            };
             if p_detect_tick(self.effective_rate(i, view, target), self.epoch_s)
                 >= self.track_maintain_p
             {

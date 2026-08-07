@@ -210,8 +210,12 @@ impl Sim {
             FireTarget::AirDefence(i) => {
                 let d = &self.air_defence[i];
                 let emitting = d.self_cue && d.sensor_idx.is_some_and(|s| self.sensor_active(s));
-                let has_fired = self.air_defence_events.iter().any(|e| e.battery == i);
-                d.alive() && (emitting || has_fired)
+                // `last_fired_s`, not a scan of the event log: this test runs once per
+                // (shooter, target) pair per epoch, and the log grows for the whole run, so
+                // the scan made the cost of an epoch depend on how long the battle had
+                // already lasted. Same answer — both ask whether any engagement has
+                // resolved — at O(1).
+                d.alive() && (emitting || d.last_fired_s.is_some())
             }
             FireTarget::C2(i) => {
                 let post = &self.c2[i];
@@ -563,7 +567,7 @@ impl Sim {
 
         if doc.mode == DoctrineMode::Weighted {
             let weights: Vec<f32> = tiers.iter().map(|&k| doc.weight_for_tier(k)).collect();
-            return self.allocate_fires(side, shooters, &targets, &weights, taken, solver);
+            return self.allocate_fires(shooters, &targets, &weights, taken, solver);
         }
 
         let mut remaining: Vec<usize> = shooters.to_vec();
@@ -583,8 +587,7 @@ impl Sim {
                 continue;
             }
             let weights = vec![1.0f32; in_tier.len()];
-            let chosen =
-                self.allocate_fires(side, &remaining, &in_tier, &weights, &tier_taken, solver);
+            let chosen = self.allocate_fires(&remaining, &in_tier, &weights, &tier_taken, solver);
             remaining.retain(|s| !chosen.iter().any(|(a, _)| a == s));
             out.extend(chosen);
         }
@@ -610,14 +613,12 @@ impl Sim {
     /// solves for all its shooters at once.
     fn allocate_fires(
         &self,
-        side: Side,
         shooters: &[usize],
         targets: &[FireTarget],
         doctrine_weights: &[f32],
         taken: &[u32],
         solver: Solver,
     ) -> Vec<(usize, FireTarget)> {
-        let _ = side;
         if shooters.is_empty() || targets.is_empty() {
             return Vec::new();
         }

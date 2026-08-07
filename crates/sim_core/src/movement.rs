@@ -26,8 +26,11 @@ struct Frontier {
     cell: (usize, usize),
 }
 impl PartialEq for Frontier {
+    // `total_cmp`, not `==`: `Ord` requires a total order *consistent with* `Eq`, and the
+    // two disagree on NaN — `==` says "different", `total_cmp` says "equal". `BinaryHeap`
+    // is entitled to rely on that consistency, so the two must be spelled the same way.
     fn eq(&self, other: &Self) -> bool {
-        self.cost == other.cost
+        self.cost.total_cmp(&other.cost) == Ordering::Equal
     }
 }
 impl Eq for Frontier {}
@@ -70,6 +73,14 @@ pub fn least_risk_path(
     assert!(
         start.0 < w && start.1 < h && goal.0 < w && goal.1 < h,
         "endpoints in bounds"
+    );
+    // Dijkstra is only the DP solution while every edge weight is non-negative; a negative
+    // risk would make a settled cell reachable more cheaply later and the answer would be
+    // silently wrong rather than obviously so. Stated the same way `allocation::hungarian`
+    // states its own non-negativity requirement.
+    debug_assert!(
+        risk_weight >= 0.0 && risk.iter().all(|r| *r >= 0.0),
+        "risk and risk_weight must be non-negative: Dijkstra requires non-negative edges"
     );
 
     let mut dist: Array2<f32> = Array2::from_elem((h, w), f32::INFINITY);

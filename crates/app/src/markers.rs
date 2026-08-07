@@ -81,11 +81,25 @@ pub fn draw_markers(
         } else {
             Color::srgb(0.45, 0.42, 0.35)
         };
+        // Two rings, because the net has two radii and only one of them is the dial.
+        // Faint: the nominal `coordination_range_m`. Solid: the radius the model actually
+        // tests, `coordination_range_m × link_quality`, which an enemy jammer pulls in
+        // (DESIGN §11.2, V62). Drawing only the nominal ring made EW's whole effect on
+        // coordination invisible on the map — a battery would silently drop out of the net
+        // while still sitting well inside the circle.
+        let quality = sim.sim.link_quality_at(post.pos, post.side);
         gizmos.circle_2d(
             Isometry2d::from_translation(post.pos),
             post.stats.coordination_range_m,
             c.with_alpha(if alive { 0.22 } else { 0.07 }),
         );
+        if alive && quality < 1.0 {
+            gizmos.circle_2d(
+                Isometry2d::from_translation(post.pos),
+                post.stats.coordination_range_m * quality,
+                c.with_alpha(0.55),
+            );
+        }
         if alive {
             // A small square, so a post reads as neither a shooter nor a sensor.
             let d = 7.0 * px;

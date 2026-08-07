@@ -52,6 +52,41 @@ impl Sim {
         self.max_shooters_per_target = cap.max(1);
     }
 
+    /// Most air-defence batteries that may be assigned to one airframe
+    /// (`docs/DESIGN.md` §11.2).
+    #[must_use]
+    pub fn max_batteries_per_air_target(&self) -> u32 {
+        self.max_batteries_per_air_target
+    }
+
+    /// Set the air-defence overkill cap, clamped to at least 1 as the ground one is.
+    ///
+    /// Worth having live: 10,000 paired trials on `ad_c2` found the default of 2 buys no
+    /// extra kills over 1 and costs a quarter of a round (§11.2), so this is a dial whose
+    /// measured value is "none, on this scenario" — and watching a raid under 1, 2 and 3 is
+    /// how that stops being a table and starts being obvious.
+    pub fn set_max_batteries_per_air_target(&mut self, cap: u32) {
+        self.max_batteries_per_air_target = cap.max(1);
+    }
+
+    /// Must a ground shooter be under a live friendly C2 post to join its side's
+    /// coordinated fire plan (`docs/DESIGN.md` §11.3)?
+    #[must_use]
+    pub fn fires_need_c2(&self) -> bool {
+        self.fires_need_c2
+    }
+
+    /// Turn the ground fire-control net requirement on or off mid-run.
+    ///
+    /// Safe between ticks: the split into netted and loose shooters is recomputed from
+    /// scratch each epoch, so there is no state to migrate. Flipping it live is the
+    /// clearest way to see §11.4's counter-intuitive result — that a *split* side can
+    /// fight better, because the overkill cap applies once per fire-control problem and a
+    /// loose shooter puts to work a slot the coordinated side would have idled.
+    pub fn set_fires_need_c2(&mut self, on: bool) {
+        self.fires_need_c2 = on;
+    }
+
     /// Assign a movement route (world waypoints) to a placed unit.
     pub fn set_route(&mut self, unit_idx: usize, route: Vec<Vec2>) {
         self.units[unit_idx].route = route;

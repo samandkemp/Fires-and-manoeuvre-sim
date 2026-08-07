@@ -48,12 +48,47 @@ pub fn flag(args: &[String], name: &str) -> Option<String> {
     args.get(i + 1).cloned()
 }
 
-/// Value of a `--flag value` argument, parsed, or `default` if absent or unparseable.
+/// Value of a `--flag value` argument, parsed. `Ok(None)` if the flag is absent;
+/// `Err` if it is present but its value is missing or will not parse.
+///
+/// The pure, testable half of [`flag_or`]. Absent and malformed are deliberately different
+/// answers: the first means "take the default", the second means the caller made a mistake.
+///
+/// # Errors
+/// A message naming the flag and what was wrong with it.
+pub fn parse_flag<T: std::str::FromStr>(args: &[String], name: &str) -> Result<Option<T>, String> {
+    let Some(i) = args.iter().position(|a| a == name) else {
+        return Ok(None);
+    };
+    let Some(raw) = args.get(i + 1) else {
+        return Err(format!("{name} needs a value"));
+    };
+    raw.parse()
+        .map(Some)
+        .map_err(|_| format!("{name}: '{raw}' is not a valid value"))
+}
+
+/// Value of a `--flag value` argument, parsed, or `default` if the flag is absent.
+///
+/// **Exits the process** (status 2) if the flag is present but its value is missing or
+/// unparseable, naming the flag. This used to fall back to the default instead, which meant
+/// `--seeds abc` quietly ran the default 200 trials and `--until 60O` quietly ran 600 s:
+/// the run succeeded and answered a different question, which is exactly the failure the
+/// scenario schema's `deny_unknown_fields` exists to prevent one layer down.
+///
+/// Exiting rather than returning a `Result` because every caller is a `main` in this
+/// crate's `src/bin/`, and the bins already handle a bad argument this way. [`parse_flag`]
+/// is the pure form for anyone who wants to decide for themselves.
 #[must_use]
 pub fn flag_or<T: std::str::FromStr>(args: &[String], name: &str, default: T) -> T {
-    flag(args, name)
-        .and_then(|v| v.parse().ok())
-        .unwrap_or(default)
+    match parse_flag(args, name) {
+        Ok(Some(v)) => v,
+        Ok(None) => default,
+        Err(e) => {
+            eprintln!("{e}");
+            std::process::exit(2);
+        }
+    }
 }
 
 /// Every `--flag value` occurrence of a repeatable argument, in order.
@@ -69,4 +104,30 @@ pub fn flags(args: &[String], name: &str) -> Vec<String> {
 #[must_use]
 pub fn has_flag(args: &[String], name: &str) -> bool {
     args.iter().any(|a| a == name)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn args(xs: &[&str]) -> Vec<String> {
+        xs.iter().map(|s| (*s).to_owned()).collect()
+    }
+
+    /// Absent and malformed must be different answers. Falling back to the default on a
+    /// malformed value is how `--seeds abc` used to run 200 trials in silence.
+    #[test]
+    fn a_missing_flag_defaults_but_a_malformed_one_is_an_error() {
+        let a = args(&["--seeds", "50", "--quiet"]);
+        assert_eq!(parse_flag::<u64>(&a, "--seeds"), Ok(Some(50)));
+        assert_eq!(parse_flag::<u64>(&a, "--until"), Ok(None));
+
+        let bad = args(&["--seeds", "abc"]);
+        let err = parse_flag::<u64>(&bad, "--seeds").expect_err("must not silently default");
+        assert!(err.contains("--seeds") && err.contains("abc"), "{err}");
+
+        // A flag with nothing after it is a mistake too, not an absent flag.
+        let dangling = args(&["--quiet", "--seeds"]);
+        assert!(parse_flag::<u64>(&dangling, "--seeds").is_err());
+    }
 }

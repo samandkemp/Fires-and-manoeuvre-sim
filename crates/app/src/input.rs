@@ -166,16 +166,23 @@ fn right_click(
         ClickMode::PlaceRedAir => place_drone(sim, ui_state, world),
         ClickMode::PlaceBlueAirDefence => place_air_defence(sim, ui_state, world),
         ClickMode::PlaceBlueC2 => place_c2(sim, ui_state, world),
+        // `.get(..)` rather than indexing, as the drone/battery/post arms already do: a
+        // type id that no longer names anything — after a scenario switch whose library
+        // set differs — is an ordinary miss, not a reason to take the window down.
         ClickMode::PlaceBlueSensor => {
+            let Some(stats) = sim.data.libs.sensors.get(&ui_state.sensor_type_id).cloned() else {
+                return;
+            };
             sim.placed += 1;
             let id = format!("obs-p{}", sim.placed);
-            let stats = sim.data.libs.sensors[&ui_state.sensor_type_id].clone();
             sim.sim.add_sensor(&id, Side::Blue, world, 0.0, stats);
         }
         ClickMode::PlaceRedUnit => {
+            let Some(stats) = sim.data.libs.units.get(&ui_state.unit_type_id).cloned() else {
+                return;
+            };
             sim.placed += 1;
             let id = format!("tgt-p{}", sim.placed);
-            let stats = sim.data.libs.units[&ui_state.unit_type_id].clone();
             let weapon = stats
                 .weapon
                 .as_ref()

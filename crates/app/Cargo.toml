@@ -19,3 +19,10 @@ bevy = { version = "0.19", features = ["dynamic_linking"] }
 bevy_egui = "0.40"
 bevy_pancam = { version = "0.21", features = ["bevy_egui_0_40"] }
 ndarray = { version = "0.16", features = ["rayon"] }  # raster type + parallel overlays
+
+# There is no `unsafe` anywhere in this workspace; this makes that enforced rather than
+# incidental. In the manifest rather than as a `#![forbid(unsafe_code)]` crate attribute
+# because binaries and integration tests are each their own crate root, so an attribute in
+# `lib.rs` would cover only a fraction of this package.
+[lints.rust]
+unsafe_code = "forbid"

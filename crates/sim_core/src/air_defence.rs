@@ -194,6 +194,21 @@ pub struct AirDefenceState {
     pub engagements: Vec<Engagement>,
     /// Earliest time the next shot may be launched (reload gate), seconds.
     pub ready_at_s: f64,
+    /// Sim time this battery last had an engagement **resolve**, if ever
+    /// (`docs/DESIGN.md` §12.4).
+    ///
+    /// This is how counter-battery finds it: a site that has been shooting can be tracked
+    /// back along its own rounds. Kept as a field rather than recovered by scanning the
+    /// air-defence event log, which is what [`crate::sim::Sim::emplacement_is_located`] used
+    /// to do — that scan sat inside a per-shooter, per-target loop over a log that grows for
+    /// the whole run, so its cost rose with elapsed time rather than with the size of the
+    /// battle.
+    ///
+    /// Note it records a **resolution**, not a trigger pull. For a missile battery those are
+    /// the same thing; for a gun, `resolve_due` only logs a tick that killed, so a gun that
+    /// has been firing without effect is not yet located. That is the pre-existing rule,
+    /// preserved deliberately — see §12.4.
+    pub last_fired_s: Option<f64>,
     /// When this battery's C2 link becomes usable, seconds — `None` when it is not under
     /// a live friendly post at all (`docs/DESIGN.md` §11.2).
     ///
@@ -237,6 +252,7 @@ impl AirDefenceState {
             elements,
             engagements: Vec::new(),
             ready_at_s: 0.0,
+            last_fired_s: None,
             net_ready_at_s: None,
             carrier: None,
         }

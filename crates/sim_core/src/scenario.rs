@@ -460,7 +460,7 @@ impl Scenario {
                 "cell_size_m must be positive and finite".into(),
             ));
         }
-        Ok(())
+        self.sim.validate()
     }
 
     /// Build this scenario's terrain with the given per-type dials and seed.
@@ -475,6 +475,75 @@ impl Scenario {
             seed,
             params,
         )
+    }
+}
+
+// --- The input contract (`docs/DESIGN.md` §7.6) --------------------------------------
+//
+// `deny_unknown_fields` refuses a key the schema does not know. These three refuse a
+// *value* the model cannot run on, which is the same failure wearing different clothes: a
+// dial outside its domain does not crash, it quietly produces a study of a different
+// question — or, for the two clock dials, does not terminate at all.
+
+/// Reject a dial that must be finite and strictly positive (zero included in the refusal).
+fn require_positive(name: &str, value: f32) -> Result<(), ScenarioError> {
+    if !value.is_finite() || value <= 0.0 {
+        return Err(ScenarioError::Invalid(format!(
+            "{name} must be positive and finite (got {value})"
+        )));
+    }
+    Ok(())
+}
+
+/// Reject a dial that must be finite and non-negative.
+fn require_non_negative(name: &str, value: f32) -> Result<(), ScenarioError> {
+    if !value.is_finite() || value < 0.0 {
+        return Err(ScenarioError::Invalid(format!(
+            "{name} must be finite and not negative (got {value})"
+        )));
+    }
+    Ok(())
+}
+
+/// Reject a dial that must be a probability in `[0, 1]`.
+fn require_probability(name: &str, value: f32) -> Result<(), ScenarioError> {
+    if !value.is_finite() || !(0.0..=1.0).contains(&value) {
+        return Err(ScenarioError::Invalid(format!(
+            "{name} must be a probability in [0, 1] (got {value})"
+        )));
+    }
+    Ok(())
+}
+
+impl SimConfig {
+    /// Refuse a `[sim]` block the loop cannot run.
+    ///
+    /// Two of these do not merely give a wrong answer — they **fail to terminate**, which
+    /// is why validating them is worth more than the rest put together:
+    ///
+    /// - `dt_s = 0` leaves the clock where it is, so [`crate::sim::Sim::run_until`] never
+    ///   reaches its target;
+    /// - `epoch_s = 0` makes `time_s / epoch_s` infinite, and the cast to `u64` **saturates**
+    ///   rather than wrapping, so the epoch loop is handed `u64::MAX` boundaries to resolve
+    ///   and hangs on the first tick.
+    ///
+    /// Both are reachable from `experiments/sweep`, which by design can set any dotted path
+    /// in the file — `--param sim.epoch_s --from 0` is an ordinary-looking sweep.
+    fn validate(&self) -> Result<(), ScenarioError> {
+        require_positive("[sim] dt_s", self.dt_s)?;
+        require_positive("[sim] epoch_s", self.epoch_s)?;
+        require_probability("[sim] p_suppress", self.p_suppress)?;
+        require_probability("[sim] track_maintain_p", self.track_maintain_p)?;
+        require_probability("[sim] suppressed_fire_factor", self.suppressed_fire_factor)?;
+        require_non_negative("[sim] track_hold_s", self.track_hold_s)?;
+        require_non_negative("[sim] recover_per_s", self.recover_per_s)?;
+        require_non_negative("[sim] suppression_radius_m", self.suppression_radius_m)?;
+        if self.belief_cells == 0 {
+            return Err(ScenarioError::Invalid(
+                "[sim] belief_cells must be at least 1".into(),
+            ));
+        }
+        Ok(())
     }
 }
 
@@ -607,9 +676,10 @@ impl Libraries {
     /// pre-Phase-9 scenario sets still work.
     ///
     /// # Errors
-    /// As [`Scenario::load`], for any library that exists but fails to parse.
+    /// As [`Scenario::load`], for any library that exists but fails to parse, or whose
+    /// dials fail [`Libraries::validate`].
     pub fn load_dir(dir: &Path) -> Result<Self, ScenarioError> {
-        Ok(Self {
+        let libs = Self {
             terrain_params: load_terrain_params(&dir.join("terrain_types.toml"))?,
             sensors: load_sensor_types(&dir.join("sensors.toml"))?,
             units: load_unit_types(&dir.join("units.toml"))?,
@@ -617,7 +687,41 @@ impl Libraries {
             air: load_optional(&dir.join("air.toml"), load_air_types)?,
             air_defence: load_optional(&dir.join("air_defence.toml"), load_air_defence_types)?,
             c2: load_optional(&dir.join("c2.toml"), load_c2_types)?,
-        })
+        };
+        libs.validate()?;
+        Ok(libs)
+    }
+
+    /// Refuse a stat block the models cannot evaluate (`docs/DESIGN.md` §7.6).
+    ///
+    /// Deliberately **short**. Most dials being zero is a legitimate statement — a drone
+    /// with `cruise_speed_m_s = 0` is stationary (which several gates rely on), a battery
+    /// with `max_range_m = 0` engages nothing, an unarmed unit has no weapon. Only values
+    /// that reach a **divisor** are refused, because those do not produce a small answer,
+    /// they produce `NaN`, and `NaN` loses every comparison it appears in — so the
+    /// subsystem goes silently inert rather than visibly wrong.
+    ///
+    /// Called by [`Libraries::load_dir`] and again by [`crate::sim::Sim::new`], so a
+    /// library patched in memory — which is exactly what `experiments/sweep` does — is
+    /// checked on the same terms as one read from disk.
+    ///
+    /// # Errors
+    /// [`ScenarioError::Invalid`], naming the library, the stat block and the dial.
+    pub fn validate(&self) -> Result<(), ScenarioError> {
+        for (id, s) in &self.sensors {
+            // Divides the §3.2 range falloff `1 / (1 + (r/range_half)^p)`. At zero the
+            // rate is inf or NaN, and a NaN rate means `rng < p_detect` is always false:
+            // the sensor never detects anything, and never says why.
+            require_positive(&format!("sensors.{id}.range_half_m"), s.range_half_m)?;
+        }
+        for (id, w) in &self.weapons {
+            // The §2.3 Carleton kernel divides by `2·R_L²`. A round landing exactly on the
+            // target then computes 0/0, and the kill roll silently always fails.
+            if w.class == crate::fires::WeaponClass::Indirect {
+                require_positive(&format!("weapons.{id}.lethal_radius_m"), w.lethal_radius_m)?;
+            }
+        }
+        Ok(())
     }
 }
 

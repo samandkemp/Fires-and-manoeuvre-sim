@@ -61,6 +61,10 @@ impl Sim {
     /// [`ScenarioError::Invalid`] for an unknown sensor/unit/weapon/air/air-defence
     /// type id.
     pub fn new(scenario: &Scenario, libs: &Libraries, seed: u64) -> Result<Self, ScenarioError> {
+        // Again here, not only in `Libraries::load_dir`: a caller may have built the
+        // libraries in code, or patched them in memory (`experiments/sweep`), and a dial
+        // that would make a model evaluate to NaN should fail the same way either way.
+        libs.validate()?;
         let cfg = &scenario.sim;
         let mut sim = Sim {
             terrain: scenario.build_terrain(&libs.terrain_params, seed),

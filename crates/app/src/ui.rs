@@ -447,6 +447,31 @@ impl Panel<'_, '_, '_> {
                     self.sim.sim.set_max_shooters_per_target(cap);
                 }
 
+                let mut air_cap = self.sim.sim.max_batteries_per_air_target();
+                if ui
+                    .add(egui::Slider::new(&mut air_cap, 1..=4).text("max batteries/airframe"))
+                    .on_hover_text(
+                        "Measured on ad_c2 (10,000 paired trials): 2 buys no extra kills \
+                         over 1 and costs a quarter of a round; 3 is worse on both counts.",
+                    )
+                    .changed()
+                {
+                    self.sim.sim.set_max_batteries_per_air_target(air_cap);
+                }
+
+                let mut need_c2 = self.sim.sim.fires_need_c2();
+                if ui
+                    .checkbox(&mut need_c2, "ground fires need a C2 post")
+                    .on_hover_text(
+                        "Off: the side coordinates its fires for free. On: only shooters \
+                         inside a live post's (jammed) radius join the side-wide plan, and \
+                         the rest each pick for themselves. Try the fires_c2 scenario.",
+                    )
+                    .changed()
+                {
+                    self.sim.sim.set_fires_need_c2(need_c2);
+                }
+
                 let mut tasking = self.sim.sim.sensor_tasking();
                 if ui
                     .checkbox(&mut tasking, "sensors search by belief")

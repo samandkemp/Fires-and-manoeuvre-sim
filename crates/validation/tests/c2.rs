@@ -239,3 +239,161 @@ fn v59_killing_the_post_decoheres_the_defence() {
     );
     assert!(!sim.c2()[0].alive(), "the post should be marked dead");
 }
+
+// --- Two sides, two posts -------------------------------------------------------------
+//
+// Coordination is a relationship between a post and *its own* batteries. Nothing about the
+// enemy having a post of its own should reach into my fire plan — but pooling every
+// coordinated battery into one assignment made it do exactly that, scoring the whole field
+// under whichever side happened to be first in the list.
+//
+// The fixture separates doctrine from payoff: each side faces a `juicy` drone (value 3.0)
+// and a `cheap` one (0.5), and each side's doctrine names the **cheap** one. Following
+// orders is therefore unambiguously different from taking the better shot, so a battery
+// scored under the enemy's doctrine — which names neither of its targets — falls through to
+// the payoff and takes the juicy drone instead.
+
+/// Where each side's battery and post sit, metres.
+const BLUE_AD: (f32, f32) = (1000.0, 1500.0);
+const RED_AD: (f32, f32) = (3400.0, 1500.0);
+
+/// Libraries for the two-sided fixture: the V59 gun and radar, plus two drone types that
+/// differ **only** in what they are worth, so the doctrine test cannot be passed by luck.
+fn valued_libraries() -> Libraries {
+    let drone = |value: f32| sim_core::air::AirType {
+        height_m: 2.0,
+        cruise_speed_m_s: 0.0,
+        signature: BTreeMap::from([("optical".to_owned(), 0.9)]),
+        value: Some(value),
+        ..Default::default()
+    };
+    let base = libraries();
+    Libraries {
+        air: BTreeMap::from([
+            ("juicy".to_owned(), drone(3.0)),
+            ("cheap".to_owned(), drone(0.5)),
+        ]),
+        ..base
+    }
+}
+
+/// A mirrored engagement: one single-channel battery per side, each with two enemy drones
+/// in reach, each side's doctrine naming the enemy's *cheap* drone. `blue_post` / `red_post`
+/// select which sides are coordinated, which is what the independence check varies.
+fn two_sided(blue_post: bool, red_post: bool) -> Sim {
+    let mut s = format!(
+        r#"
+        name = "two-sided-c2"
+        default_seed = 3
+        [sim]
+        dt_s = 1.0
+        epoch_s = 10.0
+        [terrain]
+        cell_size_m = 10.0
+        width_cells = 500
+        height_cells = 300
+        [terrain.source.flat]
+        elevation_m = 0.0
+
+        [blue.doctrine]
+        priority = ["cheap-r"]
+
+        [[blue.air_defence]]
+        id = "blue-gun"
+        type = "gun"
+        pos = [{}, {}]
+
+        [red.doctrine]
+        priority = ["cheap-b"]
+
+        [[red.air_defence]]
+        id = "red-gun"
+        type = "gun"
+        pos = [{}, {}]
+    "#,
+        BLUE_AD.0, BLUE_AD.1, RED_AD.0, RED_AD.1
+    );
+    for (side, id, post) in [("blue", "blue-cp", blue_post), ("red", "red-cp", red_post)] {
+        if !post {
+            continue;
+        }
+        let at = if side == "blue" { BLUE_AD } else { RED_AD };
+        s.push_str(&format!(
+            r#"
+        [[{side}.c2]]
+        id = "{id}"
+        type = "post"
+        pos = [{}, {}]
+        "#,
+            at.0, at.1
+        ));
+    }
+    // Each side's drones sit between the two batteries, in reach of the enemy's gun only.
+    // Blue's are placed first, so they take the lower air indices — which is what put the
+    // Blue battery first in the pooled list and made Blue's doctrine the one that won.
+    for (side, suffix, y) in [("blue", 'b', 1000.0f32), ("red", 'r', 2000.0)] {
+        for kind in ["juicy", "cheap"] {
+            s.push_str(&format!(
+                r#"
+        [[{side}.air]]
+        id = "{kind}-{suffix}"
+        type = "{kind}"
+        pos = [2200.0, {y}]
+        altitude_m = 300.0
+        heading_deg = 180.0
+        "#
+            ));
+        }
+    }
+    let scn = Scenario::from_toml_str(&s).unwrap();
+    Sim::new(&scn, &valued_libraries(), 3).unwrap()
+}
+
+/// The id of the airframe battery `id` is engaging, if any.
+fn engaging_id(sim: &Sim, id: &str) -> Option<String> {
+    let ad = sim.air_defence().iter().find(|d| d.id == id)?;
+    let target = ad.engagements.first()?.target;
+    Some(sim.air()[target].id.clone())
+}
+
+// V59 (two sides): a post coordinates its own side and nobody else's.
+//
+// Both halves matter, and the second is the general property. The first names the symptom:
+// each battery must follow the fire plan it was given. The second says *why* that has to
+// hold however the doctrines are set — my decision cannot depend on whether the enemy
+// happens to have a command post, because his post is not talking to my battery.
+#[test]
+fn v59_each_side_coordinates_only_its_own_batteries() {
+    let mut both = two_sided(true, true);
+    both.run_until(40.0);
+
+    // 1. The symptom: strict doctrine is followed, against the better shot, on both sides.
+    assert_eq!(
+        engaging_id(&both, "blue-gun").as_deref(),
+        Some("cheap-r"),
+        "Blue's battery must follow Blue's fire plan"
+    );
+    assert_eq!(
+        engaging_id(&both, "red-gun").as_deref(),
+        Some("cheap-b"),
+        "Red's battery must follow RED's fire plan, not whatever Blue was told"
+    );
+
+    // 2. The property: the enemy's coordination does not reach into mine. Each side's
+    // choice must be the one it would make with the other side's post removed entirely.
+    let mut blue_alone = two_sided(true, false);
+    let mut red_alone = two_sided(false, true);
+    blue_alone.run_until(40.0);
+    red_alone.run_until(40.0);
+
+    assert_eq!(
+        engaging_id(&both, "blue-gun"),
+        engaging_id(&blue_alone, "blue-gun"),
+        "Red gaining a post changed Blue's decision"
+    );
+    assert_eq!(
+        engaging_id(&both, "red-gun"),
+        engaging_id(&red_alone, "red-gun"),
+        "Blue gaining a post changed Red's decision"
+    );
+}

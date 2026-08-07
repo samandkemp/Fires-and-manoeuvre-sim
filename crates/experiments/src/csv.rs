@@ -7,21 +7,39 @@
 //! **A summary** (`summary.csv`): one line per arm, mean and standard error for every
 //! metric. Never a mean without its error bar; see [`crate::stats`].
 //!
-//! Deliberately hand-rolled rather than a CSV crate: every field here is a number or a
-//! scenario name, so there is nothing to quote or escape, and a dependency that exists to
-//! handle embedded commas would be carrying its weight for nothing.
+//! Deliberately hand-rolled rather than a CSV crate: the metric columns are all numbers,
+//! and the only fields that can hold anything else are the caller's **key** columns, which
+//! [`field`] quotes when they need it.
+//!
+//! Those keys did once need nothing. `sweep` then began passing the swept *value* as a key,
+//! and its documented usage includes list-valued dials — `--values '["c2","air_defence"]'`
+//! — which carry commas. An unquoted row for that arm has extra fields and silently
+//! misaligns every column after it, which is worse than failing: the file still loads.
 
 use crate::outcome::{Outcome, COLUMNS};
 use crate::stats::{tidy, Summary};
+use std::borrow::Cow;
 use std::fmt::Write as _;
 use std::path::Path;
+
+/// One field, quoted per RFC 4180 **only if it needs to be**.
+///
+/// Quoting unconditionally would be simpler but would rewrite every existing results file
+/// (`0` becoming `"0"`), so the common case is left byte-identical and only a field holding
+/// a comma, a quote or a newline is wrapped — with any interior quote doubled.
+fn field(raw: &str) -> Cow<'_, str> {
+    if !raw.contains([',', '"', '\n', '\r']) {
+        return Cow::Borrowed(raw);
+    }
+    Cow::Owned(format!("\"{}\"", raw.replace('"', "\"\"")))
+}
 
 /// Header for a per-trial file: the key columns the caller names, then every metric.
 #[must_use]
 pub fn trial_header(keys: &[&str]) -> String {
     let mut s = String::new();
     for k in keys {
-        let _ = write!(s, "{k},");
+        let _ = write!(s, "{},", field(k));
     }
     s.push_str(&COLUMNS.join(","));
     s.push('\n');
@@ -31,7 +49,7 @@ pub fn trial_header(keys: &[&str]) -> String {
 /// Append one trial's row: the caller's key values, then every metric.
 pub fn push_trial(out: &mut String, keys: &[String], o: &Outcome) {
     for k in keys {
-        let _ = write!(out, "{k},");
+        let _ = write!(out, "{},", field(k));
     }
     let mut first = true;
     for v in o.values() {
@@ -50,7 +68,7 @@ pub fn push_trial(out: &mut String, keys: &[String], o: &Outcome) {
 pub fn summary_header(keys: &[&str]) -> String {
     let mut s = String::new();
     for k in keys {
-        let _ = write!(s, "{k},");
+        let _ = write!(s, "{},", field(k));
     }
     s.push_str("trials");
     for c in COLUMNS {
@@ -64,7 +82,7 @@ pub fn summary_header(keys: &[&str]) -> String {
 /// print or compare.
 pub fn push_summary(out: &mut String, keys: &[String], outcomes: &[Outcome]) -> Vec<Summary> {
     for k in keys {
-        let _ = write!(out, "{k},");
+        let _ = write!(out, "{},", field(k));
     }
     let _ = write!(out, "{}", outcomes.len());
     let summaries: Vec<Summary> = (0..COLUMNS.len())
@@ -122,6 +140,44 @@ mod tests {
             rows.trim_end().split(',').count()
         );
         assert_eq!(header.trim_end().split(',').count(), 2 + 2 * COLUMNS.len());
+    }
+
+    /// A key holding a comma — which `sweep` produces for a list-valued dial — must not
+    /// silently add a field and misalign every column after it.
+    #[test]
+    fn a_key_containing_a_comma_is_quoted_and_keeps_the_row_aligned() {
+        let header = trial_header(&["value", "seed"]);
+        let mut rows = String::new();
+        push_trial(
+            &mut rows,
+            &[r#"["c2", "air_defence"]"#.to_owned(), "3".to_owned()],
+            &Outcome::default(),
+        );
+        assert!(rows.starts_with('"'), "the key must be quoted: {rows}");
+        assert!(rows.contains(r#"""c2"", ""air_defence"""#), "{rows}");
+        assert_eq!(
+            fields(&rows),
+            header.trim_end().split(',').count(),
+            "quoting must keep the row the same width as the header"
+        );
+        // An ordinary key is left exactly as it was, so existing files do not change.
+        let mut plain = String::new();
+        push_trial(&mut plain, &["7".to_owned()], &Outcome::default());
+        assert!(plain.starts_with("7,"), "{plain}");
+    }
+
+    /// Count fields the way a CSV reader does: a comma inside quotes is data.
+    fn fields(row: &str) -> usize {
+        let mut n = 1;
+        let mut in_quotes = false;
+        for c in row.trim_end().chars() {
+            match c {
+                '"' => in_quotes = !in_quotes,
+                ',' if !in_quotes => n += 1,
+                _ => {}
+            }
+        }
+        n
     }
 
     /// `-0` in a results file reads like a bug; a metric summed over an empty log is
