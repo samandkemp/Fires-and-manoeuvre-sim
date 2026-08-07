@@ -1,0 +1,148 @@
+# What does a fire-direction net actually buy? (docs/design/11-command-and-control.md §11.3)
+#
+# Three howitzers, three targets, and a cap of one shooter per target — so the guns must
+# divide the work or waste it. Every gun can range every target, which makes the choice real
+# rather than geometric. The post covers `gun-a` and `gun-b` and leaves `gun-c` 2.2 km out on
+# the flank, so `[sim] fires_need_c2 = true` splits Blue into two separate fire-control
+# problems: the netted pair solves the side-wide assignment, and `gun-c` falls back to the
+# pre-Phase-10 rule with no idea what the others chose.
+#
+#   sweep fires_c2 --param sim.fires_need_c2 --values false,true \
+#         --seeds 500 --until 300 --metric red_cleared_s
+#
+# --- The result is backwards, and the reason is worth more than the result ---------------
+#
+# Requiring a net makes Blue clear Red **24.5 s faster** (-24.540 +- 2.462, t = -10.0, 500
+# paired seeds), not slower. Losing coordination helps. That is not what the dial was built
+# to show, and it is not noise.
+#
+# The cause is `max_shooters_per_target`. It is enforced **per fire-control problem**, not
+# per side — necessarily so, because a gun outside the net has no way of knowing how many
+# others are already on a target. Splitting Blue in two therefore applies the cap twice, and
+# the split side can put more guns on one target than the coordinated side is allowed to.
+#
+# That only matters when targets are scarce relative to guns, and here they are: indirect
+# fire needs a track, so at the first fires epoch usually only one target has been found.
+# With a cap of 1 the coordinated side puts one gun on it and **idles the other two**. The
+# split side puts one netted gun and one loose gun on it, and fires twice as much.
+#
+# A 2x2 pins it down. Rows are the cap; columns swap the observer for a `ciws_radar`, which
+# finds all three targets in the first epoch instead of trickling them in:
+#
+#                    slow observer          fast observer
+#   cap 1      -24.54 +- 2.46 (b 103.4)   -10.92 +- 1.41 (b 62.6)
+#   cap 3       -3.26 +- 0.87 (b  72.6)    -3.38 +- 0.90 (b 49.6)
+#
+# Relax the cap and the effect nearly vanishes whatever the observer does (and 83% of seeds
+# come out identical). Speed up acquisition and it halves. So it is the cap, amplified by
+# acquisition delay — exactly the two things that make targets scarce.
+#
+#   sweep fires_c2 --param sim.fires_need_c2 --values false,true \
+#         --set sim.max_shooters_per_target=3 --seeds 500 --until 300 --metric red_cleared_s
+#
+# --- What to take from it ---------------------------------------------------------------
+#
+# `max_shooters_per_target` is a **hard cap that idles shooters**, rather than a preference
+# that degrades their contribution. The slot mechanism already discounts the k-th shooter on
+# a target by `(1 - qbar)^k` (§10.2), so piling on is already priced; the cap on top of that
+# truncates it, and a gun with nothing else to shoot at does nothing at all. Whether that is
+# the right model is a live question — overkill may be better than silence — and it is
+# flagged as a limitation in §11.4 rather than quietly fixed.
+#
+# The measurable lesson stands on its own, though, and it is a real one: **a cap that is
+# tuned assuming a side coordinates does not survive that side being split up.** Any dial
+# whose meaning depends on the scope it is applied over will do this.
+#
+# Sweeping the net's *reach* is what nails it down, because it varies how many guns share
+# one cap without changing anything else:
+#
+#   sweep fires_c2 --param c2.fires_net.coordination_range_m --values 200,1500,2500 \
+#         --set sim.fires_need_c2=true --seeds 500 --until 300 --metric red_cleared_s
+#
+#   radius   guns netted   red_cleared_s
+#     200        0            68.98      (baseline: three independent guns)
+#    1500        2            78.86      (+9.88 +- 1.80,  t =  5.5)
+#    2500        3           103.40      (+34.42 +- 2.34, t = 14.7)
+#
+# Monotone, and the last row is the tell: at 2500 m every gun is netted and the answer is
+# **exactly** the `fires_need_c2 = false` baseline of 103.400 — as it must be, since "all
+# three guns in one net" and "no net required" are the same problem. The identity holding
+# to three decimal places is what says the mechanism is understood rather than guessed at.
+#
+# Read plainly: under a cap of 1, every gun brought into the net costs about 17 s, because
+# joining the net is what subjects it to the shared cap.
+#
+# Note the default is `fires_need_c2 = false`, so this file left alone runs with all three
+# guns coordinating and the post inert. That is deliberate — the identity is visible in the
+# scenario rather than hidden in a default.
+
+name = "fires_c2"
+default_seed = 17
+
+[sim]
+dt_s = 1.0
+epoch_s = 10.0
+# One gun per target. Without this cap there is enough fire to cover everything however it
+# is allocated, and the net has nothing to prove.
+max_shooters_per_target = 1
+# Left off, so the file runs coordinated by default. Sweep it to see the cost.
+fires_need_c2 = false
+
+[terrain]
+cell_size_m = 10.0
+width_cells = 700
+height_cells = 500
+
+# Flat, so nothing masks anything: the only thing varying between arms is who knows what.
+[terrain.source.flat]
+elevation_m = 0.0
+
+# --- Blue: three guns, an observer, and a net that does not quite reach -----------------
+
+[[blue.units]]
+id = "gun-a"
+type = "sp_gun"
+pos = [800.0, 2200.0]
+
+[[blue.units]]
+id = "gun-b"
+type = "sp_gun"
+pos = [800.0, 2800.0]
+
+# 2.2 km from the post: outside the 1500 m net, and the whole point of the scenario.
+[[blue.units]]
+id = "gun-c"
+type = "sp_gun"
+pos = [800.0, 4400.0]
+
+# Indirect fire needs a track (docs/design/02-fires.md). One observer feeds all three guns,
+# so what differs between the arms is coordination, not information.
+[[blue.sensors]]
+id = "obs-1"
+type = "mast_optical"
+pos = [1000.0, 2500.0]
+
+[[blue.c2]]
+id = "blue-fdc"
+type = "fires_net"
+pos = [800.0, 2500.0]
+
+# --- Red: three targets, spread so that covering all three needs three guns -------------
+#
+# `afv` carries a 2500 m cannon and Red sits 4 km out, so Red cannot shoot back. Deliberate:
+# the question is what Blue *chooses*, and return fire would bury that under attrition.
+
+[[red.units]]
+id = "tgt-1"
+type = "afv"
+pos = [4800.0, 2200.0]
+
+[[red.units]]
+id = "tgt-2"
+type = "afv"
+pos = [4800.0, 2800.0]
+
+[[red.units]]
+id = "tgt-3"
+type = "afv"
+pos = [4800.0, 4400.0]

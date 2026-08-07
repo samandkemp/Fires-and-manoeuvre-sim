@@ -40,3 +40,20 @@ rof_rounds_per_min = 60.0
 max_range_m = 100.0
 cep_m = 3.0                    # flown onto the target by eye
 lethal_radius_m = 15.0         # small warhead: precise but not devastating
+
+# An anti-radiation missile (docs/design/12-sead.md §12.3). It homes on a **transmitting**
+# radar, so its accuracy is a property of the target's behaviour rather than of the
+# munition: `cep_m` against a battery whose radar is up, `silent_cep_m` against one that has
+# shut down. The ratio is the dial — 10x here, so going silent turns a near-certain kill
+# into a long shot.
+#
+# `cep_against(emitting)` is the single decision point in the engine, so every weapon
+# without `anti_radiation` is an exact identity. See `scenarios/sead_arm.toml`.
+[arm_missile]
+class = "indirect"
+rof_rounds_per_min = 60.0      # release is instantaneous; the limit is `munitions`
+max_range_m = 3000.0
+anti_radiation = true
+cep_m = 15.0                   # radar up: it flies down the beam
+silent_cep_m = 150.0           # radar down: it is guessing at a last known position
+lethal_radius_m = 30.0

@@ -1,0 +1,203 @@
+# Jamming the link: the soft kill (docs/design/11-command-and-control.md §11.2, gate V62)
+#
+# `ad_c2.toml` shows what a command post is worth, and what killing it costs. This shows
+# the cheaper attack on the same asset: leave the post standing and jam it.
+#
+# An enemy jammer scales the post's coordination **radius** by the EW factor rather than
+# switching the link off. That shape matters. A comms link degrades with range against a
+# noise floor, and a jammer is a way of raising the floor — so the batteries on the flanks
+# fall out of the net first while the one sitting on top of the post keeps talking. There
+# is no threshold to tune and no "link down" flag anywhere in the model; the geometry does
+# it.
+#
+#   sweep ew_c2 --param red.jammers.0.power --values 0.0,0.3,0.6,0.9 \
+#         --seeds 500 --until 240 --metric ad_rounds_left
+#
+# **`ad_rounds_left` is the metric, not kills.** That is the Phase 11 finding restated: a
+# missile is a discrete round out of a finite magazine, so three interceptors at a drone
+# that one would have killed is two rounds gone. Coordination is mostly about ammunition,
+# and the clearest signal of a decohered defence is a magazine that empties faster.
+#
+# Measured, 500 paired seeds, 240 s:
+#
+#   power   rounds left   downed   leakers   AD shots   detections
+#   0.0        2.190       9.846    0.196     15.05       10.000
+#   0.3        2.190       9.846    0.196     15.05       10.000
+#   0.6        1.024       9.628    0.336     14.70       10.000
+#   0.9        1.024       9.628    0.336     14.70       10.000
+#
+# Jamming the link costs the defence **half its remaining magazine** (-1.166 +- 0.079,
+# t = -14.8) and lets 71% more drones through, without a single battery, interceptor or
+# metre of envelope being touched.
+#
+# The **step** is the thing to understand, and it is not a threshold anyone coded. The
+# jammer sits 300 m from the post with a 1200 m radius, so the factor at the post is
+# `1 - power*(1 - 300/1200) = 1 - 0.75*power`. Against the post's 3000 m radius that gives
+# 3000, 2325, 1650 and 975 m. The flanking batteries are 2062 m out, so they are in the net
+# at 0.0 and 0.3 and out of it at 0.6 and 0.9. Degrading a link only matters when the
+# degradation crosses somebody's distance — which is why 0.0 and 0.3 are **identical on all
+# 500 seeds**, and why 0.9 buys nothing over 0.6: `sam-2`, 500 m from the post, never leaves
+# the net however hard it is jammed.
+#
+# **Power 0 is an exact identity** (V62). Every line of the EW arithmetic runs and changes
+# nothing, so that arm doubles as a check that the jammer is not quietly doing something
+# else.
+#
+# It could have been: a jammer degrades *sensing* as well as the link, and this one covers
+# the last 2 km of the approach. Measured, it does not confound anything here — detections
+# are 10.000 at every power, because the early-warning radar reaches 5000 m and the drones
+# enter from 5.6 km, so every one of them is tracked long before it reaches the jammed
+# volume. Move the jammer forward and that stops being true.
+
+name = "ew_c2"
+default_seed = 23
+
+[sim]
+dt_s = 1.0
+epoch_s = 10.0
+allocation = "optimal"
+max_shooters_per_target = 3
+
+[terrain]
+cell_size_m = 10.0
+width_cells = 700
+height_cells = 500
+
+[terrain.source.flat]
+elevation_m = 0.0
+
+# --- Blue: three batteries, a post, and the radar that feeds them -----------------------
+
+[[blue.air_defence]]
+id = "sam-1"
+type = "sam"
+pos = [1200.0, 4500.0]
+
+[[blue.air_defence]]
+id = "sam-2"
+type = "sam"
+pos = [1200.0, 2500.0]
+
+[[blue.air_defence]]
+id = "sam-3"
+type = "sam"
+pos = [1200.0, 500.0]
+
+# The SAM has no organic radar, so it lives entirely on the cueing chain (§9.5). This is
+# what makes it actionable at all.
+[[blue.sensors]]
+id = "ew-radar"
+type = "ciws_radar"
+pos = [1400.0, 2500.0]
+
+# A shorter-reaching post than `ad_command_post`, so the jammer's arithmetic bites within a
+# sweepable range of powers rather than needing 0.9 before anything happens.
+[[blue.c2]]
+id = "blue-cp"
+type = "ad_forward_cp"
+pos = [700.0, 2500.0]
+
+[[blue.units]]
+id = "blue-target"
+type = "sp_gun"
+pos = [400.0, 2500.0]
+
+# --- Red: the jammer on the link, and the raid it is clearing the way for ---------------
+#
+# Small radius and sited on the post: an infiltrated or air-delivered EW payload whose job
+# is the command net specifically, not area denial. Sweep `power` from 0.
+
+[[red.jammers]]
+pos = [1000.0, 2500.0]
+power = 0.6
+radius_m = 1200.0
+
+[[red.air]]
+id = "uas-1"
+type = "strike_uas"
+pos = [5600.0, 2470.0]
+altitude_m = 400.0
+heading_deg = 180.0
+waypoints = [[400.0, 2500.0]]
+target = { unit = "blue-target" }
+
+[[red.air]]
+id = "uas-2"
+type = "strike_uas"
+pos = [5640.0, 2470.0]
+altitude_m = 400.0
+heading_deg = 180.0
+waypoints = [[400.0, 2500.0]]
+target = { unit = "blue-target" }
+
+[[red.air]]
+id = "uas-3"
+type = "strike_uas"
+pos = [5680.0, 2470.0]
+altitude_m = 400.0
+heading_deg = 180.0
+waypoints = [[400.0, 2500.0]]
+target = { unit = "blue-target" }
+
+[[red.air]]
+id = "uas-4"
+type = "strike_uas"
+pos = [5720.0, 2470.0]
+altitude_m = 400.0
+heading_deg = 180.0
+waypoints = [[400.0, 2500.0]]
+target = { unit = "blue-target" }
+
+[[red.air]]
+id = "uas-5"
+type = "strike_uas"
+pos = [5760.0, 2470.0]
+altitude_m = 400.0
+heading_deg = 180.0
+waypoints = [[400.0, 2500.0]]
+target = { unit = "blue-target" }
+
+[[red.air]]
+id = "uas-6"
+type = "strike_uas"
+pos = [5600.0, 2530.0]
+altitude_m = 400.0
+heading_deg = 180.0
+waypoints = [[400.0, 2500.0]]
+target = { unit = "blue-target" }
+
+[[red.air]]
+id = "uas-7"
+type = "strike_uas"
+pos = [5640.0, 2530.0]
+altitude_m = 400.0
+heading_deg = 180.0
+waypoints = [[400.0, 2500.0]]
+target = { unit = "blue-target" }
+
+[[red.air]]
+id = "uas-8"
+type = "strike_uas"
+pos = [5680.0, 2530.0]
+altitude_m = 400.0
+heading_deg = 180.0
+waypoints = [[400.0, 2500.0]]
+target = { unit = "blue-target" }
+
+[[red.air]]
+id = "uas-9"
+type = "strike_uas"
+pos = [5720.0, 2530.0]
+altitude_m = 400.0
+heading_deg = 180.0
+waypoints = [[400.0, 2500.0]]
+target = { unit = "blue-target" }
+
+[[red.air]]
+id = "uas-10"
+type = "strike_uas"
+pos = [5760.0, 2530.0]
+altitude_m = 400.0
+heading_deg = 180.0
+waypoints = [[400.0, 2500.0]]
+target = { unit = "blue-target" }

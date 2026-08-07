@@ -130,6 +130,22 @@ is for — "kill the radar first" is a judgement, not a derivation.
 - **Emissions are binary.** A radar is on or off; there is no intermittent emission, no
   blinking to reduce exposure, and no memory of a position after the emitter goes quiet
   beyond the aim point itself.
+- **`self_cue` carries two meanings, and they are not the same thing.** §9.5 introduced it
+  as the *cueing-timeline* lever — "this battery is cued from elsewhere and pays
+  `cue_latency_s`" — and §12.3 reused it as the *emission* test in `target_is_emitting`.
+  A battery with `self_cue = false` therefore counts as silent to an anti-radiation missile
+  while its organic radar keeps detecting perfectly well.
+
+  Measured on `scenarios/sead_arm.toml`: the "silent" battery records 1.000 detections with
+  first contact at 9.3 s, statistically indistinguishable from the emitting arm's 0.996 at
+  10.1 s — so it gets the survivability of EMCON (0.10 vs 0.98 batteries killed) without the
+  blindness that should pay for it.
+
+  The genuinely blind case is a battery with no organic sensor at all (`gun_truck`), which
+  gets the same protection (−0.877 ± 0.019 batteries killed, t = −46.1) *and* never fires a
+  shot. That is the trade §12.3 describes; `self_cue = false` is currently a cheaper version
+  of it. Splitting the flag in two — `emitting` for the seeker, `self_cue` for the timeline
+  — is the fix, and it moves V64's fixture, so it has not been done unilaterally.
 
 ### 12.6 Validation gates (V60, V64, V65)
 

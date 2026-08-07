@@ -1,0 +1,114 @@
+# The radar buys its own accuracy (docs/design/12-sead.md §12.3)
+#
+# One Blue SEAD drone carrying an anti-radiation missile, against one Red gun battery. The
+# missile homes on a **transmitting** radar: `cep_m` 15 m against a battery whose radar is
+# up, `silent_cep_m` 150 m against one that has shut down. Against a 30 m lethal radius the
+# expected damage per round is 0.85 against an emitter and 0.05 against a silent target —
+# a near-certain kill, or seventeen rounds to expect one.
+#
+#   sweep sead_arm --param red.air_defence.0.self_cue --values true,false \
+#         --seeds 500 --until 240 --metric ad_batteries_killed
+#
+# Measured, 500 paired seeds:
+#
+#                      radar up    radar "down"
+#   battery killed       0.980        0.102        (-0.878 +- 0.015, t = -59.9)
+#   munitions released   1.14         1.95
+#   drone shot down      0.02         0.898
+#
+# So the seeker works, and shutting the radar down is a complete answer to it.
+#
+# --- Read the second row before believing the first ------------------------------------
+#
+# The silent battery also **downs the drone 90% of the time**, where the emitting one
+# manages 2%. That looks like going silent strictly dominating, and it is worth
+# understanding why rather than filing it as a result.
+#
+# Most of it is real and follows from the first row: when the radar is up the ARM kills the
+# battery on its first release (0.98 kills off 1.14 munitions), so the battery is destroyed
+# before it ever shoots. Emitting does not merely make you targetable — here it makes you
+# dead early, which is exactly what the section claims.
+#
+# But part of it is an artefact of the model, and this scenario is the thing that found it.
+# **`self_cue = false` does not switch the radar off.** It was introduced in §9.5 as the
+# cueing-timeline lever — "this battery is cued from elsewhere and pays `cue_latency_s`" —
+# and §12.3 later reused the same flag as the emission test. So a battery with
+# `self_cue = false` keeps detecting perfectly well (measured: 1.000 detections, first
+# contact 9.3 s, indistinguishable from the emitting arm) while counting as silent to the
+# missile. It gets the survivability of EMCON without the blindness.
+#
+# The genuinely blind case is a battery with no organic radar at all, and it is available
+# to compare against:
+#
+#   sweep sead_arm --param red.air_defence.0.type --values ciws,gun_truck --seeds 300
+#   # gun_truck: -0.877 +- 0.019 batteries killed (t = -46.1) — same protection, and with
+#   # no Red early-warning net it never fires a shot either. That is the real trade.
+#
+# --- Why the geometry is what it is ----------------------------------------------------
+#
+# `sead_uas` releases at 2200 m and the `ciws` reaches 2000 m, so the drone shoots from just
+# outside the bubble. That 200 m is the whole scenario. An earlier cut released at 1500 m —
+# inside the envelope — and the drone was shot down before releasing on 99.6% of seeds, so
+# the seeker's accuracy was never tested at all and both arms read 0.00 batteries killed.
+# Release range and envelope are a matched pair; sweep `air.sead_uas.release_range_m`
+# through 2000 to price the standoff.
+#
+# Two follow-ons worth running:
+#
+#   - Give Red an off-board early-warning radar, so the silent battery is cued over the net
+#     rather than relying on the flag's ambiguity. The stark trade becomes a timing race
+#     against `cue_latency_s`, which is the more realistic version.
+#   - Sweep `weapons.arm_missile.silent_cep_m` down to 15, where the seeker has no homing
+#     advantage at all and the munition is an exact identity with an ordinary one. That
+#     prices the seeker rather than the tactic.
+
+name = "sead_arm"
+default_seed = 29
+
+[sim]
+dt_s = 1.0
+epoch_s = 10.0
+
+[terrain]
+cell_size_m = 10.0
+width_cells = 700
+height_cells = 300
+
+# Flat: an ARM's accuracy is the subject here, and terrain masking would add a second
+# reason for a miss.
+[terrain.source.flat]
+elevation_m = 0.0
+
+# --- Red: one battery, and its radar is the dial ----------------------------------------
+#
+# `self_cue = false` takes the organic radar out of the loop. With no other sensor on this
+# side the battery is then blind — and, to the missile, silent.
+
+[[red.air_defence]]
+id = "ciws-1"
+type = "ciws"
+pos = [2000.0, 1500.0]
+self_cue = true
+
+# Something for the battery to be defending, so the scenario is a raid rather than a duel
+# with a lone emplacement.
+[[red.units]]
+id = "red-hq"
+type = "inf_section"
+pos = [1600.0, 1500.0]
+
+# --- Blue: the SEAD drone -----------------------------------------------------------
+#
+# `target` names the battery. A named target resolves across units, batteries and posts
+# (docs/design/12-sead.md §12.1), so aiming at air defence needs no special syntax — and
+# the aim point exists whether or not the radar is transmitting. What the transmission
+# changes is the CEP the missile lands with, which is exactly the V64 statement.
+
+[[blue.air]]
+id = "sead-1"
+type = "sead_uas"
+pos = [6000.0, 1500.0]
+altitude_m = 400.0
+heading_deg = 180.0
+waypoints = [[2000.0, 1500.0]]
+target = { unit = "ciws-1" }

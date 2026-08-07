@@ -571,6 +571,9 @@ disk. See [`docs/EXPERIMENTS.md`](EXPERIMENTS.md).
 | `sensor_search.toml` | Narrow-arc observers searching by belief (needs `sensor_tasking`) |
 | `kill_chain.toml` | Directed targeting, and ground counter-battery |
 | `ad_c2.toml` | Coordinated vs decentralised air defence — delete the `[[blue.c2]]` block to compare |
+| `fires_c2.toml` | Ground fires and the net (`fires_need_c2`), and what the overkill cap does to a side that is split |
+| `sead_arm.toml` | Anti-radiation homing: `anti_radiation` + `silent_cep_m`, and the go-silent counter |
+| `ew_c2.toml` | Jamming the command link — the soft kill on the asset SEAD hard-kills |
 | `air_raid.toml` | The counter-air scenario: a drone raid vs self-cued and net-cued defences |
 | `mountain_pass.toml` | A composable terrain recipe: rolling base + ridge + woodland + urban |
 | `flat_range.toml` | A flat, featureless test range — isolates models from terrain effects |

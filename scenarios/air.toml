@@ -55,3 +55,27 @@ optical = 0.12                 # very hard to see, very short legs
 
 # `role` sorts a target-priority list (DESIGN §13.1) — air defence uses it to decide
 # whether to engage the spotter or the shooter first.
+
+# A standoff SEAD platform: a strike airframe whose payload is an anti-radiation missile.
+#
+# `release_range_m` sits just **outside** the `ciws` envelope (2000 m), which is what makes
+# this a SEAD aircraft rather than a suicide mission. Measured: at 1500 m — inside the
+# bubble — the drone is shot down before it can release on 99.6% of seeds, and the seeker's
+# accuracy never gets tested at all. The release range and the defending battery's
+# `max_range_m` are a matched pair, and this is what happens when you get it wrong.
+#
+# Sweep `release_range_m` down through 2000 to price the standoff. See
+# `scenarios/sead_arm.toml`.
+[sead_uas]
+role = "sead"
+height_m = 1.5
+silhouette_width_m = 3.5
+cruise_speed_m_s = 50.0
+max_turn_rate_deg_s = 10.0     # r_min ≈ 287 m
+endurance_s = 2400.0
+payload = "arm_missile"
+munitions = 2
+expendable = false
+release_range_m = 2200.0       # outside the CIWS's 2000 m reach, on purpose
+[sead_uas.signature]
+optical = 0.30

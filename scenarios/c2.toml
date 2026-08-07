@@ -22,3 +22,17 @@ height_m = 2.5
 silhouette_width_m = 3.0
 [ad_forward_cp.signature]
 optical = 0.45
+
+# A ground fire-direction net (docs/design/11-command-and-control.md §11.3). Same asset,
+# different job: with `[sim] fires_need_c2 = true`, artillery inside this radius joins the
+# side-wide fire plan and artillery outside it picks targets for itself.
+#
+# The radius is deliberately small enough that a scenario can put some guns in and some
+# out — which is the case worth studying, because a net covering everybody and a net
+# covering nobody both collapse to a single rule. See `scenarios/fires_c2.toml`.
+[fires_net]
+coordination_range_m = 1500.0
+height_m = 3.0
+silhouette_width_m = 4.0
+[fires_net.signature]
+optical = 0.70

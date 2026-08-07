@@ -185,10 +185,27 @@ sweep <scn> --param sim.fires_need_c2 --values false,true --seeds 1000 --metric 
 
 ### 11.4 Deliberate limitations (v1)
 
-- **The post is not attritable yet.** `Sim::remove_c2` exists and V59 uses it, but nothing
-  in the simulation targets a post: strike drones engage assigned ground units (§9.3), and
-  ground fires iterate the unit list. Making posts and batteries strikeable is the SEAD
-  work this phase is built to enable, and is the agreed next focus.
+- ~~**The post is not attritable yet.**~~ Lifted by §12: posts and batteries carry
+  `element_count`, take §2.3 area damage, and `TargetSpec::Named` resolves across all three
+  asset lists. V60.
+- **The overkill cap is scoped to a fire-control problem, not to a side.** With
+  `fires_need_c2` on, `max_shooters_per_target` is applied once to the netted shooters and
+  again to the loose ones, so splitting a side effectively doubles it. This follows
+  necessarily from the two-problem structure above — a loose gun cannot honour a count it
+  has no way of knowing — but the consequence surprises: when targets are scarce relative
+  to shooters, **being split up makes a side fight better**, because the coordinated side
+  idles shooters that the split side puts to work.
+
+  `scenarios/fires_c2.toml` measures it. Under a cap of 1, every gun brought into the net
+  costs about 17 s of clear time (500 paired seeds), monotone in the net's radius, and with
+  all guns netted the result returns exactly to the no-net baseline.
+
+  The deeper question this exposes is whether a **hard cap** is the right instrument at all.
+  §10.2 already discounts the k-th shooter on a target by `(1 − q̄)^k`, so piling on is
+  priced; the cap on top of that truncates rather than discourages, and a shooter with
+  nothing else to engage does nothing instead of contributing at a discount. Overkill may be
+  better than silence. Unresolved, and deliberately not quietly changed — every existing
+  air-defence and allocation result is calibrated against the current behaviour.
 - **The link ignores terrain.** Jamming and latency now bear on it, but a ridge between the
   post and a battery does not. A terrain-aware comms model is the natural next refinement.
 - **A post cannot be handed off.** There is no notion of a deputy taking over, so killing
