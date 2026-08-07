@@ -90,7 +90,24 @@ its own. Section numbers and phase numbers agree up to §12 and part company aft
   *inline* math, and inline math cannot span lines — so a multi-line equation written
   `$$\begin{aligned}…` renders as raw LaTeX source on github.com while looking fine in the
   VSCode preview. Delimiters on their own lines is GitHub's documented block form and
-  displays correctly in both. Inline symbols in prose stay as
+  displays correctly in both.
+
+  Two further traps, both of which shipped broken once:
+
+  - **`\operatorname` is rejected by GitHub's macro allowlist** ("the following macros are
+    not allowed"). Use `\mathrm{erf}`. The same applies to anything that can define or
+    expand — `\def`, `\newcommand`, `\require`.
+  - **Never write `](` inside an equation.** Markdown link syntax is consumed *before* the
+    math is extracted, so `\mathbb{E}[D](d)` became a link and the whole block rendered as
+    source. Written `\mathbb{E}[D(d)]` it is both safe and better notation. Underscores and
+    asterisks inside a block that parses are fine — it is only the link pattern that
+    destroys the block before the renderer sees it.
+
+  Keep to plain TeX and amsmath: `\frac`, `\sqrt`, `\sum`, `\prod`, `\text`, `\mathrm`,
+  `\mathbb`, `\begin{aligned}`, `\begin{cases}`. Prefer `\|` to `\lVert`, and put dial
+  names in a prose gloss rather than `\texttt{with\_escaped\_underscores}`.
+
+  Inline symbols in prose stay as
   literal `λ`, `σ`, `τ`, because that keeps the prose greppable and matching the ~700
   Unicode maths characters in the Rust doc comments, which rustdoc cannot typeset. Dial
   names keep their TOML spelling in a gloss line under the equation, so the symbols never

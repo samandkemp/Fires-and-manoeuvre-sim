@@ -131,8 +131,8 @@ angular dispersion `δ` mrad. Deflection and elevation errors are independent, s
 a `W × H` silhouette is a product of two one-dimensional Gaussian integrals:
 
 $$
-P_{\text{hit}}(r) = \operatorname{erf}\!\left(\frac{W}{2\sigma(r)\sqrt{2}}\right) \cdot
-\operatorname{erf}\!\left(\frac{H}{2\sigma(r)\sqrt{2}}\right)
+P_{\text{hit}}(r) = \mathrm{erf}\!\left(\frac{W}{2\sigma(r)\sqrt{2}}\right) \cdot
+\mathrm{erf}\!\left(\frac{H}{2\sigma(r)\sqrt{2}}\right)
 $$
 
 Indirect fire samples a burst `b ~ N(aim, σ²I)` with `σ = CEP / √(2 ln 2)` — the
@@ -142,7 +142,7 @@ the burst distribution is a Gaussian convolving a Gaussian, so the expected dama
 aim offset `d` is exact:
 
 $$
-\mathbb{E}[D](d) = \frac{R_L^2}{\sigma^2 + R_L^2}\,
+\mathbb{E}[D(d)] = \frac{R_L^2}{\sigma^2 + R_L^2}\,
 \exp\!\left(-\frac{d^2}{2\,(\sigma^2 + R_L^2)}\right)
 $$
 

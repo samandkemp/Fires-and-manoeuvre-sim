@@ -36,7 +36,7 @@ independent, so
 
 $$
 \begin{aligned}
-P_{\text{hit}}(r) &= \operatorname{erf}\!\left(\frac{W}{2\sigma(r)\sqrt{2}}\right) \cdot \operatorname{erf}\!\left(\frac{H}{2\sigma(r)\sqrt{2}}\right) \\[2pt]
+P_{\text{hit}}(r) &= \mathrm{erf}\!\left(\frac{W}{2\sigma(r)\sqrt{2}}\right) \cdot \mathrm{erf}\!\left(\frac{H}{2\sigma(r)\sqrt{2}}\right) \\[2pt]
 P_{\text{kill}} &= P_{\text{hit}} \cdot p_{\text{kill|hit}} \cdot \big(1 - \text{cover}(\text{cell}(\text{target}))\big)
 \end{aligned}
 $$
@@ -56,7 +56,7 @@ damage marginalising over the Gaussian burst has a **closed form** (a Gaussian
 convolution):
 
 $$
-\mathbb{E}[D](d) = \frac{R_L^2}{\sigma^2 + R_L^2}\,
+\mathbb{E}[D(d)] = \frac{R_L^2}{\sigma^2 + R_L^2}\,
 \exp\!\left(-\frac{d^2}{2\,(\sigma^2 + R_L^2)}\right)
 $$
 
@@ -86,6 +86,6 @@ state Phase 4 validates against Lanchester.
 | V19 | direct-fire P_hit | MC fraction of impacts inside the `W×H` rectangle within CI of the erf-product |
 | V20 | P_hit monotonicity | falls with range, rises with target size, falls with cover; = 0 when blocked or beyond max range |
 | V21 | indirect CEP | empirical median miss distance of sampled bursts = `cep_m` within CI (Rayleigh) |
-| V22 | area-damage closed form | MC mean of Carleton damage over sampled bursts = `E[D](d)` within CI, swept over `d` |
+| V22 | area-damage closed form | MC mean of Carleton damage over sampled bursts = `E[D(d)]` within CI, swept over `d` |
 | V23 | damage monotonicity | `E[D]` falls with offset `d`, with cover, and rises with `lethal_radius` |
 | V24 | fires determinism | same (scenario, seed, mission) → identical round outcomes and final strengths |

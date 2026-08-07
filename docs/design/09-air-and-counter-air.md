@@ -28,12 +28,13 @@ in exactly the way that matters — whether terrain can mask the airframe:
 
 $$
 h(p) = \begin{cases}
-a & (\texttt{altitude\_ref} = \texttt{agl}) \\[2pt]
-\max\big(0,\ a - z(p)\big) & (\texttt{altitude\_ref} = \texttt{amsl})
+a & \text{(AGL)} \\[2pt]
+\max\big(0,\ a - z(p)\big) & \text{(AMSL)}
 \end{cases}
 $$
 
-where `a` = `altitude_m` and `z(p)` is the ground elevation under the airframe.
+where `a` = `altitude_m`, the case is chosen by `altitude_ref`, and `z(p)` is the ground
+elevation under the airframe.
 
 `h` is precisely the **actor height** of §1.2, so LOS, viewshed, and sensing need no
 change: `line_of_sight(terrain, a, h_a, b, h_b)` already takes arbitrary endpoint
@@ -47,7 +48,7 @@ everywhere for one consistent rule):
 
 $$
 r_{\text{slant}}(a, h_a, b, h_b) =
-\sqrt{\ \lVert b - a \rVert^2 + \big((z(b) + h_b) - (z(a) + h_a)\big)^2\ }
+\sqrt{\ \|b - a\|^2 + \big((z(b) + h_b) - (z(a) + h_a)\big)^2\ }
 $$
 
 used for the detection cutoff and falloff `f(r)` of §3.2 and for both weapon range gates

@@ -35,10 +35,11 @@ one more launcher", and the model produces it without being told to.
 *Jamming pulls the radius in.* The effective coordination range is
 
 $$
-r_{\text{eff}} = r_{\text{coord}} \cdot g(\text{post}), \qquad g = \texttt{ew::jamming\_factor} \text{ at the post}
+r_{\text{eff}} = r_{\text{coord}} \cdot g(\text{post})
 $$
 
-so an enemy jammer near the post does not flip the link off — it shrinks it, and the
+where `r_coord` is `coordination_range_m` and `g` is `ew::jamming_factor` evaluated at the
+post. So an enemy jammer near the post does not flip the link off — it shrinks it, and the
 batteries on the flanks fall out of the net while the one sitting on top of the post keeps
 talking. That is the right shape: a link degrades with range against a noise floor, and
 raising the floor is what a jammer does. It also gives the raid a **soft** counter beside
