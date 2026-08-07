@@ -7,6 +7,11 @@ draw from a distribution and it is not the interesting one. This document is abo
 other half: running the same situation thousands of times and reporting what actually
 changed, with an error bar.
 
+This is the **study-design** document — why paired, what the columns mean, how to read the
+output, and what the harness cannot yet do. For the bare command syntax see
+[`docs/OPERATIONS.md`](OPERATIONS.md); for the dials themselves see
+[`docs/SCENARIOS.md`](SCENARIOS.md).
+
 - [The five-minute version](#the-five-minute-version)
 - [The two rules](#the-two-rules)
 - [`batch` — a folder of scenarios](#batch--a-folder-of-scenarios)

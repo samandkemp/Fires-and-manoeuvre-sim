@@ -1,16 +1,22 @@
 # How it works
 
-A walkthrough for someone new to the codebase. It assumes no Rust and no operational
-research, and it answers the practical questions: what is a scenario, how does a unit get
-spotted, how does it get shot, and where does each number come from.
+A walkthrough of the model for someone new to the codebase. It assumes no Rust and no
+operational research, and it answers the questions the other documents assume: what the
+pieces are, which module owns which idea, what happens in one tick, how a unit gets
+spotted, how it gets shot, and where each number comes from.
 
 This is deliberately a different job from its neighbours:
 
 | Doc | Question it answers |
 |---|---|
-| `README.md` | *Why* these methods? The six OR strands and the argument for each |
-| `docs/DESIGN.md` | *What* is specified? Equations, invariants, and the gate for every model |
-| **this file** | *How* does it actually work, and where is the code? |
+| [`README.md`](../README.md) | What is this, and where is everything? |
+| [`docs/MATHS.md`](MATHS.md) | *Why* these methods? The six OR strands and the argument for each |
+| [`docs/design/`](design/) | *What* is specified? Equations, invariants, and the gate for every model |
+| [`docs/OPERATIONS.md`](OPERATIONS.md) | How do I *run* it? Every command, and the app's controls |
+| [`docs/SCENARIOS.md`](SCENARIOS.md) | How do I *build* one? Stat blocks and scenario files |
+| [`docs/EXPERIMENTS.md`](EXPERIMENTS.md) | How do I *study* it? Batch runs, sweeps, paired statistics |
+| [`docs/VALIDATION.md`](VALIDATION.md) | How do I know it is right? The V1–V66 gates |
+| **this file** | *How does it actually work*, and where is the code? |
 
 Every number below was computed by the real functions, not by hand.
 
@@ -30,7 +36,7 @@ structural fact about the project:
         ▼               ▼               ▼
    ┌─────────┐   ┌─────────────┐   ┌────────────┐
    │   app   │   │ experiments │   │ validation │
-   │  (Bevy) │   │  (headless) │   │ (V1–V60)   │
+   │  (Bevy) │   │  (headless) │   │ (V1–V66)   │
    └─────────┘   └─────────────┘   └────────────┘
 ```
 
@@ -55,6 +61,7 @@ Each module owns one idea:
 | `game.rs` | The zero-sum game solver |
 | `allocation.rs` | Weapon–target assignment: who shoots what |
 | `c2.rs` | Command posts: which assets are allowed to coordinate |
+| `doctrine.rs` | The kill chain: what a side has been *told* to shoot first |
 | `scenario.rs` | Loading TOML into structs |
 | `sim/` | **The engine that drives all of the above** |
 
@@ -83,133 +90,52 @@ off it.
 
 ---
 
-## 2. Interacting with scenarios
+## 2. The data model: types and placements
 
 A scenario is a TOML file describing *a situation*: what the ground looks like and who is
-standing on it.
-
-### Running one
-
-```
-cargo run -p app                       # the `default` scenario
-cargo run -p app -- air_raid           # by bare name, resolved in scenarios/
-cargo run -p app -- path/to/mine.toml  # or by path
-```
-
-The app's **scenario** dropdown lists every file in `scenarios/` that parses as a
-scenario and switches between them live. A scenario is told apart from a stat-block
-library by *being parseable as one* — it needs a `name` and a `[terrain]` block, which
-`units.toml` and friends do not have. So adding a new library never confuses the picker.
-
-### Watching one
-
-A battle is over in a couple of hundred seconds of sim time, so the clock panel is built
-around actually seeing it:
-
-- **speed** is in *sim seconds per real second*. Drop it to 0.2× to watch a duel. The sim
-  still advances only in whole `dt_s` ticks — the wall clock decides *when* a tick happens,
-  never how big it is — so speed cannot change the outcome. 0.2× and 60× give the same
-  event log.
-- **+1 s / +10 s** step one integration tick or one decision epoch: the two units the model
-  actually has. **Space** runs and pauses, **.** steps one tick, without leaving the map.
-- **pause on** *contact* / *loss* / *air* sets a breakpoint. The moments worth watching last
-  a single tick, so slowing down is not enough on its own — you also have to be looking at
-  the right pixel. A breakpoint stops *on* the tick that produced the event.
-- **Run to** jumps ahead at headless speed, and **Re-run at seed** replays the same battle.
-
-### Studying one
-
-Headlessly, over many random seeds:
-
-```
-cargo run -p experiments --release --bin batch -- scenarios --seeds 50
-```
-
-That writes `out/<scenario>.csv` (a row per seed) and `out/summary.csv` (mean and
-standard error per scenario). To vary a *dial* rather than compare scenarios:
-
-```
-cargo run -p experiments --release --bin sweep -- air_raid \
-    --param sim.track_hold_s --values 10,20,45,90 --seeds 500
-```
-
-Ten thousand trials take under twenty seconds, and every comparison is paired over a shared
-seed set. `docs/EXPERIMENTS.md` is the full guide.
-
-### The two kinds of file
-
-This split is the heart of the data model:
+standing on it. The split that makes that work is worth understanding before any of the
+code makes sense.
 
 - **Libraries** (`units.toml`, `weapons.toml`, `sensors.toml`, `air.toml`,
-  `air_defence.toml`, `terrain_types.toml`) say **what things are**. One entry per type.
-- **Scenarios** (`default.toml`, `air_raid.toml`, …) say **where things are**. Each
+  `air_defence.toml`, `c2.toml`, `terrain_types.toml`) say **what things are**. One entry
+  per type.
+- **Scenarios** (`default.toml`, `air_raid.toml`, ...) say **where things are**. Each
   placement names a `type` from a library.
 
-So this, in `units.toml`:
+So `units.toml` declares that an `afv` is three vehicles, 2.8 m tall, carrying an
+`afv_cannon`; a scenario says there is one at `[5600, 6400]` following a route. Change
+`element_count` in the library and **every** `afv` in every scenario changes. That is the
+point: the numbers are dials you turn, never values baked into code.
 
-```toml
-[afv]
-height_m = 2.8
-silhouette_width_m = 3.2
-element_count = 3       # a troop of 3 vehicles
-speed_m_s = 6.0
-weapon = "afv_cannon"
-[afv.signature]
-optical = 0.75
-```
+A scenario is told apart from a library by *being parseable as a scenario* — it needs a
+`name` and a `[terrain]` block, which no library has. There is no hard-coded list of
+scenario names, so adding a library never confuses the app's picker or the batch runner.
 
-is referred to by this, in a scenario:
+`scenario.rs` does the loading, and every schema in it sets `deny_unknown_fields`. A
+misspelt dial is a load error naming the key, not a silent fallback to the default — which
+matters more than it sounds, because a scenario that quietly means something other than
+what it says produces a finding you cannot reproduce and cannot explain.
 
-```toml
-[[red.units]]
-id = "red-1"
-type = "afv"
-pos = [5600.0, 6400.0]
-route = [[5600.0, 6400.0], [4300.0, 5200.0]]
-```
+**Writing these files is [`docs/SCENARIOS.md`](SCENARIOS.md); running them is
+[`docs/OPERATIONS.md`](OPERATIONS.md).** Two properties of the data model belong here
+though, because they are facts about the engine rather than about the file format.
 
-Change `element_count` in the library and **every** `afv` in every scenario changes. That
-is the point: the numbers are dials you turn, never values baked into code.
+### The one seeded generator
 
-### Describing the ground
+Everything random comes from a single seeded `ChaCha8Rng`. Same scenario + same seed = the
+same battle, down to the last round. No wall-clock, no thread-local randomness, no global
+state — which is what makes ten thousand trials a measurement rather than an anecdote.
 
-`[terrain.source]` takes one of four forms:
+The subtlety decides what an experiment is actually measuring:
 
-```toml
-[terrain.source.flat]                 # dead flat — isolates a model from terrain
-elevation_m = 0.0
+- **`Sim::new` derives both the terrain and the dice from the seed.** Looping it over seeds
+  varies the map *and* the luck together, so the two sources of variance are mixed.
+- **`Sim::reset_to_scenario` keeps the terrain and re-rolls only the dice.** That is what
+  you want for "what happens on *this* map, on average", and what the batch runner uses.
+  It is also ~15x faster, because building terrain is the expensive part.
 
-[terrain.source.hills]                # seeded rolling relief
-count = 24
-max_height_m = 120.0
-base_radius_m = 600.0
-woods_fraction = 0.28
-urban_blocks = 4
-
-[terrain.source]                      # a named recipe
-preset = "mountain_pass"
-
-[terrain.source.layers]               # your own recipe: a base plus ordered layers
-base = { hills = { count = 20, max_height_m = 90.0, base_radius_m = 700.0 } }
-[[terrain.source.layers.apply]]
-ridge = { bearing_deg = 20.0, crest_m = 320.0, width_m = 1400.0 }
-[[terrain.source.layers.apply]]
-woodland = { fraction = 0.32, patch_scale_m = 450.0 }
-```
-
-Layers apply **in the order written** — urban after woodland leaves urban — and all draw
-from one seeded stream, so a recipe plus a seed always reproduces the same map.
-
-### Seeds
-
-Everything random comes from one seeded generator. Same scenario + same seed = the same
-battle, down to the last round. `default_seed` in the file sets it; the app's **seed** box
-and `--seeds` on the batch runner override it.
-
-One subtlety worth knowing: `Sim::new` derives *both* the terrain and the dice from the
-seed, so looping it over seeds varies the map and the luck together.
-`Sim::reset_to_scenario` keeps the terrain and only re-rolls the dice — which is what you
-want for "what happens on *this* map, on average", and what the batch runner uses.
+Getting this wrong does not produce an error. It produces a confident number that answers a
+different question from the one you asked.
 
 ---
 
@@ -599,7 +525,7 @@ area damage as units, and a strike drone can be assigned one by name
 a battery also takes **its radar** off the network, since an organic radar is just an
 ordinary entry in the sensor list. Destroying a post takes only the coordination.
 
-*Gates V59, V60 · `docs/DESIGN.md` §11–§12*
+*Gates V59, V60 · [§11](design/11-command-and-control.md), [§12](design/12-sead.md)*
 
 ---
 
@@ -636,7 +562,7 @@ the cache hit rate.
 | Make artillery more lethal | `weapons.toml`: `lethal_radius_m` |
 | Change how long tracks last | scenario `[sim]`: `track_hold_s` |
 | Make suppression stickier | scenario `[sim]`: `p_suppress` ↑, `recover_per_s` ↓ |
-| Build a different map | scenario `[terrain.source]` — see §2 |
+| Build a different map | scenario `[terrain.source]` — see [`docs/SCENARIOS.md`](SCENARIOS.md) |
 | Change how targets are chosen | scenario `[sim]`: `allocation` = `optimal` / `greedy` / `independent` |
 | Let air defence coordinate | place a `[[blue.c2]]` post covering the batteries |
 | Send a drone against a SAM | `target = { unit = "sam-1" }` on the `[[red.air]]` entry |
@@ -657,35 +583,26 @@ cargo run -p validation --release --bin validation_report    # the gate table
 cargo clippy --workspace                                     # lints
 ```
 
-The **V-gates** (V1–V60) are the project's backbone. Each one checks a model against a
+The **V-gates** (V1-V66) are the project's backbone. Each one checks a model against a
 closed-form result or a stated invariant — not against a previously recorded output. The
 difference matters: a regression test tells you the answer changed, while a gate tells you
 the answer is *wrong*.
-
-Examples:
-
-- **V15** — Monte Carlo detection frequency against `1 − e^(−λt)`
-- **V22** — sampled area damage against the Carleton–Gaussian closed form
-- **V30** — attrition against Lanchester's square law
-- **V40** — EW switched off is exactly the identity
-- **V55** — a track lapses without observation, so jamming can break one
-- **V56** — the allocator matches an exhaustive optimum, and never picks a forbidden pairing
-- **V57** — belief-driven tasking finds enemies a fixed stare never does
-- **V59/V60** — a C2 post makes air defence split a raid; SEAD can then destroy the post
-
-`validation_report` prints each gate beside the closed form it is checked against, because
-the useful question is not "are the tests green" but *is the maths still right, and right
-against what*.
 
 If you change a model and a gate fails, **understand why before re-baselining it**. That
 gate is the only thing standing between a model and a plausible-looking number that is
 quietly wrong.
 
+[`docs/VALIDATION.md`](VALIDATION.md) has the full table, what each gate is checked
+against, and how to add one.
+
 ---
 
 ## Where to go next
 
-- `docs/DESIGN.md` — the full specification, with every equation and its gate
-- `README.md` — the OR strands and why each was chosen
-- `scenarios/README.md` — the scenario and stat-block file formats
-- `SETUP.md` — environment setup, written for a Rust beginner
+- [`docs/SCENARIOS.md`](SCENARIOS.md) — build a scenario, or add a unit type
+- [`docs/OPERATIONS.md`](OPERATIONS.md) — every command, and the app's controls
+- [`docs/EXPERIMENTS.md`](EXPERIMENTS.md) — run a study over thousands of seeds
+- [`docs/MATHS.md`](MATHS.md) — the six OR strands, and why each was chosen
+- [`docs/design/`](design/) — the full specification, section by section
+- [`docs/VALIDATION.md`](VALIDATION.md) — the gates, and what each is checked against
+- [`SETUP.md`](../SETUP.md) — environment setup, written for a Rust beginner

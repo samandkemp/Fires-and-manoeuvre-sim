@@ -1,7 +1,7 @@
 //! The catalogue of validation gates: V-number → property → analytical reference → the
 //! test that checks it.
 //!
-//! This is the machine-readable twin of the validation tables in `docs/DESIGN.md`. It
+//! This is the machine-readable twin of the validation tables in `docs/design/`. It
 //! exists so `validation_report` can print what was checked and against what, rather than
 //! a bare list of green test names — a gate is only meaningful alongside the closed form
 //! it is compared to.
@@ -9,7 +9,7 @@
 //! It cannot silently drift: `tests/catalogue.rs` asserts that every gate here names a
 //! test that exists, and that every `vNN_*` test in the suite appears here.
 
-/// One validation gate, as stated in `docs/DESIGN.md`.
+/// One validation gate, as stated in its `docs/design/` section.
 pub struct Gate {
     /// Gate number, e.g. `"V14"`.
     pub id: &'static str,
@@ -22,7 +22,8 @@ pub struct Gate {
     pub tests: &'static [&'static str],
 }
 
-/// Every gate, in number order. `docs/DESIGN.md` is the prose source of truth; this is
+/// Every gate, in number order. `docs/design/` is the prose source of truth (and
+/// `docs/VALIDATION.md` the reader's table); this is
 /// the executable index into it.
 pub const GATES: &[Gate] = &[
     Gate { id: "V1", property: "world<->cell round-trip", reference: "world_to_cell(cell_center(c)) == c for all cells", tests: &["world_cell_roundtrip"] },

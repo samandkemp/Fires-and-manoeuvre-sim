@@ -1,6 +1,6 @@
 //! The catalogue must not drift from the suite.
 //!
-//! `validation::gates::GATES` is the machine-readable twin of `docs/DESIGN.md`'s
+//! `validation::gates::GATES` is the machine-readable twin of `docs/design/`'s
 //! validation tables, and a catalogue that quietly disagrees with the tests is worse than
 //! none — it would report a gate as held when nothing checks it. These two gates make
 //! that impossible in both directions: every catalogued test exists, and every `vNN_*`
@@ -81,7 +81,7 @@ fn every_gate_test_in_the_suite_is_catalogued() {
     assert!(
         orphans.is_empty(),
         "these V-numbered tests are missing from the catalogue (and so from the report \
-         and docs/DESIGN.md): {orphans:#?}"
+         and docs/design/): {orphans:#?}"
     );
 }
 

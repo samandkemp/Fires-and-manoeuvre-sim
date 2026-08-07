@@ -1,16 +1,21 @@
 # Scenarios
 
-TOML data files: scenario definitions (forces, terrain, objectives) and the stat
-blocks for units, weapons, and sensors. All numbers here are **abstract placeholder
-dials**, never real-world performance data — the models are the product, these are
-the knobs.
+TOML data files: scenario definitions (forces, terrain, objectives) and the stat blocks for
+units, weapons, sensors, air, air defence and C2. All numbers here are **abstract
+placeholder dials**, never real-world performance data — the models are the product, these
+are the knobs.
+
+**The guide to writing these files is [`docs/SCENARIOS.md`](../docs/SCENARIOS.md)** — how to
+add a unit, weapon, sensor, drone, battery or post, and how to build a scenario to put them
+in.
 
 | File | What it holds |
 |---|---|
 | `default.toml` | The main scenario: terrain generation, forces, sensor placements |
-| `fire_allocation.toml` | Four shooters that can all reach all four targets — the case where the allocation rule actually matters |
+| `fire_allocation.toml` | Four shooters that can all reach all four targets — where the allocation rule matters |
 | `sensor_search.toml` | Narrow-arc observers searching by belief (needs `sensor_tasking`) |
-| `ad_c2.toml` | Coordinated vs decentralised air defence — delete the `[[blue.c2]]` block to compare |
+| `kill_chain.toml` | Directed targeting, and ground counter-battery |
+| `ad_c2.toml` | Coordinated vs decentralised air defence |
 | `c2.toml` | C2 post stat blocks: coordination radius, and how findable the post is |
 | `air_raid.toml` | The counter-air scenario: a drone raid vs self-cued and net-cued defences |
 | `mountain_pass.toml` | A composable terrain recipe: rolling base + ridge + woodland + urban |
@@ -22,14 +27,8 @@ the knobs.
 | `air.toml` | Drones: altitude, speed, turn rate, endurance, sensor/strike payload |
 | `air_defence.toml` | Air defence: gun vs missile engagement, envelope, magazine, cue latency |
 
-`air.toml`, `air_defence.toml` and `c2.toml` are optional — a scenario directory without them loads
-with those libraries empty, so an older scenario set still works.
-
-The schema these parse into lives in `crates/sim_core/src/scenario.rs`; the conventions
-they follow are in `docs/DESIGN.md`. For a walkthrough of what each dial actually does to
-a detection or a round — with worked numbers — see `docs/HOW_IT_WORKS.md`.
-
-## Loading a scenario
+`air.toml`, `air_defence.toml` and `c2.toml` are optional — a scenario directory without
+them loads with those libraries empty, so an older scenario set still works.
 
 ```
 cargo run -p app                       # the `default` scenario
@@ -37,159 +36,6 @@ cargo run -p app -- air_raid           # by bare name, resolved in this director
 cargo run -p app -- path/to/mine.toml  # or by path, for one kept elsewhere
 ```
 
-The app's **scenario** picker (top of the control panel) lists every file here that parses
-as a scenario and switches between them without a restart — terrain, forces and all.
-
-Scenario files are told apart from the stat-block libraries by *being parseable as a
-scenario*, not by a hard-coded list of names: a scenario needs a `name` and a `[terrain]`
-block, which no library file has. Adding a new library never confuses the picker.
-
-## Describing terrain
-
-`[terrain.source]` takes one of four forms. The first two are the originals; the last two
-let a map be *described* rather than picked (`docs/DESIGN.md` §1.3):
-
-```toml
-[terrain.source.flat]                       # dead flat
-elevation_m = 0.0
-
-[terrain.source.hills]                      # seeded rolling relief
-count = 24
-max_height_m = 120.0
-base_radius_m = 600.0
-woods_fraction = 0.28
-urban_blocks = 4
-
-[terrain.source]                            # a named recipe
-preset = "mountain_pass"                    # or rolling_hills, wooded_hills,
-                                            # light_urban, dense_urban, flat_plain
-
-[terrain.source.layers]                     # a recipe of your own
-base = { hills = { count = 20, max_height_m = 90.0, base_radius_m = 700.0 } }
-[[terrain.source.layers.apply]]
-ridge = { bearing_deg = 20.0, crest_m = 320.0, width_m = 1400.0 }
-[[terrain.source.layers.apply]]
-woodland = { fraction = 0.32, patch_scale_m = 450.0 }
-[[terrain.source.layers.apply]]
-urban = { blocks = 5, min_size_m = 250.0, max_size_m = 500.0 }
-```
-
-Layers apply **in the order written** — urban after woodland leaves urban — and all draw
-from the one seeded stream, so a recipe plus a seed always gives the same map. `base` is
-`flat` or `hills`; `apply` may be empty. See `mountain_pass.toml` for a worked example.
-
-## What a scenario contains
-
-| Block | Meaning |
-|---|---|
-| `name`, `default_seed` | Identity, and the seed used unless a run overrides it |
-| `[sim]` | Tick and epoch length, the suppression dials, and the track-decay dials (DESIGN §3.3, §4.3, §10.1) |
-| `[terrain]` | Grid size and cell size, and a `source` describing how to generate it |
-| `[[blue.*]]` / `[[red.*]]` | Placed `units`, `sensors`, `jammers`, `air`, `air_defence`, `c2` |
-
-Every placed asset names a `type` from the libraries above, so a scenario says *where*
-things are and the libraries say *what they are*.
-
-## The `[sim]` dials
-
-Every dial has a default, so a scenario states only what it wants to change.
-
-| Dial | Default | What it does |
-|---|---|---|
-| `dt_s` | 1.0 | Tick length — the continuous cadence (DESIGN §7.1) |
-| `epoch_s` | 10.0 | Decision-epoch length — the discrete cadence |
-| `suppression_radius_m` | 35.0 | A round landing this close is a near miss (§4.3) |
-| `p_suppress` | 0.15 | Chance one near miss steps suppression up |
-| `recover_per_s` | 0.05 | Rate of stepping back down |
-| `suppressed_fire_factor` | 0.4 | Outgoing fire multiplier while Suppressed |
-| `track_hold_s` | 45.0 | How long a track survives unobserved (§10.1) |
-| `track_maintain_p` | 0.5 | How good a look must be to refresh a track |
-| `allocation` | `optimal` | `optimal` / `greedy` / `independent` (§10.2) |
-| `max_shooters_per_target` | 3 | Overkill cap: ground shooters per target per epoch |
-| `max_batteries_per_air_target` | 2 | Overkill cap: air-defence batteries per airframe (§11.2) |
-| `fires_need_c2` | `false` | Must a ground shooter be under a live C2 post to coordinate? (§11.3) |
-| `sensor_tasking` | `false` | Do steerable sensors search by belief? (§10.3) |
-| `belief_cells` | 48 | Edge length of the coarse belief grid |
-
-Three of these are worth knowing as **switches back to older behaviour**, which is how you
-isolate one model from another:
-
-- `allocation = "independent"` restores the pre-Phase-10 rule where every shooter picked
-  the nearest enemy for itself. Comparing against `optimal` is what the
-  `allocation_gap` experiment measures.
-- `track_hold_s` set towards the run length recovers permanent detection — useful when
-  you want to study fires without tracks lapsing underneath you.
-- `sensor_tasking` is **off by default**: a `facing_deg` you write in a scenario is taken
-  as meant. Turn it on to let sensors search (see `sensor_search.toml`), but note it
-  dissolves any scenario whose premise is a *committed* sensor posture — the interdiction
-  game being the example that caught this.
-- `fires_need_c2` is **off by default**, so a side's guns coordinate for free. Turn it on
-  and a shooter must be inside a live friendly C2 post's radius to join the side-wide fire
-  plan; one outside picks for itself. Turning it on unconditionally would have reduced
-  every existing scenario to `independent` overnight, which is why it is a dial.
-
-## The kill chain
-
-A side always has a fire plan (DESIGN §13). Omitting the block gives `priority = ["all"]` —
-one tier holding everything, ranked by the ordinary §10.2 payoff, which *is* the undirected
-behaviour. Declare one and it is **followed**:
-
-```toml
-[blue.doctrine]
-priority = ["red-cp", "air_defence", "armour"]   # id, class, role — all valid
-mode = "strict"                                  # the default; or "weighted"
-
-[[blue.orders]]                                  # bypass the decision entirely
-shooter = "gun-a"
-target = "red-cp"
-```
-
-`strict` means a shooter that can reach a higher tier takes it *even at a worse shot* — a
-crew follows orders, not a kill-probability table. `weighted` scales value by tier instead,
-so doctrine biases the optimisation without overriding it.
-
-An entry may name an asset **id**, a **role** declared on its stat block (`role = "armour"`),
-a **class** (`unit`, `air_defence`, `c2`, `air`), or **`"all"`** — anything at all, which is
-how the bottom tier is written explicitly. A role never masks its class, so `"air_defence"`
-still matches a battery that calls itself `"sam"`. **A name matching nothing is a load
-error** listing what would have worked — a tier that silently matches nothing is a doctrine
-nobody is following.
-
-Two rules stop a fire plan wasting ammunition. **Line of sight and range block a pairing**,
-so a shooter whose top tier is masked by a ridge falls through to what it can actually
-engage rather than idling — and an `[[orders]]` entry lapses the same way while its target
-is unreachable. And **a shooter holds its target** until that target is dead or can no
-longer be engaged, instead of re-deciding every epoch and flip-flopping between two similar
-targets; a new order is the one thing that breaks a lock.
-
-`scenarios/kill_chain.toml` is the worked example.
-
-## Dials that are not in `[sim]`
-
-Three that matter for the counter-air and SEAD scenarios live on the **stat blocks**, so
-they belong to the asset rather than the situation:
-
-| Dial | On | What it does |
-|---|---|---|
-| `link_latency_s` | `[c2.*]` | How long a battery must be inside the radius before it is in the net (§11.2). Default 0. |
-| `value` | `[air.*]`, `[air_defence.*]`, `[c2.*]` | How much destroying this is worth to the enemy's allocation. Emplacements have no cross-class derivation, so this is how "the SAM before the tanks" is said (§12.4). |
-| `anti_radiation` + `silent_cep_m` | `[weapons.*]` | The munition homes on a *transmitting* radar; against a silent one it lands with `silent_cep_m` instead of `cep_m` (§12.3). |
-
-There is no dial for jamming a C2 link — a jammer already does it. An enemy jammer near a
-post scales its coordination radius by the EW factor, so the batteries on the flanks fall
-out of the net while the one on top of the post keeps talking (§11.2). SEAD hard-kills the
-post; EW soft-kills its reach.
-
-You do not have to edit a file to try a different value. `sweep` patches any dotted path
-into the scenario TOML before it is parsed, and runs every arm over the same seed set:
-
-```
-cargo run -p experiments --release --bin sweep -- air_raid \
-    --param sim.track_hold_s --values 10,20,45,90 --seeds 500
-```
-
-See `docs/EXPERIMENTS.md`.
-
-**Unknown keys are rejected.** Nearly every dial above has a default, so a misspelt one —
-`track_hold` for `track_hold_s` — used to parse perfectly, take the default, and quietly
-change what the scenario meant. The loader now refuses it and names the key.
+The schema these parse into lives in
+[`crates/sim_core/src/scenario.rs`](../crates/sim_core/src/scenario.rs); the models each
+dial feeds are specified in [`docs/design/`](../docs/design/).
