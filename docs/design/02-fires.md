@@ -35,10 +35,13 @@ unit's `silhouette_width_m`, `H` from its `height_m`. Deflection and elevation e
 independent, so
 
 $$
-\begin{aligned}
-P_{\text{hit}}(r) &= \mathrm{erf}\!\left(\frac{W}{2\sigma(r)\sqrt{2}}\right) \cdot \mathrm{erf}\!\left(\frac{H}{2\sigma(r)\sqrt{2}}\right) \\[2pt]
-P_{\text{kill}} &= P_{\text{hit}} \cdot p_{\text{kill|hit}} \cdot \big(1 - \text{cover}(\text{cell}(\text{target}))\big)
-\end{aligned}
+P_{\text{hit}}(r) = \mathrm{erf}\left(\frac{W}{2\sigma(r)\sqrt{2}}\right)
+\cdot \mathrm{erf}\left(\frac{H}{2\sigma(r)\sqrt{2}}\right)
+$$
+
+$$
+P_{\text{kill}} = P_{\text{hit}} \cdot p_{\text{kill|hit}}
+\cdot \big(1 - \text{cover}(\text{cell}(\text{target}))\big)
 $$
 
 `erf` via the Abramowitz–Stegun 7.1.26 rational approximation (max error ~1.5e-7 — no
@@ -56,8 +59,8 @@ damage marginalising over the Gaussian burst has a **closed form** (a Gaussian
 convolution):
 
 $$
-\mathbb{E}[D(d)] = \frac{R_L^2}{\sigma^2 + R_L^2}\,
-\exp\!\left(-\frac{d^2}{2\,(\sigma^2 + R_L^2)}\right)
+\mathbb{E}[D(d)] = \frac{R_L^2}{\sigma^2 + R_L^2}
+\exp\left(-\frac{d^2}{2 (\sigma^2 + R_L^2)}\right)
 $$
 
 Delivered damage multiplies by `(1 − cover(cell(target)))` (urban/woods shielding —

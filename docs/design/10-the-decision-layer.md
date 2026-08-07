@@ -54,7 +54,7 @@ sensor's *effective* rate `λ_eff` — the §8.1 jammed rate, with concealment, 
 canopy folded in — clears a `track_maintain_p` threshold:
 
 $$
-\text{refresh} \iff 1 - e^{-\lambda_{\text{eff}}\,\Delta t_{\text{epoch}}} \ \ge\ p_{\text{maintain}}
+\text{refresh} \iff 1 - e^{-\lambda_{\text{eff}} \Delta t_{\text{epoch}}} \ge p_{\text{maintain}}
 $$
 
 Using the effective rate rather than bare geometry is what lets EW break a track:
@@ -171,10 +171,11 @@ probability `b(c)·p(c)`, collapsing the belief to a point mass of zero entropy;
 nothing and the belief becomes `b'(c) ∝ b(c)(1 − p(c))`. So
 
 $$
-\begin{aligned}
-\mathbb{E}\big[H_{\text{after}}\big] &= \left(1 - \sum_c b(c)\,p(c)\right) H(b') \\[2pt]
-\text{gain}(\text{facing}) &= H(b) - \mathbb{E}\big[H_{\text{after}}\big]
-\end{aligned}
+\mathbb{E}\big[H_{\text{after}}\big] = \left(1 - \sum_c b(c) p(c)\right) H(b')
+$$
+
+$$
+\text{gain}(\text{facing}) = H(b) - \mathbb{E}\big[H_{\text{after}}\big]
 $$
 
 and each steerable sensor takes the facing maximising `gain`. Sensors with no

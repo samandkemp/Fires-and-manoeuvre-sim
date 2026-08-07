@@ -27,10 +27,9 @@ own piece); munitions are dials (`munitions` + `expendable`).
 in exactly the way that matters — whether terrain can mask the airframe:
 
 $$
-h(p) = \begin{cases}
-a & \text{(AGL)} \\[2pt]
-\max\big(0,\ a - z(p)\big) & \text{(AMSL)}
-\end{cases}
+h(p) = a \quad \text{(AGL)}
+\qquad\qquad
+h(p) = \max\big(0, a - z(p)\big) \quad \text{(AMSL)}
 $$
 
 where `a` = `altitude_m`, the case is chosen by `altitude_ref`, and `z(p)` is the ground
@@ -48,7 +47,7 @@ everywhere for one consistent rule):
 
 $$
 r_{\text{slant}}(a, h_a, b, h_b) =
-\sqrt{\ \|b - a\|^2 + \big((z(b) + h_b) - (z(a) + h_a)\big)^2\ }
+\sqrt{ \lVert b - a \rVert^2 + \big((z(b) + h_b) - (z(a) + h_a)\big)^2 }
 $$
 
 used for the detection cutoff and falloff `f(r)` of §3.2 and for both weapon range gates
@@ -187,7 +186,7 @@ inside the envelope before reaching its release point. The battery is actionable
 `t_entry − D + L + R`, so the effective engagement window is
 
 $$
-W_{\text{eff}} = \max\big(0,\ W - \max(0,\ L + R - D)\big)
+W_{\text{eff}} = \max\big(0, W - \max(0, L + R - D)\big)
 $$
 
 The delay costs nothing until `L + R` outruns `D`: a cue that has already aged through

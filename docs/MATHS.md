@@ -47,7 +47,7 @@ heading as a state with a bounded derivative is load-bearing rather than decorat
 Orbits integrate the **phase** rather than steering toward the circle:
 
 $$
-\theta(t + \Delta t) = \theta(t) \pm \frac{v}{R}\,\Delta t, \qquad p = c + R\,(\cos\theta,\ \sin\theta)
+\theta(t + \Delta t) = \theta(t) \pm \frac{v}{R} \Delta t, \qquad p = c + R (\cos\theta, \sin\theta)
 $$
 
 Steering would accumulate radius drift over a long loiter; integrating phase holds
@@ -60,7 +60,7 @@ Steering would accumulate radius drift over a long loiter; integrating phase hol
 A mover choosing a route is solving Bellman's equation over the terrain grid:
 
 $$
-J^*(x) = \min_{u \in U(x)} \Big[\, c(x, u) + J^*\big(f(x, u)\big) \,\Big]
+J^*(x) = \min_{u \in U(x)} \Big[ c(x, u) + J^*\big(f(x, u)\big) \Big]
 $$
 
 with `x` a cell, `u` one of its eight neighbours, and the edge cost
@@ -131,8 +131,8 @@ angular dispersion `δ` mrad. Deflection and elevation errors are independent, s
 a `W × H` silhouette is a product of two one-dimensional Gaussian integrals:
 
 $$
-P_{\text{hit}}(r) = \mathrm{erf}\!\left(\frac{W}{2\sigma(r)\sqrt{2}}\right) \cdot
-\mathrm{erf}\!\left(\frac{H}{2\sigma(r)\sqrt{2}}\right)
+P_{\text{hit}}(r) = \mathrm{erf}\left(\frac{W}{2\sigma(r)\sqrt{2}}\right) \cdot
+\mathrm{erf}\left(\frac{H}{2\sigma(r)\sqrt{2}}\right)
 $$
 
 Indirect fire samples a burst `b ~ N(aim, σ²I)` with `σ = CEP / √(2 ln 2)` — the
@@ -142,8 +142,8 @@ the burst distribution is a Gaussian convolving a Gaussian, so the expected dama
 aim offset `d` is exact:
 
 $$
-\mathbb{E}[D(d)] = \frac{R_L^2}{\sigma^2 + R_L^2}\,
-\exp\!\left(-\frac{d^2}{2\,(\sigma^2 + R_L^2)}\right)
+\mathbb{E}[D(d)] = \frac{R_L^2}{\sigma^2 + R_L^2}
+\exp\left(-\frac{d^2}{2 (\sigma^2 + R_L^2)}\right)
 $$
 
 That closed form is the reason for this kernel. A cookie-cutter lethality disc is
@@ -183,12 +183,13 @@ probability, removal — rather than of any one function.
 ### Air defence: same target, two distributions
 
 $$
-\begin{aligned}
-\text{gun:}\quad & \text{TTK} \sim \mathrm{Exp}(\lambda_k)
-  & \mathbb{E}[\text{TTK}] &= \frac{1}{\lambda_k} \\[2pt]
-\text{missile:}\quad & \text{shots} \sim \mathrm{Geometric}(p)
-  & \mathbb{E}[\text{TTK}] &= \frac{t_f}{p} + \left(\frac{1}{p} - 1\right) t_r
-\end{aligned}
+\text{gun:} \quad \text{TTK} \sim \mathrm{Exp}(\lambda_k)
+\quad \Rightarrow \quad \mathbb{E}[\text{TTK}] = \frac{1}{\lambda_k}
+$$
+
+$$
+\text{missile:} \quad \text{shots} \sim \mathrm{Geometric}(p)
+\quad \Rightarrow \quad \mathbb{E}[\text{TTK}] = \frac{t_f}{p} + \left(\frac{1}{p} - 1\right) t_r
 $$
 
 A gun grinds continuously; a missile is discrete shoot-look-shoot with flight time `t_f`
@@ -207,24 +208,23 @@ opponent*. That is a zero-sum matrix game. Blue mixes over positions `x ∈ Δ_m
 routes `y ∈ Δ_n`, and von Neumann's minimax theorem says the game has a value:
 
 $$
-v = \max_{x}\,\min_{y}\ x^{\mathsf{T}} A y = \min_{y}\,\max_{x}\ x^{\mathsf{T}} A y
+v = \max_{x} \min_{y} x^{\mathsf{T}} A y = \min_{y} \max_{x} x^{\mathsf{T}} A y
 $$
 
 Solved by **fictitious play** — each side repeatedly best-responds to the opponent's
 empirical distribution of past play:
 
 $$
-\begin{aligned}
-i^* &= \arg\max_i \ \sum_j A_{ij}\, N^{\text{col}}_j \\[2pt]
-j^* &= \arg\min_j \ \sum_i A_{ij}\, N^{\text{row}}_i
-\end{aligned}
+i^* = \arg\max_i \sum_j A_{ij} N^{\text{col}}_j
+\qquad
+j^* = \arg\min_j \sum_i A_{ij} N^{\text{row}}_i
 $$
 
 The time-averaged strategies converge to equilibrium for zero-sum games (Robinson, 1951)
 with no LP dependency, and convergence is self-certifying: the value is bracketed by
 
 $$
-v_{\text{low}} = \min_j \big(x^{\mathsf{T}}A\big)_j \ \le\ v \ \le\ \max_i \big(Ay\big)_i = v_{\text{high}}
+v_{\text{low}} = \min_j \big(x^{\mathsf{T}}A\big)_j \le v \le \max_i \big(Ay\big)_i = v_{\text{high}}
 $$
 
 and the gap `v_high − v_low` shrinks to zero. You can watch the bracket close.
@@ -243,16 +243,17 @@ position but a **belief** over it: `b_t(s) = P(enemy at s | z_{1:t})`, maintaine
 two standard steps,
 
 $$
-\begin{aligned}
-\text{update:}\quad b_t(s) &\propto P(z_t \mid s)\, b_{t-1}(s) \\[2pt]
-\text{predict:}\quad b^{-}_t(s') &= \sum_s T(s' \mid s)\, b_{t-1}(s)
-\end{aligned}
+\text{update:} \quad b_t(s) \propto P(z_t \mid s) b_{t-1}(s)
+$$
+
+$$
+\text{predict:} \quad b^{-}_t(s') = \sum_s T(s' \mid s) b_{t-1}(s)
 $$
 
 The load-bearing observation is the **negative** one. Not seeing something is evidence:
 
 $$
-P(\text{no detection} \mid \text{enemy at } s) = \exp\!\big(-\lambda(s)\,\Delta t\big)
+P(\text{no detection} \mid \text{enemy at } s) = \exp\big(-\lambda(s) \Delta t\big)
 $$
 
 A cell your sensor covers well has a low likelihood of producing no detection, so
@@ -278,7 +279,7 @@ facing, either something is detected — collapsing belief to a point of zero en
 nothing is, and belief becomes `b'(c) ∝ b(c)(1 − p(c))`, so
 
 $$
-\text{gain} = H(b) - \left(1 - \sum_c b(c)\,p(c)\right) H(b')
+\text{gain} = H(b) - \left(1 - \sum_c b(c) p(c)\right) H(b')
 $$
 
 That closes the loop **sensing → belief → decision → action**. Measured: three

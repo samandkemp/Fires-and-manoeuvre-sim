@@ -92,20 +92,32 @@ its own. Section numbers and phase numbers agree up to §12 and part company aft
   VSCode preview. Delimiters on their own lines is GitHub's documented block form and
   displays correctly in both.
 
-  Two further traps, both of which shipped broken once:
+  **Only letter-spelled macros survive.** This is the rule that matters, and it explains
+  the rest. GitHub applies CommonMark backslash escaping to the block's contents *before*
+  extracting the maths, so a backslash followed by ASCII punctuation is eaten: `\,` arrives
+  as a comma, `\!` as an exclamation mark, `\;` as a semicolon, and `\\` as a single
+  backslash — which stops separating rows, so an `aligned` block collapses onto one line
+  with a literal `\[2pt]` in the middle of it. `\<letters>` is untouched, which is why
+  `\frac` and `\lambda` were never affected.
+
+  So: **no spacing macros** (use `\quad` and `\qquad`, which are letters), **no `\\`**, and
+  therefore **no multi-row `aligned` or `cases`** — write each row as its own block. None of
+  the equations here needed alignment; each was a pair of independent statements.
+
+  Two more, both of which shipped broken:
 
   - **`\operatorname` is rejected by GitHub's macro allowlist** ("the following macros are
     not allowed"). Use `\mathrm{erf}`. The same applies to anything that can define or
     expand — `\def`, `\newcommand`, `\require`.
-  - **Never write `](` inside an equation.** Markdown link syntax is consumed *before* the
-    math is extracted, so `\mathbb{E}[D](d)` became a link and the whole block rendered as
+  - **Never write `](` inside an equation.** Markdown link syntax is consumed before the
+    maths is extracted, so `\mathbb{E}[D](d)` became a link and the whole block rendered as
     source. Written `\mathbb{E}[D(d)]` it is both safe and better notation. Underscores and
     asterisks inside a block that parses are fine — it is only the link pattern that
     destroys the block before the renderer sees it.
 
-  Keep to plain TeX and amsmath: `\frac`, `\sqrt`, `\sum`, `\prod`, `\text`, `\mathrm`,
-  `\mathbb`, `\begin{aligned}`, `\begin{cases}`. Prefer `\|` to `\lVert`, and put dial
-  names in a prose gloss rather than `\texttt{with\_escaped\_underscores}`.
+  Keep to plain TeX and amsmath spelled in letters: `\frac`, `\sqrt`, `\sum`, `\prod`,
+  `\text`, `\mathrm`, `\mathbb`, `\lVert`, `\rVert`, `\quad`. Put dial names in a prose
+  gloss rather than `\texttt{with\_escaped\_underscores}`.
 
   Inline symbols in prose stay as
   literal `λ`, `σ`, `τ`, because that keeps the prose greppable and matching the ~700
