@@ -28,10 +28,12 @@ model; dt = 1 s + 10 s epochs; static user-placed Red.
 
 Detection of unit `u` by sensor `s` is a Poisson process with rate
 
-$$\begin{aligned}
+$$
+\begin{aligned}
 \lambda(s, u) &= \lambda_0 \cdot f(r) \cdot \sigma_m(u) \cdot \tau(s, u) \cdot \big(1 - c(u)\big) \\[2pt]
 f(r) &= \frac{1}{1 + \left(r / r_{1/2}\right)^{n}}
-\end{aligned}$$
+\end{aligned}
+$$
 
 with `λ0` = `lambda0_per_s`, `σ_m` the target's signature in the sensor's modality, `c` the
 terrain concealment at its cell, `r_½` = `range_half_m` and `n` = `range_exponent`.

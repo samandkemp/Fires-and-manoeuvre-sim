@@ -34,7 +34,9 @@ one more launcher", and the model produces it without being told to.
 
 *Jamming pulls the radius in.* The effective coordination range is
 
-$$r_{\text{eff}} = r_{\text{coord}} \cdot g(\text{post}), \qquad g = \texttt{ew::jamming\_factor} \text{ at the post}$$
+$$
+r_{\text{eff}} = r_{\text{coord}} \cdot g(\text{post}), \qquad g = \texttt{ew::jamming\_factor} \text{ at the post}
+$$
 
 so an enemy jammer near the post does not flip the link off — it shrinks it, and the
 batteries on the flanks fall out of the net while the one sitting on top of the post keeps
@@ -99,8 +101,10 @@ nothing more than who was written first in the scenario file. V59 now fields a m
 two-sided engagement and requires each side to make the same choice it would make with the
 enemy's post removed.
 
-$$\text{payoff}\big[\text{channel}\big]\big[(\text{air}, k)\big] =
-P(\text{kill before release}) \cdot \text{value}(\text{air}) \cdot (1 - p)^{k}$$
+$$
+\text{payoff}\big[\text{channel}\big]\big[(\text{air}, k)\big] =
+P(\text{kill before release}) \cdot \text{value}(\text{air}) \cdot (1 - p)^{k}
+$$
 
 **The deadline is the release point, not the envelope edge.** A drone that leaves the
 envelope having already dropped its munition has won, so the window is the time to reach

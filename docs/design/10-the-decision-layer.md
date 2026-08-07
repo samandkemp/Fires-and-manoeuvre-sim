@@ -53,7 +53,9 @@ keeping eyes on something already found is not a coin flip. A track refreshes wh
 sensor's *effective* rate `λ_eff` — the §8.1 jammed rate, with concealment, range and
 canopy folded in — clears a `track_maintain_p` threshold:
 
-$$\text{refresh} \iff 1 - e^{-\lambda_{\text{eff}}\,\Delta t_{\text{epoch}}} \ \ge\ p_{\text{maintain}}$$
+$$
+\text{refresh} \iff 1 - e^{-\lambda_{\text{eff}}\,\Delta t_{\text{epoch}}} \ \ge\ p_{\text{maintain}}
+$$
 
 Using the effective rate rather than bare geometry is what lets EW break a track:
 a jammer that drives `λ_eff` below the threshold ages the track out even with clean LOS.
@@ -65,7 +67,9 @@ Drawing nothing also leaves the per-tick RNG stream unperturbed.
 Replaces the nearest-enemy rule with a side-wide assignment, solved once per epoch per
 side before anyone shoots. For shooter `i` and slot `k` of target `j`,
 
-$$\text{payoff}\big[i\big]\big[(j,k)\big] = q(i,j)\cdot \text{value}(j)\cdot \big(1 - \bar{q}(j)\big)^{k}$$
+$$
+\text{payoff}\big[i\big]\big[(j,k)\big] = q(i,j)\cdot \text{value}(j)\cdot \big(1 - \bar{q}(j)\big)^{k}
+$$
 
 `q(i,j)` is the **fraction of the target destroyed this epoch**, from the existing fires
 model — `direct_p_hit` or `expected_area_damage`, times cover, suppression factor and
@@ -166,10 +170,12 @@ observation is binary per cell: either a sensor detects something at cell `c`, w
 probability `b(c)·p(c)`, collapsing the belief to a point mass of zero entropy; or it sees
 nothing and the belief becomes `b'(c) ∝ b(c)(1 − p(c))`. So
 
-$$\begin{aligned}
+$$
+\begin{aligned}
 \mathbb{E}\big[H_{\text{after}}\big] &= \left(1 - \sum_c b(c)\,p(c)\right) H(b') \\[2pt]
 \text{gain}(\text{facing}) &= H(b) - \mathbb{E}\big[H_{\text{after}}\big]
-\end{aligned}$$
+\end{aligned}
+$$
 
 and each steerable sensor takes the facing maximising `gain`. Sensors with no
 `for_width_deg` see all round and have nothing to choose.

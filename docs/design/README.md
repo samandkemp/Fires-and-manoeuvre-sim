@@ -78,8 +78,19 @@ its own. Section numbers and phase numbers agree up to §12 and part company aft
 - **Dials are data.** Every number is a TOML dial with a default; the spec states the
   functional form, not the value.
 - **Notation: display equations are LaTeX, inline symbols are Unicode.** A standalone
-  equation is written `$$…$$`, which GitHub and the VSCode preview both typeset — fractions,
-  sums and stacked operators are worth the delimiters. Inline symbols in prose stay as
+  equation is written with the delimiters **on their own lines**:
+
+  ```
+  $$
+  E = mc^2
+  $$
+  ```
+
+  The line breaks are load-bearing, not style. GitHub reads `$$` with content beside it as
+  *inline* math, and inline math cannot span lines — so a multi-line equation written
+  `$$\begin{aligned}…` renders as raw LaTeX source on github.com while looking fine in the
+  VSCode preview. Delimiters on their own lines is GitHub's documented block form and
+  displays correctly in both. Inline symbols in prose stay as
   literal `λ`, `σ`, `τ`, because that keeps the prose greppable and matching the ~700
   Unicode maths characters in the Rust doc comments, which rustdoc cannot typeset. Dial
   names keep their TOML spelling in a gloss line under the equation, so the symbols never

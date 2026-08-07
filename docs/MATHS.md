@@ -28,12 +28,16 @@ dynamic program, and the two only compose cleanly if they are kept apart.
 
 State evolves under a control you may choose but not violate:
 
-$$\dot{x} = f(x, u), \qquad u \in U(x)$$
+$$
+\dot{x} = f(x, u), \qquad u \in U(x)
+$$
 
 For an airframe the state is `x = (p, ψ, v)` — position, heading, speed — and the
 binding constraint is a **turn rate**, not a position:
 
-$$|\dot{\psi}| \le \omega_{\max} \quad\Longrightarrow\quad r_{\min} = \frac{v}{\omega_{\max}}$$
+$$
+|\dot{\psi}| \le \omega_{\max} \quad\Longrightarrow\quad r_{\min} = \frac{v}{\omega_{\max}}
+$$
 
 A rate limit is what separates a flight path from a polyline. Ask a drone to fly a
 90° corner and it cannot; it flies an arc of radius `r_min`, arriving late and displaced.
@@ -42,7 +46,9 @@ heading as a state with a bounded derivative is load-bearing rather than decorat
 
 Orbits integrate the **phase** rather than steering toward the circle:
 
-$$\theta(t + \Delta t) = \theta(t) \pm \frac{v}{R}\,\Delta t, \qquad p = c + R\,(\cos\theta,\ \sin\theta)$$
+$$
+\theta(t + \Delta t) = \theta(t) \pm \frac{v}{R}\,\Delta t, \qquad p = c + R\,(\cos\theta,\ \sin\theta)
+$$
 
 Steering would accumulate radius drift over a long loiter; integrating phase holds
 `‖p − c‖ = R` exactly and gives the lap time `T = 2πR/v` in closed form to test against.
@@ -53,11 +59,15 @@ Steering would accumulate radius drift over a long loiter; integrating phase hol
 
 A mover choosing a route is solving Bellman's equation over the terrain grid:
 
-$$J^*(x) = \min_{u \in U(x)} \Big[\, c(x, u) + J^*\big(f(x, u)\big) \,\Big]$$
+$$
+J^*(x) = \min_{u \in U(x)} \Big[\, c(x, u) + J^*\big(f(x, u)\big) \,\Big]
+$$
 
 with `x` a cell, `u` one of its eight neighbours, and the edge cost
 
-$$c(x, u) = c_{\text{move}}(x, u) + w \cdot \text{risk}(u)$$
+$$
+c(x, u) = c_{\text{move}}(x, u) + w \cdot \text{risk}(u)
+$$
 
 `move_cost` is mobility × slope × distance (∞ for impassable); `risk ∈ [0,1]` is a
 supplied exposure raster. Because every cost is non-negative there are no negative
@@ -87,21 +97,27 @@ Four processes, chosen so that each has a closed form to test against.
 
 Sensor `s` detects unit `u` as a Poisson process of rate
 
-$$\lambda(s,u) = \lambda_0 \cdot f(r) \cdot \sigma_m(u) \cdot \tau(s,u) \cdot \big(1 - c(u)\big),
-\qquad f(r) = \frac{1}{1 + (r/r_{1/2})^{n}}$$
+$$
+\lambda(s,u) = \lambda_0 \cdot f(r) \cdot \sigma_m(u) \cdot \tau(s,u) \cdot \big(1 - c(u)\big),
+\qquad f(r) = \frac{1}{1 + (r/r_{1/2})^{n}}
+$$
 
 where `σ_m` is signature in the sensor's modality, `τ = exp(−κL)` the canopy
 transmittance along the sightline, `c` the target's terrain concealment, and `r` slant
 range. The rate is zero when LOS is blocked, range exceeds the cutoff, or the target
 falls outside the field of regard.
 
-$$P(\text{detected by } t) = 1 - e^{-\lambda t}
-\qquad\text{per tick:}\quad p = 1 - e^{-\lambda \Delta t}$$
+$$
+P(\text{detected by } t) = 1 - e^{-\lambda t}
+\qquad\text{per tick:}\quad p = 1 - e^{-\lambda \Delta t}
+$$
 
 Modelling a **rate** rather than a per-tick probability is what makes the answer
 independent of the tick size. Memorylessness gives the exact identity
 
-$$\prod_k e^{-\lambda \Delta t_k} = e^{-\lambda \sum_k \Delta t_k}$$
+$$
+\prod_k e^{-\lambda \Delta t_k} = e^{-\lambda \sum_k \Delta t_k}
+$$
 
 for any subdivision of the interval, so halving `dt` cannot change the detection
 statistics. A per-tick probability would silently make the physics a function of the
@@ -114,8 +130,10 @@ Direct fire scatters isotropically about the aim point with `σ(r) = δ·r/1000`
 angular dispersion `δ` mrad. Deflection and elevation errors are independent, so hitting
 a `W × H` silhouette is a product of two one-dimensional Gaussian integrals:
 
-$$P_{\text{hit}}(r) = \operatorname{erf}\!\left(\frac{W}{2\sigma(r)\sqrt{2}}\right) \cdot
-\operatorname{erf}\!\left(\frac{H}{2\sigma(r)\sqrt{2}}\right)$$
+$$
+P_{\text{hit}}(r) = \operatorname{erf}\!\left(\frac{W}{2\sigma(r)\sqrt{2}}\right) \cdot
+\operatorname{erf}\!\left(\frac{H}{2\sigma(r)\sqrt{2}}\right)
+$$
 
 Indirect fire samples a burst `b ~ N(aim, σ²I)` with `σ = CEP / √(2 ln 2)` — the
 circular-Gaussian CEP identity — and delivers the **Carleton** incapacitation kernel
@@ -123,8 +141,10 @@ circular-Gaussian CEP identity — and delivers the **Carleton** incapacitation 
 the burst distribution is a Gaussian convolving a Gaussian, so the expected damage at
 aim offset `d` is exact:
 
-$$\mathbb{E}[D](d) = \frac{R_L^2}{\sigma^2 + R_L^2}\,
-\exp\!\left(-\frac{d^2}{2\,(\sigma^2 + R_L^2)}\right)$$
+$$
+\mathbb{E}[D](d) = \frac{R_L^2}{\sigma^2 + R_L^2}\,
+\exp\!\left(-\frac{d^2}{2\,(\sigma^2 + R_L^2)}\right)
+$$
 
 That closed form is the reason for this kernel. A cookie-cutter lethality disc is
 simpler and cheaper, but it has no analytical expectation, so the Monte Carlo sampler
@@ -136,8 +156,10 @@ this project is trying not to build.
 Per-unit state `S ∈ {Free, Suppressed, Pinned}`, stepping up on near-misses at rate `β`
 and decaying at rate `μ`:
 
-$$\text{Free} \rightleftharpoons \text{Suppressed} \rightleftharpoons \text{Pinned}
-\qquad \pi_k \propto (\beta/\mu)^k, \quad k = 0,1,2$$
+$$
+\text{Free} \rightleftharpoons \text{Suppressed} \rightleftharpoons \text{Pinned}
+\qquad \pi_k \propto (\beta/\mu)^k, \quad k = 0,1,2
+$$
 
 The birth–death structure hands over its stationary distribution for free, and the mean
 time Pinned → Free is `2/μ` — two exponential steps in series. Suppression is a *state*
@@ -148,8 +170,10 @@ neither fire nor move, which is what lets fires shape manoeuvre without killing 
 
 Fire volume scales with a unit's surviving elements, so an aimed-fire duel obeys
 
-$$\frac{dA}{dt} = -\beta B, \quad \frac{dB}{dt} = -\alpha A
-\qquad\Longrightarrow\qquad \alpha\big(A_0^2 - A^2\big) = \beta\big(B_0^2 - B^2\big)$$
+$$
+\frac{dA}{dt} = -\beta B, \quad \frac{dB}{dt} = -\alpha A
+\qquad\Longrightarrow\qquad \alpha\big(A_0^2 - A^2\big) = \beta\big(B_0^2 - B^2\big)
+$$
 
 Lanchester's **square law**: combat power goes as the square of numbers under aimed
 fire. Reproducing it is the strongest single check on the attrition chain, because it
@@ -158,12 +182,14 @@ probability, removal — rather than of any one function.
 
 ### Air defence: same target, two distributions
 
-$$\begin{aligned}
+$$
+\begin{aligned}
 \text{gun:}\quad & \text{TTK} \sim \mathrm{Exp}(\lambda_k)
   & \mathbb{E}[\text{TTK}] &= \frac{1}{\lambda_k} \\[2pt]
 \text{missile:}\quad & \text{shots} \sim \mathrm{Geometric}(p)
   & \mathbb{E}[\text{TTK}] &= \frac{t_f}{p} + \left(\frac{1}{p} - 1\right) t_r
-\end{aligned}$$
+\end{aligned}
+$$
 
 A gun grinds continuously; a missile is discrete shoot-look-shoot with flight time `t_f`
 and reload `t_r`. The distributions differ in shape, not just in mean, so guns and
@@ -180,20 +206,26 @@ Where to put a sensor has no best answer, only a best answer *against a thinking
 opponent*. That is a zero-sum matrix game. Blue mixes over positions `x ∈ Δ_m`, Red over
 routes `y ∈ Δ_n`, and von Neumann's minimax theorem says the game has a value:
 
-$$v = \max_{x}\,\min_{y}\ x^{\mathsf{T}} A y = \min_{y}\,\max_{x}\ x^{\mathsf{T}} A y$$
+$$
+v = \max_{x}\,\min_{y}\ x^{\mathsf{T}} A y = \min_{y}\,\max_{x}\ x^{\mathsf{T}} A y
+$$
 
 Solved by **fictitious play** — each side repeatedly best-responds to the opponent's
 empirical distribution of past play:
 
-$$\begin{aligned}
+$$
+\begin{aligned}
 i^* &= \arg\max_i \ \sum_j A_{ij}\, N^{\text{col}}_j \\[2pt]
 j^* &= \arg\min_j \ \sum_i A_{ij}\, N^{\text{row}}_i
-\end{aligned}$$
+\end{aligned}
+$$
 
 The time-averaged strategies converge to equilibrium for zero-sum games (Robinson, 1951)
 with no LP dependency, and convergence is self-certifying: the value is bracketed by
 
-$$v_{\text{low}} = \min_j \big(x^{\mathsf{T}}A\big)_j \ \le\ v \ \le\ \max_i \big(Ay\big)_i = v_{\text{high}}$$
+$$
+v_{\text{low}} = \min_j \big(x^{\mathsf{T}}A\big)_j \ \le\ v \ \le\ \max_i \big(Ay\big)_i = v_{\text{high}}
+$$
 
 and the gap `v_high − v_low` shrinks to zero. You can watch the bracket close.
 
@@ -210,14 +242,18 @@ Once electronic warfare degrades sensing, the tracked quantity is no longer enem
 position but a **belief** over it: `b_t(s) = P(enemy at s | z_{1:t})`, maintained by the
 two standard steps,
 
-$$\begin{aligned}
+$$
+\begin{aligned}
 \text{update:}\quad b_t(s) &\propto P(z_t \mid s)\, b_{t-1}(s) \\[2pt]
 \text{predict:}\quad b^{-}_t(s') &= \sum_s T(s' \mid s)\, b_{t-1}(s)
-\end{aligned}$$
+\end{aligned}
+$$
 
 The load-bearing observation is the **negative** one. Not seeing something is evidence:
 
-$$P(\text{no detection} \mid \text{enemy at } s) = \exp\!\big(-\lambda(s)\,\Delta t\big)$$
+$$
+P(\text{no detection} \mid \text{enemy at } s) = \exp\!\big(-\lambda(s)\,\Delta t\big)
+$$
 
 A cell your sensor covers well has a low likelihood of producing no detection, so
 belief drains out of it; dead ground and jammed cells sit near 1 and keep their mass.
@@ -227,8 +263,10 @@ information, and it falls straight out of Bayes rather than being scripted.
 
 EW enters the *rate*, not the geometry:
 
-$$\lambda_{\text{eff}} = \lambda \cdot \prod_j g_j(\text{target}),
-\qquad g_j = 1 - \text{power}_j\left(1 - \frac{d}{\text{radius}_j}\right)$$
+$$
+\lambda_{\text{eff}} = \lambda \cdot \prod_j g_j(\text{target}),
+\qquad g_j = 1 - \text{power}_j\left(1 - \frac{d}{\text{radius}_j}\right)
+$$
 
 so a jammer raises belief entropy `H(b) = −Σ_s b(s) log b(s)` without moving anything.
 With no jammers every `g_j = 1` and the product is exactly 1, so EW-off reduces to the
@@ -239,7 +277,9 @@ sensor at the facing maximising the *expected* reduction in `H(b)`. For a candid
 facing, either something is detected — collapsing belief to a point of zero entropy — or
 nothing is, and belief becomes `b'(c) ∝ b(c)(1 − p(c))`, so
 
-$$\text{gain} = H(b) - \left(1 - \sum_c b(c)\,p(c)\right) H(b')$$
+$$
+\text{gain} = H(b) - \left(1 - \sum_c b(c)\,p(c)\right) H(b')
+$$
 
 That closes the loop **sensing → belief → decision → action**. Measured: three
 narrow-arc observers searching for five dispersed units find **2 of 5** staring where
@@ -257,7 +297,9 @@ rather than shooter-by-shooter is the difference between three tanks all firing 
 nearest enemy and three tanks covering three enemies. For shooter `i` and slot `k` of
 target `j`,
 
-$$\text{payoff}\big[i\big]\big[(j,k)\big] = q(i,j)\cdot \text{value}(j)\cdot \big(1 - \bar{q}(j)\big)^{k}$$
+$$
+\text{payoff}\big[i\big]\big[(j,k)\big] = q(i,j)\cdot \text{value}(j)\cdot \big(1 - \bar{q}(j)\big)^{k}
+$$
 
 `q` is the fraction of the target destroyed this epoch, straight from the fires model.
 The geometric term is the diminishing return on piling on: the (k+1)-th shooter only

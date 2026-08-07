@@ -34,10 +34,12 @@ presents a rectangle of width `W` (deflection) and height `H` (elevation) — `W
 unit's `silhouette_width_m`, `H` from its `height_m`. Deflection and elevation errors are
 independent, so
 
-$$\begin{aligned}
+$$
+\begin{aligned}
 P_{\text{hit}}(r) &= \operatorname{erf}\!\left(\frac{W}{2\sigma(r)\sqrt{2}}\right) \cdot \operatorname{erf}\!\left(\frac{H}{2\sigma(r)\sqrt{2}}\right) \\[2pt]
 P_{\text{kill}} &= P_{\text{hit}} \cdot p_{\text{kill|hit}} \cdot \big(1 - \text{cover}(\text{cell}(\text{target}))\big)
-\end{aligned}$$
+\end{aligned}
+$$
 
 `erf` via the Abramowitz–Stegun 7.1.26 rational approximation (max error ~1.5e-7 — no
 new dependency). *(Alternative considered: a single circular-target `P_hit =
@@ -53,8 +55,10 @@ kernel. For a single round aimed with offset `d` from a point target, the expect
 damage marginalising over the Gaussian burst has a **closed form** (a Gaussian
 convolution):
 
-$$\mathbb{E}[D](d) = \frac{R_L^2}{\sigma^2 + R_L^2}\,
-\exp\!\left(-\frac{d^2}{2\,(\sigma^2 + R_L^2)}\right)$$
+$$
+\mathbb{E}[D](d) = \frac{R_L^2}{\sigma^2 + R_L^2}\,
+\exp\!\left(-\frac{d^2}{2\,(\sigma^2 + R_L^2)}\right)
+$$
 
 Delivered damage multiplies by `(1 − cover(cell(target)))` (urban/woods shielding —
 reuses the terrain cover layer; no new dial). *(Alternatives: cookie-cutter lethality
