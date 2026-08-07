@@ -153,7 +153,7 @@ is for — "kill the radar first" is a judgement, not a derivation.
   A battery with `self_cue = false` therefore counts as silent to an anti-radiation missile
   while its organic radar keeps detecting perfectly well.
 
-  Measured on `scenarios/sead_arm.toml`: the "silent" battery records 1.000 detections with
+  Measured on `scenarios/sead_arm.toml`: the "silent" battery records 1.000 (detections) with
   first contact at 9.3 s, statistically indistinguishable from the emitting arm's 0.996 at
   10.1 s — so it gets the survivability of EMCON (0.10 vs 0.98 batteries killed) without the
   blindness that should pay for it.

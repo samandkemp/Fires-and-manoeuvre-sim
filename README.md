@@ -2,9 +2,9 @@
 
 An operational-research simulation of land warfare direct and indirect fires. A Blue and a
 Red force — composed from artillery, manoeuvre units, sensors, drones and air defence —
-fight over terrain that actually matters: line of sight, cover, concealment, mobility.
+fight over featured terrain: line of sight, cover, concealment, mobility.
 
-**Sensing is central.** You place sensors and try to detect the enemy before being
+**Sensing is central.** User places sensors and try to detect the enemy before being
 detected, then watch fires suppress and attrit manoeuvre. Detection is mutual and
 asymmetric, so positioning to see without being seen is a real decision rather than a
 scoring bonus.
@@ -24,7 +24,7 @@ tweakable — not to ship as a game.
   to a serial run.
 - **The maths is the product.** Every model is formulated and validated against a known
   analytical result or a documented invariant *before* it is made fast or pretty.
-  Correctness is testable; "realism" is not. There are 66 such gates.
+  Correctness is testable; "realism" is not. There are 67 such gates.
 - **Data-driven.** Unit, weapon and sensor stats live in TOML, never hard-coded, so they
   are tweakable at runtime — and sweepable by dotted path without editing a file.
 - **Composable subsystems.** Terrain, fires, sensing, suppression, movement and

@@ -1,7 +1,8 @@
 # The mathematics
 
-Six bodies of theory, each doing a job the others cannot. Each is stated here in its own
-symbols, with what it buys, the code it lives in, and the gate that holds it honest.
+So far the model is based on six distinct bodies of theory. Each is stated here to
+describe the mathematical reasoning, what it achieves, the code it lives in, and the
+validation and verification gate associated with it.
 
 This is the **argument for why each tool is the right one**. It is not the specification:
 [`docs/design/`](design/) works each subsystem out in full, and

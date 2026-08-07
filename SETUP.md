@@ -13,18 +13,19 @@ both languages. Follow it in order; each step ends with a check so you know it w
 
 Rust is installed via `rustup`, which manages compiler versions for you.
 
-- **macOS / Linux** — run in a terminal:
-  ```
-  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-  ```
-  Accept the defaults. Then restart the terminal.
 
 - **Windows** — download and run `rustup-init.exe` from https://rustup.rs.
   It will tell you it needs the **Visual Studio C++ Build Tools** (the MSVC linker).
   Let it guide you, or install "Desktop development with C++" from the Visual Studio
   Installer first. This is required — Rust links through the MSVC toolchain on Windows.
 
-Then make sure you're on stable:
+- **macOS / Linux** — run in a terminal:
+  ```
+  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+  ```
+  Accept the defaults. Then restart the terminal.
+
+Then make sure you set default to stable:
 ```
 rustup default stable
 ```
@@ -34,8 +35,7 @@ rustup default stable
 rustc --version
 cargo --version
 ```
-Both should print a version. `cargo` is Rust's build tool + package manager — you'll
-use it for everything.
+Both should print a version. `cargo` is Rust's build tool + package manager
 
 ---
 
@@ -113,9 +113,9 @@ blank window opens. That means Rust, Cargo, Bevy, and your GPU path all work.
 
 ---
 
-## 4. Enable fast compiles (do this before you write real code)
+## 4. Enable fast compiles (for development)
 
-Slow rebuilds are the #1 thing that kills momentum in Rust gamedev. Two changes fix it.
+Enabling fast compiles during development prevents loss of momentum, at a slight cost to optimisation
 
 **(a) Optimise dependencies in debug builds.** In `Cargo.toml`, add:
 ```toml
@@ -131,16 +131,16 @@ still runs at a usable speed while you iterate.
 **(b) Use a fast linker.** Create `.cargo/config.toml` in the project root with the
 block for your OS:
 
+- **Windows** — `rust-lld` ships with Rust, so just:
+  ```toml
+  [target.x86_64-pc-windows-msvc]
+  linker = "rust-lld.exe"
+  ```
 - **Linux** — first `sudo apt install lld clang` (Debian/Ubuntu), then:
   ```toml
   [target.x86_64-unknown-linux-gnu]
   linker = "clang"
   rustflags = ["-C", "link-arg=-fuse-ld=lld"]
-  ```
-- **Windows** — `rust-lld` ships with Rust, so just:
-  ```toml
-  [target.x86_64-pc-windows-msvc]
-  linker = "rust-lld.exe"
   ```
 - **macOS** — the default linker is already as fast as the alternatives. **Do nothing
   here**; `dynamic_linking` from step 3 is enough. (Ignore old tutorials pushing `zld`.)
@@ -148,17 +148,16 @@ block for your OS:
 **Check it worked:** make a trivial edit to `main.rs` (e.g. add a comment) and
 `cargo run` again — the rebuild should be seconds, not minutes.
 
-*(Optional, later:* nightly Rust unlocks a few more compile speedups (generic sharing,
-the Cranelift backend). Skip it for now — stable is the right call while learning.)
-
 ---
 
-## 5. Structure the project as a workspace (core vs app)
+## 5. Workspace Structure (core vs app)
 
-This mirrors the architecture in the README: a **pure, headless OR core** that never
-touches Bevy, and a **Bevy app** that renders it. Set the boundary up now — it is what
-keeps the maths independently testable and lets you run batch experiments with no window.
-Retrofitting it later means untangling Bevy types out of every model.
+If setting up a new workspace, it is suggested to follow the architecture in the 
+README: a **headless OR core** independent of Bevy, and a **Bevy app** that visually 
+renders the model.
+
+Keeping the OR core and Bevy app seperate makes the underlying maths independently 
+testable and allows the user to run batch experiments without a visual render.
 
 Create this layout (rename `hello_bevy` or start fresh):
 ```
@@ -241,7 +240,7 @@ cargo test -p sim_core
 
 ---
 
-## 6. Crates you'll add soon (don't install all now)
+## 6. Potential Optional Crates 
 
 Add these with `cargo add <name> -p <crate>` when you reach the relevant phase. For any
 Bevy-ecosystem crate, **check its README for the Bevy version it targets** — they pin to
@@ -260,7 +259,7 @@ specific Bevy releases and lag a week or two behind a new Bevy.
 
 ---
 
-## 7. Learn Rust in parallel (do not skip)
+## 7. Rust and Bevy Resources
 
 Bevy is hard to learn *while* also learning Rust's ownership model. Spend a little time
 on fundamentals alongside the early phases:
@@ -274,7 +273,6 @@ on fundamentals alongside the early phases:
   matching your version) is the most reliable, always-current reference.
 - **Unofficial Bevy Cheat Book** — https://bevy-cheatbook.github.io — great task-oriented
   recipes; may lag a version behind, so cross-check against examples.
-- **Bevy Discord** — the community is responsive and beginner-friendly.
 
 ---
 
@@ -285,9 +283,8 @@ on fundamentals alongside the early phases:
 - [ ] `cargo run` on the hello window opens a blank window
 - [ ] fast-compile config in place; a one-line edit rebuilds in seconds
 - [ ] workspace builds: `cargo run -p app` (window) and `cargo test -p sim_core` (headless)
-- [ ] started the Rust Book / Rustlings
 
-## Common first-time gotchas
+## Common first-time issues
 
 - **First build feels frozen** — it isn't; compiling the engine just takes minutes once.
 - **rust-analyzer shows no types / errors everywhere** — it's still indexing on first
