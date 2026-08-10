@@ -1,7 +1,7 @@
 //! Commands from outside the simulation: what the app's mouse and a scenario script can
 //! change between ticks.
 //!
-//! Kept apart from the tick itself so the boundary is obvious — the simulation never
+//! Kept apart from the tick itself so the boundary is obvious - the simulation never
 //! calls anything here, and everything here is safe to call between steps. Removal
 //! **tombstones** rather than shifting the asset lists, because the event logs hold
 //! indices into them (V54).
@@ -51,7 +51,7 @@ impl Sim {
     ///
     /// Worth having live: 10,000 paired trials on `ad_c2` found the default of 2 buys no
     /// extra kills over 1 and costs a quarter of a round (§11.2), so this is a dial whose
-    /// measured value is "none, on this scenario" — and watching a raid under 1, 2 and 3 is
+    /// measured value is "none, on this scenario" - and watching a raid under 1, 2 and 3 is
     /// how that stops being a table and starts being obvious.
     pub fn set_max_batteries_per_air_target(&mut self, cap: u32) {
         self.max_batteries_per_air_target = cap.max(1);
@@ -68,7 +68,7 @@ impl Sim {
     ///
     /// Safe between ticks: the split into netted and loose shooters is recomputed from
     /// scratch each epoch, so there is no state to migrate. Flipping it live is the
-    /// clearest way to see §11.4's counter-intuitive result — that a *split* side can
+    /// clearest way to see §11.4's counter-intuitive result - that a *split* side can
     /// fight better, because the overkill cap applies once per fire-control problem and a
     /// loose shooter puts to work a slot the coordinated side would have idled.
     pub fn set_fires_need_c2(&mut self, on: bool) {
@@ -99,7 +99,7 @@ impl Sim {
         self.air[air_idx].set_plan(plan);
     }
 
-    /// Mutable access to a placed air asset — the hook for interactive editing (the app
+    /// Mutable access to a placed air asset - the hook for interactive editing (the app
     /// sets altitude, heading, speed and flight plan from its panel). Prefer the typed
     /// helpers elsewhere on `Sim` for anything the simulation itself does.
     pub fn air_mut(&mut self, air_idx: usize) -> &mut AirState {
@@ -110,7 +110,7 @@ impl Sim {
     ///
     /// The suppression chain is normally driven by near-miss volume, but pinning a unit
     /// directly is what lets a caller isolate the *effect* of a state from the process
-    /// that produces it — which is how V31 measures the fire-effectiveness multiplier and
+    /// that produces it - which is how V31 measures the fire-effectiveness multiplier and
     /// V38 checks that a pinned unit halts. Also the hook a scenario script or the app
     /// would use to set up a situation.
     pub fn set_suppression(&mut self, unit_idx: usize, state: Suppression) {
@@ -140,7 +140,7 @@ impl Sim {
     ///
     /// Tombstoned like every other removal. The interesting part is what it does *not*
     /// do: no battery is lost, no magazine emptied, no envelope shrunk. What is lost is
-    /// the coordination — from the next tick, batteries that were allocating as a group
+    /// the coordination - from the next tick, batteries that were allocating as a group
     /// revert to each taking whatever is nearest, with the duplicated engagements and
     /// leakers that follow. This is the hook SEAD will pull on.
     pub fn remove_c2(&mut self, c2_idx: usize) {
@@ -150,7 +150,7 @@ impl Sim {
     /// Destroy an air-defence battery (`docs/DESIGN.md` §12), tombstoned like the rest.
     ///
     /// Two things go at once, which is what makes SEAD worth doing: the launchers stop
-    /// engaging, **and** the organic radar goes dark — [`Sim::sensor_active`] already knows
+    /// engaging, **and** the organic radar goes dark - [`Sim::sensor_active`] already knows
     /// a battery's radar dies with it, so coverage and belief drop it without a special
     /// case here.
     pub fn remove_air_defence(&mut self, ad_idx: usize) {
@@ -167,7 +167,7 @@ impl Sim {
     /// Reposition an air-defence battery, moving its organic radar with it.
     ///
     /// The radar is an ordinary entry in the sensor list, so leaving it behind would give
-    /// the battery a detached eye at its old site — a bug that would show up only as
+    /// the battery a detached eye at its old site - a bug that would show up only as
     /// coverage in the wrong place.
     pub fn set_air_defence_pos(&mut self, ad_idx: usize, pos: Vec2) {
         self.air_defence[ad_idx].pos = pos;
@@ -179,8 +179,8 @@ impl Sim {
     /// The scenario id of whatever a fire event hit.
     ///
     /// Ground fires can now land on three different lists (`docs/DESIGN.md` §12.4), and
-    /// every reader that wants to *name* the target — the app's feed, an experiment's
-    /// report — would otherwise repeat the same three-armed match.
+    /// every reader that wants to *name* the target - the app's feed, an experiment's
+    /// report - would otherwise repeat the same three-armed match.
     #[must_use]
     pub fn fire_target_id(&self, target: super::FireTarget) -> &str {
         match target {

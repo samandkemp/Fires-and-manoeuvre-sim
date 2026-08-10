@@ -1,13 +1,13 @@
-//! V68 — the overkill discount replaces the overkill cap. `docs/DESIGN.md` §11.4.
+//! V68 - the overkill discount replaces the overkill cap. `docs/DESIGN.md` §11.4.
 //!
 //! §10.2 prices the *k*-th shooter on a target at `(1 - q̄)^k`: the extra shooter only helps
-//! if every one before it failed. A hard cap on top of that — `max_shooters_per_target`,
-//! now removed — did not *discourage* piling on, it **truncated** the option, and a shooter
+//! if every one before it failed. A hard cap on top of that - `max_shooters_per_target`,
+//! now removed - did not *discourage* piling on, it **truncated** the option, and a shooter
 //! with nothing else to engage was assigned nothing at all.
 //!
 //! That is the wrong trade whenever targets are scarcer than shooters, which for indirect
 //! fire is most of the opening: a target has to be tracked before it can be shot at. It was
-//! visible as an inversion — on `fires_c2.toml`, splitting a side in two with
+//! visible as an inversion - on `fires_c2.toml`, splitting a side in two with
 //! `fires_need_c2` made it fight *better*, because the cap applied once per fire-control
 //! problem and a split side therefore got two of them.
 //!
@@ -28,7 +28,7 @@ use validation::scenario_params;
 ///
 /// Direct fire deliberately: it needs no track, so the measurement is not hostage to when
 /// acquisition happens to succeed. Targets carry enough elements to survive several epochs,
-/// because the fire log records **casualties** — a gun that engages and kills nothing
+/// because the fire log records **casualties** - a gun that engages and kills nothing
 /// leaves no trace, and the gate could not then tell "did not engage" from "engaged and
 /// missed".
 fn guns_against(n_guns: usize, n_targets: usize) -> Sim {
@@ -114,7 +114,7 @@ fn epoch_slice(sim: &Sim, from: usize) -> (BTreeSet<usize>, BTreeSet<sim_core::s
 }
 
 // The property the cap was getting wrong. Three guns, one target: all three should engage.
-// The third is worth little — the discount says so — but little is more than the nothing a
+// The third is worth little - the discount says so - but little is more than the nothing a
 // cap of one or two delivered.
 #[test]
 fn v68_no_gun_idles_when_there_is_only_one_target() {
@@ -141,7 +141,7 @@ fn v68_fire_still_spreads_when_there_is_a_target_for_everyone() {
         sim.run_until(sim.time_s() + 10.0);
         let (shooters, targets) = epoch_slice(&sim, before);
         // Only judge an epoch in which all three guns fired and all three targets are still
-        // alive — once one dies the survivors are correctly free to double up.
+        // alive - once one dies the survivors are correctly free to double up.
         let all_alive = sim.units()[3..6].iter().all(|u| u.elements > 0);
         if shooters.len() == 3 && all_alive {
             assert_eq!(

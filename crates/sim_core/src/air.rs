@@ -3,7 +3,7 @@
 //!
 //! An airframe has an altitude (AGL or AMSL), a heading and a speed, and flies either a
 //! waypoint path or a transit-then-orbit. It can carry a sensor, a strike payload, or
-//! both. Flight is pure and draws no randomness — that lives in detection (§3) and
+//! both. Flight is pure and draws no randomness - that lives in detection (§3) and
 //! air-defence engagement (§9.4).
 
 use crate::fires::WeaponType;
@@ -28,7 +28,7 @@ pub enum AltitudeRef {
 }
 
 /// How a flight plan ends. The orbit centre is always the final waypoint, so "fly this
-/// path" is `Hold` and "go here and orbit at radius R" is one waypoint plus `Orbit` —
+/// path" is `Hold` and "go here and orbit at radius R" is one waypoint plus `Orbit` -
 /// both requested behaviours from one structure (`docs/DESIGN.md` §9.2).
 #[derive(Clone, Copy, PartialEq, Debug, Default, serde::Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -87,7 +87,7 @@ impl FlightPlan {
 /// selection is deferred to the kill-chain work.
 #[derive(Clone, Debug, PartialEq)]
 pub enum TargetSpec {
-    /// A named **ground asset** — a unit, an air-defence battery, or a C2 post. Ids are
+    /// A named **ground asset** - a unit, an air-defence battery, or a C2 post. Ids are
     /// unique within a scenario, so one namespace covers all three, and the aim point
     /// tracks the asset if it moves.
     ///
@@ -98,7 +98,7 @@ pub enum TargetSpec {
     Point(Vec2),
 }
 
-/// An air type's stat block (`scenarios/air.toml`) — all placeholder dials.
+/// An air type's stat block (`scenarios/air.toml`) - all placeholder dials.
 #[derive(Clone, Debug, serde::Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct AirType {
@@ -139,7 +139,7 @@ pub struct AirType {
     /// (`docs/DESIGN.md` §11.2). Omit and it is derived from what the airframe can do.
     ///
     /// The derived default already ranks a loaded strike drone above a recce one; set
-    /// this to overrule that — a cheap decoy that must *not* soak up an interceptor is
+    /// this to overrule that - a cheap decoy that must *not* soak up an interceptor is
     /// the case the derivation cannot know about.
     #[serde(default)]
     pub value: Option<f32>,
@@ -163,7 +163,7 @@ fn default_release_range() -> f32 {
 }
 
 // Hand-written for the same reason as `UnitType` and `WeaponType`: deriving would zero
-// the silhouette width, the turn rate (freezing the heading) and the release range — all
+// the silhouette width, the turn rate (freezing the heading) and the release range - all
 // silent failures.
 impl Default for AirType {
     fn default() -> Self {
@@ -256,7 +256,7 @@ pub struct AirState {
     pub detected: bool,
     /// Sim time this airframe was last observed by the opposing side, if ever.
     pub last_seen_s: Option<f64>,
-    /// Sim time of the *first* detection by any sensor — the moment a track enters the
+    /// Sim time of the *first* detection by any sensor - the moment a track enters the
     /// cueing network (§9.5).
     pub detected_at_s: Option<f64>,
     /// Index into [`crate::sim::Sim::sensors`] of the sensor that first detected it.
@@ -277,7 +277,7 @@ pub struct AirState {
 
 impl AirState {
     /// Build a placed airframe at `pos` with its resolved stat blocks.
-    // Nine arguments, but they are the placement itself — where, how high, in which
+    // Nine arguments, but they are the placement itself - where, how high, in which
     // frame, on what heading, and with which payloads. A builder would add ceremony
     // without removing a single decision the caller has to make.
     #[allow(clippy::too_many_arguments)]
@@ -321,7 +321,7 @@ impl AirState {
         }
     }
 
-    /// Height above the ground beneath — the actor height `h` from §1.2 that LOS,
+    /// Height above the ground beneath - the actor height `h` from §1.2 that LOS,
     /// viewshed and sensing all take.
     ///
     /// The AGL/AMSL distinction lives entirely here: AGL carries its height along, AMSL
@@ -335,7 +335,7 @@ impl AirState {
         }
     }
 
-    /// Absolute height above datum (`z + h`) — what the slant-range and LOS maths use.
+    /// Absolute height above datum (`z + h`) - what the slant-range and LOS maths use.
     #[must_use]
     pub fn absolute_height(&self, terrain: &TerrainGrid) -> f32 {
         terrain.sample_elevation(self.pos) + self.actor_height(terrain)
@@ -360,7 +360,7 @@ impl AirState {
         self.orbit_phase = None;
     }
 
-    /// Advance flight by `dt_s` seconds. Pure: no RNG, no terrain interaction — position
+    /// Advance flight by `dt_s` seconds. Pure: no RNG, no terrain interaction - position
     /// integrates from the heading, and the heading steers toward the current steering
     /// point at up to `max_turn_rate_deg_s`. `docs/DESIGN.md` §9.2.
     pub fn advance(&mut self, dt_s: f32) {
@@ -426,7 +426,7 @@ impl AirState {
         }
     }
 
-    /// Minimum turn radius `v / ω` (ω in radians/second) — the geometric consequence of
+    /// Minimum turn radius `v / ω` (ω in radians/second) - the geometric consequence of
     /// the turn-rate limit, and the gate V47 checks.
     #[must_use]
     pub fn min_turn_radius(&self) -> f32 {
@@ -440,7 +440,7 @@ impl AirState {
 
     /// The point the airframe is currently steering at: the next waypoint, except that
     /// on the final leg of an orbit plan it steers at the nearest point on the orbit
-    /// circle rather than the centre — so establishing the orbit is a smooth capture
+    /// circle rather than the centre - so establishing the orbit is a smooth capture
     /// rather than a teleport out to the radius.
     fn steering_point(&self) -> Option<Vec2> {
         let target = *self.plan.waypoints.get(self.route_idx)?;

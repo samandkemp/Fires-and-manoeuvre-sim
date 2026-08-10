@@ -1,4 +1,4 @@
-//! V61 — a carried sensor's coverage informs belief. `docs/DESIGN.md` §10.3.
+//! V61 - a carried sensor's coverage informs belief. `docs/DESIGN.md` §10.3.
 //!
 //! Until now the tasking layer skipped carried sensors entirely, so a recce drone could
 //! fly the length of the map, see nothing, and leave its side's belief about that ground
@@ -137,7 +137,7 @@ fn v61_a_recce_drone_informs_belief() {
         "the drone must explain the drop: with a drone {after_with:.5}, without \
          {after_without:.5}"
     );
-    // The enemy is off the drone's track, so the mass has to go somewhere — belief is a
+    // The enemy is off the drone's track, so the mass has to go somewhere - belief is a
     // distribution, not a score, and this is the half of V42 that a leak would break.
     let total: f32 = with.belief_of(Side::Blue).belief().iter().sum();
     assert!(
@@ -191,7 +191,7 @@ fn v61_emplaced_sensors_are_unchanged() {
 }
 
 // V61 (cache half): the quantised cache is what makes a moving sensor affordable, so it
-// has to actually work — a drone that has not left its coarse cell must not force a
+// has to actually work - a drone that has not left its coarse cell must not force a
 // rebuild, and one that has must get a fresh raster. Measured through behaviour rather
 // than internals: belief keeps changing as the drone advances, which it could not do if
 // the raster were frozen at the launch point.

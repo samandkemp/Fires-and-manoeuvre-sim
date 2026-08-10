@@ -1,5 +1,5 @@
 //! Zero-sum matrix games by fictitious play. Spec: `docs/DESIGN.md` §6.2.
-//! Gates: V32–V36, against hand-solvable games.
+//! Gates: V32-V36, against hand-solvable games.
 //!
 //! Each round both players best-respond to the opponent's empirical play. For two-player
 //! zero-sum games the time-average strategies converge to a Nash equilibrium (Robinson

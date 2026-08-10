@@ -3,7 +3,7 @@
 //!
 //! # Why coordination is an asset, not a switch
 //!
-//! Ground fires coordinate side-wide for free (§10.2) — a modelling simplification that
+//! Ground fires coordinate side-wide for free (§10.2) - a modelling simplification that
 //! is defensible for a battlegroup sharing one fire-control net. Air defence is different:
 //! point-defence batteries are genuinely autonomous unless something is deliberately
 //! fielded to tie them together, and that something can be jammed, moved, or destroyed.
@@ -11,7 +11,7 @@
 //! So a **C2 post** is a placed asset with a coordination radius. Batteries inside a live
 //! friendly post's radius allocate as one group; batteries outside act on their own. The
 //! consequence is the interesting part: destroying the post does not kill a single
-//! battery, but the defence **decoheres** — every battery reverts to shooting at whatever
+//! battery, but the defence **decoheres** - every battery reverts to shooting at whatever
 //! is nearest, and the raid gets the duplicated engagements and the leakers that follow
 //! from that.
 //!
@@ -32,14 +32,14 @@ pub struct C2Type {
     /// Deliberately a plain radius rather than a line-of-sight or terrain-aware link:
     /// the interesting variable here is *whether coordination exists at all*, and a
     /// radius makes that legible on the map. A comms model with terrain masking is a
-    /// clean later refinement — the §9.5 cue-latency machinery is the natural seam.
+    /// clean later refinement - the §9.5 cue-latency machinery is the natural seam.
     pub coordination_range_m: f32,
     /// How long an asset must have been inside the radius before it is actually in the
     /// net, seconds (`docs/DESIGN.md` §11.2).
     ///
     /// Joining a fire-control net is not instantaneous: the battery has to be handed the
     /// air picture and told what it is now responsible for. **Defaults to zero**, so the
-    /// pre-latency behaviour is exactly recovered — and so a sweep can turn this on
+    /// pre-latency behaviour is exactly recovered - and so a sweep can turn this on
     /// *alone*, without the jamming effect confounding it.
     ///
     /// Matters mainly for a post or battery that moves. Emplaced assets pay it once at
@@ -47,7 +47,7 @@ pub struct C2Type {
     /// before the raid arrives.
     #[serde(default)]
     pub link_latency_s: f32,
-    /// Height above ground, metres — for LOS as a *target*, since a post is something
+    /// Height above ground, metres - for LOS as a *target*, since a post is something
     /// the enemy will want to find and kill.
     #[serde(default = "default_height")]
     pub height_m: f32,
@@ -55,8 +55,8 @@ pub struct C2Type {
     #[serde(default = "default_width")]
     pub silhouette_width_m: f32,
     /// Per-modality signature, as [`crate::sensing::UnitType::signature`]. A command post
-    /// is typically *more* conspicuous than a launcher, not less — antennas and vehicle
-    /// concentration — which is what makes it findable.
+    /// is typically *more* conspicuous than a launcher, not less - antennas and vehicle
+    /// concentration - which is what makes it findable.
     #[serde(default)]
     pub signature: std::collections::BTreeMap<String, f32>,
     /// How many vehicles the post is made of; attrition removes them one at a time
@@ -67,7 +67,7 @@ pub struct C2Type {
     /// §12.4). Omit and it scores 1.0 per element.
     ///
     /// There is no derivation to fall back on, unlike a unit's. A post has **no firepower
-    /// at all** (§12.2), so there is nothing to score it by — its worth is entirely what it
+    /// at all** (§12.2), so there is nothing to score it by - its worth is entirely what it
     /// holds together, which only the scenario knows. Setting this is how "shoot the
     /// command post first" gets expressed.
     #[serde(default)]
@@ -111,7 +111,7 @@ impl Default for C2Type {
 pub struct C2State {
     /// Scenario id.
     pub id: String,
-    /// Owning side — a post only coordinates its own side's assets.
+    /// Owning side - a post only coordinates its own side's assets.
     pub side: Side,
     /// World position, metres.
     pub pos: Vec2,
@@ -155,14 +155,14 @@ impl C2State {
     /// As [`C2State::covers`], with the post's link degraded by EW.
     ///
     /// `link_quality` is the [`crate::ew::jamming_factor`] at the post: `1` clear, `→ 0`
-    /// blinded. It scales the **radius**, so jamming does not flip the link off — it pulls
+    /// blinded. It scales the **radius**, so jamming does not flip the link off - it pulls
     /// it in, and a battery sitting on top of the post keeps talking to it while the ones
     /// on the flanks fall out of the net first. That is the right shape: a comms link
     /// degrades with range against a noise floor, and raising the floor is what a jammer
     /// does.
     ///
     /// With no jammers the factor is exactly `1` and this is bit-for-bit [`C2State::covers`]
-    /// — the same identity posture EW takes everywhere else (§8, V40).
+    /// - the same identity posture EW takes everywhere else (§8, V40).
     #[must_use]
     pub fn covers_jammed(&self, pos: Vec2, link_quality: f32) -> bool {
         self.alive() && self.pos.distance(pos) <= self.stats.coordination_range_m * link_quality

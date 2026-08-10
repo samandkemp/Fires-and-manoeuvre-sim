@@ -55,8 +55,8 @@ impl Panel<'_, '_, '_> {
     /// Run/pause, manual stepping, playback speed, breakpoints, and the two resets.
     ///
     /// Speed is in **sim seconds per real second**, not ticks per frame. A battle is over
-    /// in a few hundred seconds of sim time, so at one tick per rendered frame — the old
-    /// control — everything interesting happened while you were still reading the panel.
+    /// in a few hundred seconds of sim time, so at one tick per rendered frame - the old
+    /// control - everything interesting happened while you were still reading the panel.
     /// Below 1× the same run just takes longer to watch; the event log is identical
     /// either way (`main::advance_sim`).
     fn clock(&mut self, ui: &mut egui::Ui) {
@@ -208,7 +208,7 @@ impl Panel<'_, '_, '_> {
         }
     }
 
-    /// What is selected — after dropping anything that died or was cleared under us, so a
+    /// What is selected - after dropping anything that died or was cleared under us, so a
     /// stale index can never be commanded.
     fn selection_readout(&mut self, ui: &mut egui::Ui) {
         let sim_ref = &self.sim.sim;
@@ -366,7 +366,7 @@ impl Panel<'_, '_, '_> {
     }
 
     /// The selected drone's readout, and the button that pushes the dials above onto
-    /// every selected drone — so a formation is re-tasked in one go, not one at a time.
+    /// every selected drone - so a formation is re-tasked in one go, not one at a time.
     fn air_dials(&mut self, ui: &mut egui::Ui) {
         let selected_air: Vec<usize> = self
             .ui_state
@@ -514,7 +514,7 @@ impl Panel<'_, '_, '_> {
                 self.images,
             );
         }
-        // The sim's own running filter, as opposed to the snapshot above — this is what
+        // The sim's own running filter, as opposed to the snapshot above - this is what
         // the tasking layer actually reads when deciding where to look.
         if ui.button("Belief the sim is flying on (Blue)").clicked() {
             overlays::rebuild_sim_belief_overlay(
@@ -645,7 +645,7 @@ impl Panel<'_, '_, '_> {
             ui.small(if post.alive() {
                 format!("  {}: C2 post, coordinating {covered}", post.id)
             } else {
-                format!("  {}: C2 post DESTROYED — defence decohered", post.id)
+                format!("  {}: C2 post DESTROYED - defence decohered", post.id)
             });
         }
         ui.label("Air events:");

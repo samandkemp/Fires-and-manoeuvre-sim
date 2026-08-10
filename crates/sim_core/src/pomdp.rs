@@ -1,5 +1,5 @@
 //! Belief-state estimation over enemy position. Spec: `docs/DESIGN.md` §8.
-//! Gates: V41 (Tiger problem), V42–V43 (spatial negative information).
+//! Gates: V41 (Tiger problem), V42-V43 (spatial negative information).
 //!
 //! Once EW degrades detection an observer never knows the truth, so it keeps a
 //! probability distribution and updates it by Bayes' rule.
@@ -122,7 +122,7 @@ impl SpatialBelief {
         best
     }
 
-    /// Shannon entropy (nats) — total uncertainty; 0 when the belief is a point mass.
+    /// Shannon entropy (nats) - total uncertainty; 0 when the belief is a point mass.
     #[must_use]
     pub fn entropy(&self) -> f32 {
         -self

@@ -18,13 +18,13 @@
 //! ```
 //!
 //! and the sensor takes the facing with the greatest gain. That is the real
-//! information-gain control, not a proxy for it — and it is why a sensor prefers to sweep
+//! information-gain control, not a proxy for it - and it is why a sensor prefers to sweep
 //! *plausible* ground over ground it has already cleared, without being told to.
 //!
 //! # Why it is affordable
 //!
 //! The expensive part of a detection rate is the line-of-sight walk, and **LOS does not
-//! depend on where a sensor is facing** — only the field-of-regard gate does. So the
+//! depend on where a sensor is facing** - only the field-of-regard gate does. So the
 //! per-cell rate is computed once per sensor, ignoring facing, and cached against the
 //! pose it was built for; evaluating twelve candidate facings is then twelve cheap arc
 //! masks over that raster. Without this the layer would cost a full viewshed per facing
@@ -129,13 +129,13 @@ impl Sim {
     /// The pose a sensor's coverage raster is cached against.
     ///
     /// **Emplaced sensors use their exact pose.** Anything else would be an approximation
-    /// where none is needed — they do not move, so the cache hits every epoch after the
+    /// where none is needed - they do not move, so the cache hits every epoch after the
     /// first, and exactness keeps V57 pinned to the real geometry.
     ///
     /// **Carried sensors are quantised to the coarse belief grid.** A raster costs `cells²`
     /// line-of-sight walks, affordable precisely because an emplaced sensor pays it once. A
     /// drone moves every tick, so an exact key would rebuild in full every epoch and never
-    /// hit — which is why carried sensors used to be excluded from belief altogether. But
+    /// hit - which is why carried sensors used to be excluded from belief altogether. But
     /// the raster *is* a coarse-grid object: every entry is already a rate at a coarse cell
     /// centre. Keying it on the coarse cell the sensor is standing in is therefore
     /// consistent with the resolution the whole layer runs at, not a fudge, and it makes
@@ -204,7 +204,7 @@ impl Sim {
     }
 
     /// Detection rate against a reference target at every coarse cell, **ignoring the
-    /// field of regard** — that gate is what the facing decision applies afterwards.
+    /// field of regard** - that gate is what the facing decision applies afterwards.
     ///
     /// Parallel over cells, and deterministic for the same reason the viewshed is: each
     /// cell writes its own slot and the LOS scratch is thread-local.
@@ -346,7 +346,7 @@ impl Sim {
 
     /// Expected reduction in belief entropy from looking along `facing` for one epoch.
     ///
-    /// See the module header for the derivation. `O(cells²)` arithmetic — no LOS, because
+    /// See the module header for the derivation. `O(cells²)` arithmetic - no LOS, because
     /// `rate` already carries it.
     #[allow(clippy::too_many_arguments)]
     fn expected_gain(

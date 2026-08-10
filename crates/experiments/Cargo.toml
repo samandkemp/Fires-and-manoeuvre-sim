@@ -6,7 +6,7 @@ description = "Headless batch runs against sim_core: sweeps, Monte Carlo, valida
 publish = false
 
 # Headless batch runs against sim_core: sweeps, Monte Carlo, validation. Depends on
-# sim_core ONLY — never Bevy — so these never pay the engine's compile cost and can't
+# sim_core ONLY - never Bevy - so these never pay the engine's compile cost and can't
 # breach the headless boundary. One binary per experiment in src/bin/.
 
 [dependencies]

@@ -9,7 +9,7 @@ default_seed = 42
 dt_s = 1.0
 epoch_s = 10.0
 
-# Starting assets — more can be placed live in the app (right-click, per UI mode).
+# Starting assets - more can be placed live in the app (right-click, per UI mode).
 # The mast is sited (via the sensor_siting experiment) to overwatch the Red cluster;
 # the forward ground sensor is deliberately masked by terrain to show siting matters.
 [[blue.sensors]]
@@ -44,7 +44,7 @@ type = "gen_optical"
 pos = [6800.0, 6500.0]
 
 # Blue AFV pushed forward near the mast's overwatch. (On this seed its low ground-level
-# sightlines are largely masked by a rise — the mast on its 12 m mast sees what the AFV
+# sightlines are largely masked by a rise - the mast on its 12 m mast sees what the AFV
 # cannot: elevation matters.)
 [[blue.units]]
 id = "recce-1"
@@ -59,7 +59,7 @@ type = "sp_gun"
 pos = [4500.0, 5000.0]
 
 # Air (docs/DESIGN.md §9). A Red strike drone runs in on the Blue gun line from the
-# north-east at 500 m AMSL — high enough that the hills between it and Blue do not mask
+# north-east at 500 m AMSL - high enough that the hills between it and Blue do not mask
 # it, which is exactly what makes it detectable early. A Red recce drone orbits in depth.
 [[red.air]]
 id = "uas-1"
@@ -82,7 +82,7 @@ waypoints = [[7200.0, 6600.0]]
 terminal = { orbit = { radius_m = 700.0, clockwise = false } }
 
 # Blue's answer: a self-cueing CIWS sitting on the gun it is protecting. Its own radar
-# closes the loop, so it does not wait on the cueing chain — contrast `air_raid.toml`,
+# closes the loop, so it does not wait on the cueing chain - contrast `air_raid.toml`,
 # where the long-range battery does.
 [[blue.air_defence]]
 id = "ciws-1"

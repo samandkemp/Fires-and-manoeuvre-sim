@@ -13,7 +13,7 @@
 //! Writes `<out>/<scenario>.csv` (a row per seed) and `<out>/summary.csv` (a row per
 //! scenario, mean and standard error). `.gitignore` covers `out/` and `*.csv`.
 //!
-//! Trials run in parallel, one sim per worker thread — see [`experiments::study`] for how
+//! Trials run in parallel, one sim per worker thread - see [`experiments::study`] for how
 //! that is arranged and why it cannot change the answer.
 //!
 //! To compare *dials* rather than scenarios, use `sweep`: it runs the same scenario at

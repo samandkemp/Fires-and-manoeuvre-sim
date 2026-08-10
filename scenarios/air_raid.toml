@@ -3,13 +3,13 @@
 # Red pushes three strike drones west onto a Blue battery. Blue defends with two very
 # different systems, which is the point of the scenario:
 #
-#   ciws-1  — self-cueing (its own radar), lethal, but only out to 2 km and 1.5 km up.
+#   ciws-1  - self-cueing (its own radar), lethal, but only out to 2 km and 1.5 km up.
 #             It closes the loop itself, so it pays no comms delay.
-#   sam-1   — reaches 12 km, but has *no organic sensor*. Every track reaches it over the
+#   sam-1   - reaches 12 km, but has *no organic sensor*. Every track reaches it over the
 #             net, so it always pays `cue_latency_s` (12 s) plus 5 s to react. Whether it
 #             fires at all depends on the sensor-to-shooter timeline, not its range.
 #
-# The Red drones release at 1200 m — outside the CIWS envelope. Blue's answer has to be
+# The Red drones release at 1200 m - outside the CIWS envelope. Blue's answer has to be
 # the SAM, and the SAM's answer depends on the cue arriving in time. Sweep the latency
 # with `cargo run -p experiments --bin air_raid`.
 
@@ -65,11 +65,11 @@ self_cue = true          # its own radar: no comms delay
 id = "sam-1"
 type = "sam"
 pos = [3600.0, 5200.0]
-self_cue = false         # no organic sensor anyway — always cued over the net
+self_cue = false         # no organic sensor anyway - always cued over the net
 
 # --- Red: the raid -------------------------------------------------------------------
 # Three drones on slightly different axes, all AMSL so the relief between them and Blue
-# can mask them on the way in — low ones use the ground, the high one trades cover for
+# can mask them on the way in - low ones use the ground, the high one trades cover for
 # reach.
 
 [[red.air]]

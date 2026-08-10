@@ -6,22 +6,22 @@
 
 Written last, after four phases had each added to it. Every other section specifies a
 *model*; this one specifies the **order those models run in and what that order
-guarantees** — which is the thing most easily broken by accident and hardest to notice.
+guarantees** - which is the thing most easily broken by accident and hardest to notice.
 
 ### 7.1 Two clocks, and why
 
 The loop is hybrid continuous/discrete:
 
-- **The tick** (`dt_s`, default 1 s) integrates what changes continuously — movement, and
+- **The tick** (`dt_s`, default 1 s) integrates what changes continuously - movement, and
   the moment-to-moment hazard of being seen.
 - **The decision epoch** (`epoch_s`, default 10 s) is where *choices* are made: what is
   still being tracked, where to look, what to shoot.
 
 The split is the optimal-control-plus-DP structure made concrete ([`MATHS.md`](../MATHS.md)
-strands 1–2), and
+strands 1-2), and
 it is load-bearing in both directions. Physically, fire missions are not re-planned sixty
-times a minute. Computationally, it is what keeps the expensive decision layer — an
-assignment solve and an information-gain search — off the hot path: §10.1 measured track
+times a minute. Computationally, it is what keeps the expensive decision layer - an
+assignment solve and an information-gain search - off the hot path: §10.1 measured track
 maintenance at ~2.3 ms per tick against ~0.23 ms at epoch cadence.
 
 A tick may straddle an epoch boundary, or several. `step_one` advances the clock and then
@@ -30,24 +30,24 @@ resolves *every* boundary the new time has crossed, so `epoch_s` need not be a m
 
 ### 7.2 Phase order
 
-The authoritative list. Phases 1–7 run every tick; phase 8 only on an epoch boundary.
+The authoritative list. Phases 1-7 run every tick; phase 8 only on an epoch boundary.
 
 | # | Phase | Draws RNG? | Spec |
 |---|---|---|---|
 | 1 | Ground movement along routes | no | §6.1 |
 | 2 | Air movement, then carried-sensor sync | no | §9.2, §9.6 |
-| 3 | Sensing vs enemy ground units | **yes** — one draw per eligible pair | §3.2 |
-| 4 | Sensing vs enemy air | **yes** — one draw per eligible pair | §9.1 |
-| 5 | Suppression recovery | **yes** — one draw per non-Free unit | §4.3 |
-| 6 | Air-defence resolution | **yes** — per engagement due | §9.4 |
-| 7 | Strike release | **yes** — burst point, damage rolls | §9.3 |
+| 3 | Sensing vs enemy ground units | **yes** - one draw per eligible pair | §3.2 |
+| 4 | Sensing vs enemy air | **yes** - one draw per eligible pair | §9.1 |
+| 5 | Suppression recovery | **yes** - one draw per non-Free unit | §4.3 |
+| 6 | Air-defence resolution | **yes** - per engagement due | §9.4 |
+| 7 | Strike release | **yes** - burst point, damage rolls | §9.3 |
 | 8a | Track maintenance | no | §10.1 |
 | 8b | Sensor tasking | no | §10.3 |
 | 8c | Fire allocation, then resolution | allocation no, rounds **yes** | §10.2, §2 |
 
 Two orderings inside phase 8 are constraints, not preferences. **Tracks are maintained
 before tasking**, because tasking reasons about what was *not* seen this epoch. **Tasking
-precedes fires**, because indirect fire is gated on tracks — a sensor that loses contact
+precedes fires**, because indirect fire is gated on tracks - a sensor that loses contact
 silences the guns behind it, and that must be visible in the same epoch.
 
 Movement leads the tick so that sensing and fires act on current positions rather than
@@ -62,7 +62,7 @@ tolerances.
 Four structural rules make it hold, and each is enforced somewhere rather than trusted:
 
 1. **One seeded stream.** All randomness comes from the `SimRng` the `Sim` owns
-   (`ChaCha8Rng`, chosen because its stream is stable across `rand` versions — an archived
+   (`ChaCha8Rng`, chosen because its stream is stable across `rand` versions - an archived
    seed must still reproduce after a routine dependency bump). No wall-clock, no thread
    RNG, no global state.
 2. **Fixed iteration order.** Assets are visited by index, never by hash order; state
@@ -79,7 +79,7 @@ Four structural rules make it hold, and each is enforced somewhere rather than t
 Rule 4 deserves stating as a design *method*, because it is how this project has added
 every subsystem since Phase 3 without re-baselining what came before.
 
-> A new subsystem must reduce to an **exact identity** when it has nothing to do — not an
+> A new subsystem must reduce to an **exact identity** when it has nothing to do - not an
 > approximation, not "close enough". Switched off, the event log is bit-identical to the
 > build before it existed.
 
@@ -93,14 +93,14 @@ Each such claim gets its own gate rather than being asserted:
 | LOS memoisation | a cache hit is the value a miss would have computed | unit tests |
 
 The payoff is concrete: adding drones did not move a single ground-scenario result, and
-`sensor_tasking` could be added without touching the Phase 6 game — once it was defaulted
+`sensor_tasking` could be added without touching the Phase 6 game - once it was defaulted
 off, which V39 is what forced (§10.4).
 
 The discipline also constrains *optimisation*, not just modelling. Both Phase-10 speed-ups
 were verified by hashing a 4-scenario × 12-seed batch before and after and requiring the
 digest to match. That is why the indirect damage factors are deliberately not
 pre-multiplied into one term: float multiplication is not associative, and folding them
-would shift a result by an ulp — enough to flip a knife-edge kill roll and silently
+would shift a result by an ulp - enough to flip a knife-edge kill roll and silently
 re-baseline V22 and V24.
 
 ### 7.5 What the loop does *not* do
@@ -120,7 +120,7 @@ Stated so the boundaries are visible rather than assumed:
 
 The schema's `deny_unknown_fields` refuses a **key** the model does not know, on the
 grounds that a misspelt dial takes its default and produces a study of a different
-question — a failure that is invisible because the run succeeds. A **value** outside its
+question - a failure that is invisible because the run succeeds. A **value** outside its
 domain fails in exactly the same way, and until V67 nothing checked one.
 
 `Scenario::validate` and `Libraries::validate` now refuse both, naming the offending dial.
@@ -137,12 +137,12 @@ Neither is exotic. `experiments/sweep` exists precisely to set any dotted path i
 from the command line, so `--param sim.epoch_s --from 0 --to 30` is an ordinary-looking
 sweep whose first arm hangs with no diagnostic.
 
-The rest are ordinary domain checks — probabilities in `[0, 1]`, durations and radii
-non-negative, `belief_cells ≥ 1` — plus the small set of stat-block dials that reach a
+The rest are ordinary domain checks - probabilities in `[0, 1]`, durations and radii
+non-negative, `belief_cells ≥ 1` - plus the small set of stat-block dials that reach a
 **divisor**: a sensor's `range_half_m` in the §3.2 falloff, an indirect weapon's
 `lethal_radius_m` in the §2.3 Carleton kernel. Those two are singled out because a zero
 there does not give a small answer, it gives `NaN`, and `NaN` loses every comparison it
-appears in — so the subsystem goes silently *inert* rather than visibly wrong, which is
+appears in - so the subsystem goes silently *inert* rather than visibly wrong, which is
 the hardest kind of failure to notice.
 
 **The list is deliberately short.** Most dials being zero is a legitimate statement, and
@@ -153,5 +153,5 @@ so its unused `lethal_radius_m` of zero means nothing at all. A validator that r
 those would be enforcing taste rather than tractability.
 
 `Libraries::validate` runs both at load and again inside `Sim::new`, so a library patched
-in memory — which is what `sweep` does — is held to the same contract as one read from
+in memory - which is what `sweep` does - is held to the same contract as one read from
 disk.

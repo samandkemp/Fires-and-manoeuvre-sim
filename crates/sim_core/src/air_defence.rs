@@ -3,9 +3,9 @@
 //! Two engagement models. Time-to-kill is distributed differently in each, which is what
 //! makes guns and missiles trade off against a raid:
 //!
-//! - [`AdEngagement::Gun`] — Poisson kill process while the target is in the envelope.
+//! - [`AdEngagement::Gun`] - Poisson kill process while the target is in the envelope.
 //!   Same maths as the §3.2 glimpse model. `TTK ~ Exp(λ)`.
-//! - [`AdEngagement::Missile`] — shoot-look-shoot. A shot takes `range/speed` to arrive
+//! - [`AdEngagement::Missile`] - shoot-look-shoot. A shot takes `range/speed` to arrive
 //!   then resolves as a Bernoulli trial; a miss costs a reload. Shots-to-kill ~ Geom(p).
 //!
 //! The other half is the cueing timeline (§9.5): a battery either cues itself from its
@@ -20,7 +20,7 @@ use glam::Vec2;
 use rand::Rng;
 use std::collections::BTreeMap;
 
-/// How a battery kills — the choice that sets the time-to-kill distribution.
+/// How a battery kills - the choice that sets the time-to-kill distribution.
 #[derive(Clone, Copy, PartialEq, Debug, serde::Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum AdEngagement {
@@ -40,7 +40,7 @@ pub enum AdEngagement {
     },
 }
 
-/// An air-defence type's stat block (`scenarios/air_defence.toml`) — placeholder dials.
+/// An air-defence type's stat block (`scenarios/air_defence.toml`) - placeholder dials.
 #[derive(Clone, Debug, serde::Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct AirDefenceType {
@@ -72,7 +72,7 @@ pub struct AirDefenceType {
     /// Interceptors (missiles) or bursts (gun) available; `0` = unlimited.
     #[serde(default)]
     pub magazine: u32,
-    /// Simultaneous engagements — the saturation lever a raid plays against.
+    /// Simultaneous engagements - the saturation lever a raid plays against.
     #[serde(default = "one_channel")]
     pub channels: u32,
     /// Organic sensor type id (key into the sensor library), if the battery has its own.
@@ -84,7 +84,7 @@ pub struct AirDefenceType {
     #[serde(default = "default_ad_elements")]
     pub element_count: u32,
     /// Height above ground as a *target*, metres. A battery is something the enemy will
-    /// want to find and kill, so it needs a silhouette of its own — `mount_height_m` is
+    /// want to find and kill, so it needs a silhouette of its own - `mount_height_m` is
     /// where its *sensor* sits, which is a different question.
     #[serde(default = "default_ad_height")]
     pub height_m: f32,
@@ -181,12 +181,12 @@ pub struct AirDefenceState {
     pub stats: AirDefenceType,
     /// Does the battery act on its own radar, or wait for a track over the net? `false`
     /// forces it onto the external cueing chain, so it always pays `cue_latency_s`
-    /// (§9.5). The radar still transmits — that is `emitting`.
+    /// (§9.5). The radar still transmits - that is `emitting`.
     pub self_cue: bool,
     /// Is the organic radar transmitting? `false` is EMCON: no detections, no self-cue,
     /// and nothing for an anti-radiation missile to home on (§12.3).
     pub emitting: bool,
-    /// Index into [`crate::sim::Sim::sensors`] of the organic sensor, if any — what
+    /// Index into [`crate::sim::Sim::sensors`] of the organic sensor, if any - what
     /// makes "my own radar saw it" distinguishable from "it came over the net".
     pub sensor_idx: Option<usize>,
     /// Interceptors/bursts remaining (`u32::MAX` stands for an unlimited magazine).
@@ -204,26 +204,26 @@ pub struct AirDefenceState {
     /// This is how counter-battery finds it: a site that has been shooting can be tracked
     /// back along its own rounds. Kept as a field rather than recovered by scanning the
     /// air-defence event log, which is what [`crate::sim::Sim::emplacement_is_located`] used
-    /// to do — that scan sat inside a per-shooter, per-target loop over a log that grows for
+    /// to do - that scan sat inside a per-shooter, per-target loop over a log that grows for
     /// the whole run, so its cost rose with elapsed time rather than with the size of the
     /// battle.
     ///
     /// Note it records a **resolution**, not a trigger pull. For a missile battery those are
     /// the same thing; for a gun, `resolve_due` only logs a tick that killed, so a gun that
     /// has been firing without effect is not yet located. That is the pre-existing rule,
-    /// preserved deliberately — see §12.4.
+    /// preserved deliberately - see §12.4.
     pub last_fired_s: Option<f64>,
-    /// When this battery's C2 link becomes usable, seconds — `None` when it is not under
+    /// When this battery's C2 link becomes usable, seconds - `None` when it is not under
     /// a live friendly post at all (`docs/DESIGN.md` §11.2).
     ///
     /// Set to `now + link_latency_s` the moment the battery comes under coverage, and
-    /// cleared the moment it drops out — so a battery that is jammed out of the net and
+    /// cleared the moment it drops out - so a battery that is jammed out of the net and
     /// then recovers pays the joining cost again, which is the behaviour that makes
     /// intermittent jamming worse than its duty cycle suggests.
     pub net_ready_at_s: Option<f64>,
     /// Seam for mounting the launcher on a *unit*, so a battery could ride a vehicle and
     /// move with it. Still unused: batteries are standalone. Attritability no longer needs
-    /// it — Phase 12 gave the battery its own `elements`, so SEAD kills it directly (§12).
+    /// it - Phase 12 gave the battery its own `elements`, so SEAD kills it directly (§12).
     pub carrier: Option<usize>,
 }
 
@@ -243,7 +243,7 @@ pub struct RadarPosture {
 }
 
 impl Default for RadarPosture {
-    /// Radar on, cueing itself — the ordinary battery.
+    /// Radar on, cueing itself - the ordinary battery.
     fn default() -> Self {
         Self {
             self_cue: true,
@@ -295,7 +295,7 @@ impl AirDefenceState {
     }
 
     /// When a track becomes actionable to this battery (§9.5). Whichever route arrives
-    /// first wins — its own radar, or the network:
+    /// first wins - its own radar, or the network:
     ///
     /// ```text
     /// actionable_at = min( own_sensor_seen_s,                  // organic: no comms hop
@@ -336,7 +336,7 @@ impl AirDefenceState {
         seen_by.get(&self.sensor_idx?).copied()
     }
 
-    /// Is the battery able to commit another engagement right now — a free channel, a
+    /// Is the battery able to commit another engagement right now - a free channel, a
     /// round left, and the reload elapsed?
     #[must_use]
     pub fn can_open(&self, now_s: f64) -> bool {
@@ -388,7 +388,7 @@ impl AirDefenceState {
         match self.stats.engagement {
             AdEngagement::Gun { kill_rate_per_s } => {
                 let p = p_kill_tick(kill_rate_per_s, dt_s);
-                // Fixed index order, one draw per open engagement per tick — the
+                // Fixed index order, one draw per open engagement per tick - the
                 // determinism accounting unit, as in the sensing loop.
                 let mut killed = Vec::new();
                 for (i, e) in self.engagements.iter().enumerate() {
@@ -429,7 +429,7 @@ impl AirDefenceState {
 /// envelope (§9.4).
 ///
 /// Returns the range, not a bool: every caller asking "can I engage?" next needs "at what
-/// range?" for the missile flight time. Checks run cheapest-first — altitude band, slant
+/// range?" for the missile flight time. Checks run cheapest-first - altitude band, slant
 /// range, then the sightline if `requires_los`.
 #[must_use]
 pub fn engagement_range(
@@ -527,7 +527,7 @@ pub fn expected_ttk_missile(ssk_p: f32, flight_time_s: f32, reload_s: f32) -> f3
 /// W_eff = max(0, W − max(0, L + R − D))
 /// ```
 ///
-/// The delay costs nothing until `L + R` outruns the warning lead `D` — a cue that aged
+/// The delay costs nothing until `L + R` outruns the warning lead `D` - a cue that aged
 /// in flight arrives ready. At `D = 0` this is just `W − L − R`.
 #[must_use]
 pub fn effective_window_s(
@@ -555,7 +555,7 @@ pub fn p_leak_gun(kill_rate_per_s: f32, window_s: f32) -> f32 {
     (-f64::from(kill_rate_per_s) * f64::from(window_s)).exp() as f32
 }
 
-/// Probability this battery kills a target at `range_m` within `window_s` seconds — the
+/// Probability this battery kills a target at `range_m` within `window_s` seconds - the
 /// two §9.4 laws behind one signature, so a caller comparing batteries does not have to
 /// know which kind it is holding.
 ///
@@ -563,7 +563,7 @@ pub fn p_leak_gun(kill_rate_per_s: f32, window_s: f32) -> f32 {
 /// window once the first interceptor's flight time is paid, giving `1 − (1−p)^K`.
 ///
 /// Used by the §11.2 air-defence allocation as its payoff. It is the *same* pair of laws
-/// V48 and V49 gate, evaluated forward over a window rather than sampled — so a change to
+/// V48 and V49 gate, evaluated forward over a window rather than sampled - so a change to
 /// either law moves this too, rather than the two drifting apart.
 #[must_use]
 pub fn p_kill_in_window(stats: &AirDefenceType, range_m: f32, window_s: f32) -> f32 {

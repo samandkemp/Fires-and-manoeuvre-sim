@@ -4,7 +4,7 @@
 # scarcity is the whole design: with enough guns to engage everything, a fire plan changes
 # nothing and there is nothing to measure.
 #
-# Left alone, Blue's allocation maximises P(kill) x value and shoots the **armour** — it is
+# Left alone, Blue's allocation maximises P(kill) x value and shoots the **armour** - it is
 # the biggest thing on the field and the only thing armed, so it earns the highest derived
 # threat score (DESIGN §10.2). That is the payoff-optimal answer, and it never touches the
 # air-defence problem.
@@ -28,7 +28,7 @@
 #
 # One result worth knowing about, because it is not obvious and it is not a bug. Batteries
 # killed comes out slightly LOWER under the air-defence-first plan (0.15 vs 0.21). The cause
-# is the acquisition rule: a tank must be *found* — mean first detection here is 3.5 s —
+# is the acquisition rule: a tank must be *found* - mean first detection here is 3.5 s -
 # whereas an emitting battery is locatable from the first tick (DESIGN §12.4). So in the
 # seeds where no tank has been detected by the first fires epoch, even the armour-first plan
 # opens on the battery, simply because it is the only thing Blue can shoot at. Doctrine
@@ -37,7 +37,7 @@
 # --- Why the pieces are what they are ---------------------------------------------------
 #
 # Red sits 4 km out: inside the howitzer's band (2-24 km) and outside the AFV cannon's
-# 2.5 km reach, so Red cannot shoot back. Deliberate — the question is what Blue *chooses*,
+# 2.5 km reach, so Red cannot shoot back. Deliberate - the question is what Blue *chooses*,
 # and a two-way firefight would bury that under attrition.
 #
 # The battery is a `ciws`, not a `sam`, because a CIWS carries its own radar and a SAM in
@@ -46,7 +46,7 @@
 # Set `emitting = false` below and watch the `air_defence` tier go inert: that is the same
 # trade §12.3 poses against an anti-radiation missile, now costing artillery cover too.
 #
-# The post is findable because it is *talking* — it coordinates the battery, and a post with
+# The post is findable because it is *talking* - it coordinates the battery, and a post with
 # nothing left to coordinate stops being locatable. Kill the battery first and the post
 # becomes invisible, which is a genuinely awkward consequence of the acquisition rule and
 # worth seeing.
@@ -91,7 +91,7 @@ pos = [1000.0, 1500.0]
 # priority = ["c2", "air_defence", "armour"]
 # mode = "strict"
 #
-# Or bypass the decision entirely and simply order the engagement (DESIGN §13.3) — which is
+# Or bypass the decision entirely and simply order the engagement (DESIGN §13.3) - which is
 # how a gate states a pairing as a fact rather than a likely outcome:
 #
 # [[blue.orders]]

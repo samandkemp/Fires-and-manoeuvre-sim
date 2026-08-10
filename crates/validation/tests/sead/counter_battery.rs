@@ -1,17 +1,17 @@
-//! V65 — ground fires can reach an emplacement. `docs/DESIGN.md` §12.4.
+//! V65 - ground fires can reach an emplacement. `docs/DESIGN.md` §12.4.
 //!
 //! §12 made batteries and posts killable, but only from the air: ground fires iterated the
 //! unit list, so artillery could not conduct counter-battery against a SAM sitting in range
 //! of it. Every asset class already had elements and already took §2.3 area damage
-//! identically — the only thing missing was *which lists are searched*.
+//! identically - the only thing missing was *which lists are searched*.
 //!
 //! The interesting half is not that a shell can hurt a battery. It is **how the battery is
 //! found**. Neither batteries nor posts go through the §3.2 glimpse loop, so neither has a
-//! track. Rather than invent one — which would insert draws into every scenario fielding air
-//! defence and shift the stream under V50, V51, V59 and V60 for no modelling gain — this
+//! track. Rather than invent one - which would insert draws into every scenario fielding air
+//! defence and shift the stream under V50, V51, V59 and V60 for no modelling gain - this
 //! asks the question counter-battery acquisition actually asks: *has it given itself away?*
 //!
-//! - a **battery** has, if it is transmitting or has fired — ESM, or a counter-battery track
+//! - a **battery** has, if it is transmitting or has fired - ESM, or a counter-battery track
 //!   back along its rounds;
 //! - a **post** has, if it is coordinating anything: found because it is talking.
 //!
@@ -175,7 +175,7 @@ fn battery_losses(sim: &Sim) -> u32 {
 }
 
 // V65 (headline): artillery can conduct counter-battery. A SAM whose radar is up is
-// locatable, and a howitzer in range kills it — which §12 could not express at all.
+// locatable, and a howitzer in range kills it - which §12 could not express at all.
 #[test]
 fn v65_artillery_can_kill_an_emitting_battery() {
     let mut sim = counter_battery("howitzer", true, false);
@@ -194,7 +194,7 @@ fn v65_artillery_can_kill_an_emitting_battery() {
 
 // V65 (acquisition half): the counter is the same one V64 poses. A battery that is neither
 // transmitting nor shooting has not given itself away, so indirect fire has nothing to aim
-// at — the §2 track gate applies to an emplacement exactly as to a unit.
+// at - the §2 track gate applies to an emplacement exactly as to a unit.
 #[test]
 fn v65_a_silent_battery_cannot_be_found_by_indirect_fire() {
     let mut quiet = counter_battery("howitzer", false, false);
@@ -216,7 +216,7 @@ fn v65_a_silent_battery_cannot_be_found_by_indirect_fire() {
     );
 }
 
-// V65 (direct-fire half): direct fire needs line of sight and range, not a track — the §2.1
+// V65 (direct-fire half): direct fire needs line of sight and range, not a track - the §2.1
 // rule, applied unchanged. So going silent hides a battery from artillery but not from
 // anything that can see it.
 #[test]
@@ -231,7 +231,7 @@ fn v65_direct_fire_needs_no_track() {
 
 // V65 (C2 half): a post is located because it is *talking*, and killing it by
 // counter-battery decoheres the defence exactly as an air-delivered kill does (§11, §12.2)
-// — the consequence belongs to the death, not to what caused it.
+// - the consequence belongs to the death, not to what caused it.
 #[test]
 fn v65_a_coordinating_post_is_locatable_and_killing_it_decoheres() {
     let mut sim = counter_battery("howitzer", true, true);
@@ -251,7 +251,7 @@ fn v65_a_coordinating_post_is_locatable_and_killing_it_decoheres() {
     );
 
     // Once every battery it coordinated is dead, the post is talking to nobody and is no
-    // longer locatable — the acquisition rule is a live property, not a one-way latch.
+    // longer locatable - the acquisition rule is a live property, not a one-way latch.
     if !sim.air_defence()[0].alive() {
         assert!(
             !sim.emplacement_is_located(FireTarget::C2(0)),

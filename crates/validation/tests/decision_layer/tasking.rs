@@ -1,4 +1,4 @@
-//! V57 — belief-driven sensor tasking. `docs/DESIGN.md` §10.3.
+//! V57 - belief-driven sensor tasking. `docs/DESIGN.md` §10.3.
 //!
 //! The claim under test is that pointing a sensor by belief beats leaving it pointed
 //! where it started. The fixture makes that measurable: a narrow-arc sensor in the
@@ -7,7 +7,7 @@
 //!
 //! A fixed stare can only ever find an enemy that walks into its arc. A belief-driven
 //! sensor drains its own belief out of the ground it has already cleared, so the
-//! best-information facing moves on — the sweep is not scripted, it falls out of
+//! best-information facing moves on - the sweep is not scripted, it falls out of
 //! maximising expected entropy reduction.
 
 use sim_core::scenario::{Libraries, Scenario};
@@ -18,7 +18,7 @@ use validation::scenario_params;
 
 /// Sensor at the centre of a 2 x 2 km field, arc 60° wide, initially facing east (0°).
 const CENTRE: f32 = 1000.0;
-/// How far out the hidden enemy sits — close enough to be found quickly once looked at.
+/// How far out the hidden enemy sits - close enough to be found quickly once looked at.
 const RANGE_M: f32 = 700.0;
 
 fn libraries() -> Libraries {
@@ -118,7 +118,7 @@ fn v57_tasking_beats_a_fixed_stare() {
 
     assert_eq!(
         fixed_found, 0,
-        "a fixed stare must not find an enemy outside its arc — the fixture is wrong \
+        "a fixed stare must not find an enemy outside its arc - the fixture is wrong \
          if it does"
     );
     assert!(
@@ -135,7 +135,7 @@ fn v57_tasking_beats_a_fixed_stare() {
 }
 
 // V57 (belief half, extending V42): the belief stays a proper distribution for the whole
-// run — non-negative, normalised, and no NaN — however many times it is updated and
+// run - non-negative, normalised, and no NaN - however many times it is updated and
 // diffused.
 #[test]
 fn v57_belief_stays_a_proper_distribution() {

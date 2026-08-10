@@ -1,20 +1,20 @@
-//! V69 — `emitting` and `self_cue` are two different decisions. `docs/DESIGN.md` §12.5.
+//! V69 - `emitting` and `self_cue` are two different decisions. `docs/DESIGN.md` §12.5.
 //!
 //! §9.5 introduced `self_cue` as the **cueing timeline**: does this battery act on its own
 //! radar, or wait for a track over the net and pay `cue_latency_s`? §12.3 then reused the
 //! same flag as the **emission** test for anti-radiation homing.
 //!
 //! One flag, two meanings, and they disagree. A battery with `self_cue = false` counted as
-//! silent to a missile while its radar kept detecting perfectly well — measured on
+//! silent to a missile while its radar kept detecting perfectly well - measured on
 //! `scenarios/sead_arm.toml` at 1.000 detections with first contact at 9.3 s, statistically
 //! indistinguishable from the emitting arm. It bought the survivability of EMCON without
 //! the blindness that is supposed to pay for it.
 //!
 //! Split, the two now fail differently, and this gate holds them apart:
 //!
-//! * `emitting = false` — the radar is **off**. No detections through it, no self-cue, and
+//! * `emitting = false` - the radar is **off**. No detections through it, no self-cue, and
 //!   nothing for an ARM to home on.
-//! * `self_cue = false` — the radar **runs**. It detects, an ARM can see it, but the
+//! * `self_cue = false` - the radar **runs**. It detects, an ARM can see it, but the
 //!   battery takes its cue from the net and pays the latency.
 
 use sim_core::scenario::{Libraries, Scenario};
@@ -53,7 +53,7 @@ fn battery_watching(emitting: bool, self_cue: bool) -> Sim {
     ))
     .unwrap();
     // The shipped stat blocks, so `ciws` and `recce_uas` mean here what they mean in a
-    // scenario — this gate is about a flag, not about invented numbers.
+    // scenario - this gate is about a flag, not about invented numbers.
     let libs = Libraries::load_dir(&validation::scenarios_dir()).expect("stat blocks load");
     Sim::new(&scn, &libs, 4).expect("fixture builds")
 }
@@ -66,7 +66,7 @@ fn detections(mut sim: Sim) -> usize {
 }
 
 // The half that was broken. A battery under EMCON has its radar off, so it sees nothing
-// through it — where before it went on detecting exactly as if the radar were running.
+// through it - where before it went on detecting exactly as if the radar were running.
 #[test]
 fn v69_a_silent_battery_detects_nothing() {
     assert_eq!(
@@ -95,7 +95,7 @@ fn v69_the_defaults_are_an_exact_identity() {
     assert_eq!(
         both_on,
         detections(battery_watching(true, false)),
-        "cueing route must not change what the radar SEES — only when the battery may act \
+        "cueing route must not change what the radar SEES - only when the battery may act \
          on it. If these differ, the flags are entangled again"
     );
 }

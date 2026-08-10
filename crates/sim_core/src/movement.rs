@@ -1,4 +1,4 @@
-//! Least-risk pathing as dynamic programming. Spec: `docs/DESIGN.md` §5. Gates: V25–V27.
+//! Least-risk pathing as dynamic programming. Spec: `docs/DESIGN.md` §5. Gates: V25-V27.
 //!
 //! The value function is a shortest path over the 8-connected cell graph with edge cost
 //! `move_cost(from,to) + risk_weight·risk(to)`, so Dijkstra *is* the DP solution.
@@ -27,7 +27,7 @@ struct Frontier {
 }
 impl PartialEq for Frontier {
     // `total_cmp`, not `==`: `Ord` requires a total order *consistent with* `Eq`, and the
-    // two disagree on NaN — `==` says "different", `total_cmp` says "equal". `BinaryHeap`
+    // two disagree on NaN - `==` says "different", `total_cmp` says "equal". `BinaryHeap`
     // is entitled to rely on that consistency, so the two must be spelled the same way.
     fn eq(&self, other: &Self) -> bool {
         self.cost.total_cmp(&other.cost) == Ordering::Equal
@@ -170,7 +170,7 @@ pub fn least_cost_path(
     })
 }
 
-/// Total risk exposure `Σ risk(cell)` accumulated along a path (excluding the start) —
+/// Total risk exposure `Σ risk(cell)` accumulated along a path (excluding the start) -
 /// the quantity `risk_weight` trades against, used to check risk-avoidance behaviour.
 #[must_use]
 pub fn path_risk(path: &Path, risk: &Array2<f32>) -> f32 {

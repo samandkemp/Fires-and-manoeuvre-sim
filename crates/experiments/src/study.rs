@@ -2,13 +2,13 @@
 //!
 //! # How the parallelism is arranged, and why that way
 //!
-//! Trials are independent, so they parallelise perfectly — except that each needs a
+//! Trials are independent, so they parallelise perfectly - except that each needs a
 //! [`Sim`], and building one means generating the terrain, which is the expensive part
-//! (1–3 s for a 1000×1000 map; the tick itself is under 15 µs).
+//! (1-3 s for a 1000×1000 map; the tick itself is under 15 µs).
 //!
 //! So the seed list is cut into exactly one chunk per worker thread, and each worker builds
-//! **one** sim and resets it between trials. That gives `threads` terrain builds — paid
-//! once, concurrently — rather than one per trial, and rules out the alternative
+//! **one** sim and resets it between trials. That gives `threads` terrain builds - paid
+//! once, concurrently - rather than one per trial, and rules out the alternative
 //! (`rayon::map_init`) whose init closure is called an unspecified number of times.
 //!
 //! Every worker builds terrain from `scenario.default_seed`, not from the trial seed, so
@@ -21,7 +21,7 @@
 //! Results come back in seed order regardless of how the work was scheduled: rayon's
 //! `collect` preserves order, and each trial is a fresh `reset_to_scenario` whose RNG
 //! stream depends only on its seed. A parallel study therefore returns byte-identical
-//! numbers to a serial one — pinned by a test at the bottom of this file, because "we
+//! numbers to a serial one - pinned by a test at the bottom of this file, because "we
 //! parallelised the study and the answer changed" is exactly the failure that would
 //! otherwise be discovered by a confusing result months later.
 
@@ -55,7 +55,7 @@ impl Default for StudyConfig {
 /// Run `cfg.seeds` trials of `scn` in parallel, returning outcomes in seed order.
 ///
 /// # Errors
-/// [`ScenarioError`] if the scenario does not resolve against the libraries — reported
+/// [`ScenarioError`] if the scenario does not resolve against the libraries - reported
 /// once rather than once per trial.
 pub fn run_study(
     scn: &Scenario,
@@ -112,7 +112,7 @@ pub fn run_study(
 ///
 /// So terrain is built once per worker from `base`, and every design point is placed into it
 /// with [`Sim::reset_to_scenario`]. That is exactly the "fix the map, vary the dice" rule
-/// the rest of this module follows, applied one level further out — and it means a design
+/// the rest of this module follows, applied one level further out - and it means a design
 /// **must not** vary a terrain dial, because the map it would ask for is not the map it
 /// would get. `sensitivity` refuses those paths for that reason.
 ///
@@ -202,7 +202,7 @@ pub fn column(outcomes: &[Outcome], metric: usize) -> Vec<f64> {
 
 /// A carriage-returned progress line, thinned so printing never dominates the run.
 ///
-/// Goes to **stderr**, so `... > results.txt` still captures only results — and only when
+/// Goes to **stderr**, so `... > results.txt` still captures only results - and only when
 /// stderr is a terminal, because a carriage return in a captured log is just 100 copies of
 /// the same line with no carriage to return.
 fn report(done: usize, total: usize) {
@@ -237,7 +237,7 @@ mod tests {
     #[test]
     fn parallel_matches_serial_exactly() {
         let Some((scn, libs)) = fixture() else {
-            return; // scenarios/ not present (e.g. packaged build) — nothing to check
+            return; // scenarios/ not present (e.g. packaged build) - nothing to check
         };
         let cfg = StudyConfig {
             seeds: 24,

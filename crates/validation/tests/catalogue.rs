@@ -2,7 +2,7 @@
 //!
 //! `validation::gates::GATES` is the machine-readable twin of `docs/design/`'s
 //! validation tables, and a catalogue that quietly disagrees with the tests is worse than
-//! none — it would report a gate as held when nothing checks it. These two gates make
+//! none - it would report a gate as held when nothing checks it. These two gates make
 //! that impossible in both directions: every catalogued test exists, and every `vNN_*`
 //! test is catalogued.
 
@@ -17,7 +17,7 @@ use validation::gates::GATES;
 /// **Recursive**, and that is load-bearing. Suites are grouped into subdirectories so that
 /// several share one test binary (`tests/sead/arm.rs` and friends), and a reader of only the
 /// top level would find the group file's `mod` declarations and none of the gates. Walking
-/// one level deep would have quietly reported every moved gate as missing — which is the
+/// one level deep would have quietly reported every moved gate as missing - which is the
 /// exact drift this file exists to prevent, so it is worth the recursion.
 fn gate_sources() -> Vec<PathBuf> {
     let root = Path::new(env!("CARGO_MANIFEST_DIR"));
@@ -66,7 +66,7 @@ fn every_catalogued_gate_names_a_test_that_exists() {
     for gate in GATES {
         assert!(
             !gate.tests.is_empty(),
-            "{} claims no test — a gate with nothing enforcing it is a lie",
+            "{} claims no test - a gate with nothing enforcing it is a lie",
             gate.id
         );
         for t in gate.tests {

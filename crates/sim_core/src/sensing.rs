@@ -1,4 +1,4 @@
-//! The glimpse-rate detection model. Spec: `docs/DESIGN.md` §3. Gates: V14–V18.
+//! The glimpse-rate detection model. Spec: `docs/DESIGN.md` §3. Gates: V14-V18.
 //!
 //! Only `optical` exists so far. `Modality` and the per-modality signature tables are
 //! the seam for acoustic and EO/IR later.
@@ -9,7 +9,7 @@ use glam::Vec2;
 use std::collections::BTreeMap;
 
 /// The propagation channel a sensor works in. Each modality brings its own terms to
-/// the rate model — `Optical` uses LOS + canopy transmittance; future `Acoustic` /
+/// the rate model - `Optical` uses LOS + canopy transmittance; future `Acoustic` /
 /// `EoIr` variants will add theirs (that's why this is data, not convention).
 #[derive(Clone, Copy, PartialEq, Eq, Debug, serde::Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -18,7 +18,7 @@ pub enum Modality {
     Optical,
 }
 
-/// A sensor type's stat block (`scenarios/sensors.toml`) — all placeholder dials.
+/// A sensor type's stat block (`scenarios/sensors.toml`) - all placeholder dials.
 #[derive(Clone, Debug, serde::Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct SensorType {
@@ -66,7 +66,7 @@ pub struct UnitType {
     /// (`docs/DESIGN.md` §10.2). Omit and it is derived from size and weapon threat.
     ///
     /// Per element rather than per unit, so a half-destroyed unit is correctly worth
-    /// less than a fresh one. Set it to express doctrine the derived score cannot know —
+    /// less than a fresh one. Set it to express doctrine the derived score cannot know -
     /// "kill the radar first" is a `value` an unarmed sensor vehicle would never earn on
     /// its own.
     #[serde(default)]
@@ -87,7 +87,7 @@ fn default_element_count() -> u32 {
 }
 
 // Manual `Default` (not derived) so a code-built `UnitType { .., ..Default::default() }`
-// gets the same sensible defaults the TOML gives — the derive would zero the silhouette
+// gets the same sensible defaults the TOML gives - the derive would zero the silhouette
 // width (silently making direct fire never hit) and the element count.
 impl Default for UnitType {
     fn default() -> Self {
@@ -113,7 +113,7 @@ pub fn modality_key(modality: Modality) -> &'static str {
     }
 }
 
-/// A per-modality signature lookup: 0 when the table has no entry for the modality — a
+/// A per-modality signature lookup: 0 when the table has no entry for the modality - a
 /// unit with no `acoustic` key is silent to acoustic sensors.
 #[must_use]
 pub fn signature_in(signature: &BTreeMap<String, f32>, modality: Modality) -> f32 {
@@ -124,7 +124,7 @@ pub fn signature_in(signature: &BTreeMap<String, f32>, modality: Modality) -> f3
 }
 
 impl UnitType {
-    /// The unit's signature in a modality (0 if the table has no entry — a unit with
+    /// The unit's signature in a modality (0 if the table has no entry - a unit with
     /// no `acoustic` entry is silent to acoustic sensors).
     #[must_use]
     pub fn signature_in(&self, modality: Modality) -> f32 {
@@ -146,7 +146,7 @@ pub fn detection_rate(
     unit_pos: Vec2,
 ) -> f32 {
     // A ground unit's concealment is the terrain it stands in (§3.2). Airborne targets
-    // take the general form below with `concealment = 0` — they are not in the cell.
+    // take the general form below with `concealment = 0` - they are not in the cell.
     let concealment = concealment_at(terrain, unit_pos);
     detection_rate_against(
         terrain,
@@ -175,7 +175,7 @@ pub fn concealment_at(terrain: &TerrainGrid, pos: Vec2) -> f32 {
 ///
 /// This is the form air assets use: a drone has its own signature and altitude-derived
 /// actor height, and contributes `concealment = 0` because an airborne target is not
-/// standing in the cell below it (§9.1). `sensor_height_m` is explicit too — a sensor
+/// standing in the cell below it (§9.1). `sensor_height_m` is explicit too - a sensor
 /// carried by a drone sits at the airframe's height, not at its own `mount_height_m`.
 ///
 /// Composed from [`detection_gate`] and [`rate_given_los`] rather than written out, so a

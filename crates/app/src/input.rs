@@ -6,7 +6,7 @@
 //! a route meant toggling a mode between every step.
 //!
 //! Runs inside the same system as the panel, because egui must get first refusal on every
-//! pointer event — otherwise a click on a slider would also place a sensor on the map
+//! pointer event - otherwise a click on a slider would also place a sensor on the map
 //! behind it.
 
 use bevy::prelude::*;
@@ -168,8 +168,8 @@ fn right_click(
         ClickMode::PlaceBlueAirDefence => place_air_defence(sim, ui_state, world),
         ClickMode::PlaceBlueC2 => place_c2(sim, ui_state, world),
         // `.get(..)` rather than indexing, as the drone/battery/post arms already do: a
-        // type id that no longer names anything — after a scenario switch whose library
-        // set differs — is an ordinary miss, not a reason to take the window down.
+        // type id that no longer names anything - after a scenario switch whose library
+        // set differs - is an ordinary miss, not a reason to take the window down.
         ClickMode::PlaceBlueSensor => {
             let Some(stats) = sim.data.libs.sensors.get(&ui_state.sensor_type_id).cloned() else {
                 return;
@@ -231,7 +231,7 @@ fn place_drone(sim: &mut SimRes, ui_state: &mut UiState, world: Vec2) {
     ui_state.selected = vec![Selected::Air(idx)];
 }
 
-/// Place a Blue C2 post. Coordinates every friendly battery inside its radius (§11) —
+/// Place a Blue C2 post. Coordinates every friendly battery inside its radius (§11) -
 /// and, being unarmed and conspicuous, is the obvious thing for the other side to attack.
 fn place_c2(sim: &mut SimRes, ui_state: &mut UiState, world: Vec2) {
     let Some(stats) = sim.data.libs.c2.get(&ui_state.c2_type_id).cloned() else {

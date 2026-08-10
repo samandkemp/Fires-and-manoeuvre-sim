@@ -16,7 +16,7 @@
 //! | [`damage`] | the Carleton kernel against batteries, posts and units (§2.3, §12) |
 //!
 //! All five are grandchildren of `sim`, so they still reach [`Sim`](crate::sim::Sim)'s
-//! private fields — Rust makes a private item visible to the defining module *and its
+//! private fields - Rust makes a private item visible to the defining module *and its
 //! descendants*, which is what let this split cost nothing in encapsulation. The one
 //! consequence is spelling: a method `sim/mod.rs` calls needs `pub(in crate::sim)`, because
 //! `pub(super)` from one level deeper now means "visible in `counter_air`".

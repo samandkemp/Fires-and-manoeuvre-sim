@@ -1,4 +1,4 @@
-//! V66 — the kill chain: what a side has been *told* to shoot first.
+//! V66 - the kill chain: what a side has been *told* to shoot first.
 //! `docs/DESIGN.md` §13.
 //!
 //! §10.2 allocates fire by maximising `P(kill) × value`, which is what an omniscient
@@ -10,11 +10,11 @@
 //! two targets:
 //!
 //! - a **tank** close in, which it hits about half the time and which scores highly on the
-//!   derived threat value — the payoff-optimal choice by a wide margin;
+//!   derived threat value - the payoff-optimal choice by a wide margin;
 //! - a **SAM** near the edge of range, which it hits about three times in a hundred.
 //!
 //! Undirected, the gun takes the tank every time. Told `priority = ["air_defence"]`, it
-//! must take the SAM — a fifteen-fold worse shot — because that is what it was told to do.
+//! must take the SAM - a fifteen-fold worse shot - because that is what it was told to do.
 //! Nothing in between would prove the ordering is actually strict.
 
 use sim_core::air::AirType;
@@ -166,8 +166,8 @@ fn duel(doctrine: &str) -> Result<Sim, sim_core::scenario::ScenarioError> {
 
 /// What **the Blue gun** engaged in the first epoch.
 ///
-/// Filtered to shooter 0 deliberately: the Red tank is armed — it has to be, or it would
-/// not earn the high derived value that makes it the payoff-optimal choice — so it shoots
+/// Filtered to shooter 0 deliberately: the Red tank is armed - it has to be, or it would
+/// not earn the high derived value that makes it the payoff-optimal choice - so it shoots
 /// back, and its return fire would otherwise appear in the same log. Blue's gun is unit 0,
 /// the tank unit 1, so an unfiltered read of "who was hit" mixes the two sides' decisions.
 ///
@@ -194,7 +194,7 @@ fn v66_strict_doctrine_overrides_a_better_shot() {
     assert_eq!(
         engaged(&mut undirected),
         vec![FireTarget::Unit(1)],
-        "unprompted, the payoff must prefer the near, high-value tank — if it does not, \
+        "unprompted, the payoff must prefer the near, high-value tank - if it does not, \
          the fixture is not posing the question"
     );
 
@@ -213,7 +213,7 @@ fn v66_strict_doctrine_overrides_a_better_shot() {
 }
 
 // V66 (weighted half): the other mode is a thumb on the scale, not an instruction. With the
-// same priority weighted rather than strict, a shot fifteen times better still wins — which
+// same priority weighted rather than strict, a shot fifteen times better still wins - which
 // is exactly the difference the two modes exist to express.
 #[test]
 fn v66_weighted_doctrine_only_biases() {
@@ -267,7 +267,7 @@ fn v66_an_order_pins_a_pairing() {
         "an ordered shooter is not choosing"
     );
 
-    // An order against a destroyed target lapses and the shooter rejoins the problem — a
+    // An order against a destroyed target lapses and the shooter rejoins the problem - a
     // standing order does not make a crew fire at a wreck.
     let mut lapsed = duel(
         r#"
@@ -286,7 +286,7 @@ fn v66_an_order_pins_a_pairing() {
 }
 
 // V66 (vocabulary half): a priority entry that names nothing is a load error, not an empty
-// tier. Same reasoning as the schema's `deny_unknown_fields` — a tier matching nothing
+// tier. Same reasoning as the schema's `deny_unknown_fields` - a tier matching nothing
 // fails silently, and the run then answers a different question than the one asked.
 #[test]
 fn v66_a_priority_naming_nothing_is_a_load_error() {
@@ -335,7 +335,7 @@ fn v66_a_priority_naming_nothing_is_a_load_error() {
 }
 
 // V66 (air-defence half): the same doctrine drives counter-air. One battery, a near recce
-// drone and a far strike drone — nearest-first takes the recce, doctrine takes the striker.
+// drone and a far strike drone - nearest-first takes the recce, doctrine takes the striker.
 #[test]
 fn v66_air_defence_follows_the_same_doctrine() {
     let raid = |doctrine: &str| -> Sim {

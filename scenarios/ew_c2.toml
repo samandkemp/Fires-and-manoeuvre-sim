@@ -5,7 +5,7 @@
 #
 # An enemy jammer scales the post's coordination **radius** by the EW factor rather than
 # switching the link off. That shape matters. A comms link degrades with range against a
-# noise floor, and a jammer is a way of raising the floor — so the batteries on the flanks
+# noise floor, and a jammer is a way of raising the floor - so the batteries on the flanks
 # fall out of the net first while the one sitting on top of the post keeps talking. There
 # is no threshold to tune and no "link down" flag anywhere in the model; the geometry does
 # it.
@@ -35,7 +35,7 @@
 # `1 - power*(1 - 300/1200) = 1 - 0.75*power`. Against the post's 3000 m radius that gives
 # 3000, 2325, 1650 and 975 m. The flanking batteries are 2062 m out, so they are in the net
 # at 0.0 and 0.3 and out of it at 0.6 and 0.9. Degrading a link only matters when the
-# degradation crosses somebody's distance — which is why 0.0 and 0.3 are **identical on all
+# degradation crosses somebody's distance - which is why 0.0 and 0.3 are **identical on all
 # 500 seeds**, and why 0.9 buys nothing over 0.6: `sam-2`, 500 m from the post, never leaves
 # the net however hard it is jammed.
 #
@@ -44,7 +44,7 @@
 # else.
 #
 # It could have been: a jammer degrades *sensing* as well as the link, and this one covers
-# the last 2 km of the approach. Measured, it does not confound anything here — detections
+# the last 2 km of the approach. Measured, it does not confound anything here - detections
 # are 10.000 at every power, because the early-warning radar reaches 5000 m and the drones
 # enter from 5.6 km, so every one of them is tracked long before it reaches the jammed
 # volume. Move the jammer forward and that stops being true.

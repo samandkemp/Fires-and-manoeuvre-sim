@@ -1,7 +1,7 @@
 //! Which dials actually drive a result, and which are noise?
 //!
-//! Every number in this project is an abstract placeholder. That is deliberate — the models
-//! are the product — but it leaves one question over every finding: **does it matter that
+//! Every number in this project is an abstract placeholder. That is deliberate - the models
+//! are the product - but it leaves one question over every finding: **does it matter that
 //! these numbers are invented?** A `sweep` cannot answer it, because it varies one dial with
 //! the rest pinned wherever the scenario happened to leave them.
 //!
@@ -9,7 +9,7 @@
 //! sensitivity studies/sensing.toml --seeds 40
 //! ```
 //!
-//! The study is a file rather than a pile of flags, because a dial space is a *design* —
+//! The study is a file rather than a pile of flags, because a dial space is a *design* -
 //! something to be committed, reviewed and re-run, not retyped. See `studies/README.md`.
 //!
 //! # Two passes, cheap then thorough
@@ -19,7 +19,7 @@
 //!
 //! **Sobol** decomposes the variance: `n · (k + 2)` points giving `S1` (what a dial explains
 //! alone) and `ST` (what it is involved in altogether). `ST − S1` is the share of a dial's
-//! influence that runs through interactions — invisible to a one-dial sweep, by
+//! influence that runs through interactions - invisible to a one-dial sweep, by
 //! construction.
 //!
 //! Cost is the product of design points and simulation seeds, so `--seeds` is deliberately
@@ -171,7 +171,7 @@ fn main() {
 
     // Build every design point up front, then hand the lot to `run_design`, which builds
     // terrain ONCE per worker for the whole design. Evaluating points one at a time through
-    // `run_study` rebuilds terrain per point — on this scenario's 1000x1000 map that is
+    // `run_study` rebuilds terrain per point - on this scenario's 1000x1000 map that is
     // ~19,000 builds for the design below, and it dominates everything else by orders of
     // magnitude.
     let build = |points: &[Point]| -> Vec<(sim_core::scenario::Scenario, _)> {

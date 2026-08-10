@@ -1,7 +1,7 @@
 //! Means, standard errors, and paired differences.
 //!
-//! A mean on its own cannot answer the only question a study asks — *is this difference
-//! real?* — so nothing in this crate reports one without an error bar beside it.
+//! A mean on its own cannot answer the only question a study asks - *is this difference
+//! real?* - so nothing in this crate reports one without an error bar beside it.
 //!
 //! # Why every comparison here is paired
 //!
@@ -50,14 +50,14 @@ pub struct Paired {
     pub mean: f64,
     /// Standard error of that mean.
     pub se: f64,
-    /// `mean / se` — the paired t statistic. `|t| > 2` is the usual "worth believing"
+    /// `mean / se` - the paired t statistic. `|t| > 2` is the usual "worth believing"
     /// line for a sample this size (two-sided, ~5%).
     pub t: f64,
     /// Matched pairs compared.
     pub n: usize,
     /// Pairs where the two arms gave *exactly* the same number. A high count next to a
     /// small mean says the two arms are mostly the same decision, not that the effect is
-    /// merely hard to see — which is a different conclusion.
+    /// merely hard to see - which is a different conclusion.
     pub ties: usize,
 }
 
@@ -110,7 +110,7 @@ pub fn from_diffs(diffs: &[f64]) -> Paired {
 /// Paired difference `a - b`, seed by seed.
 ///
 /// # Panics
-/// If the two samples are different lengths — that means they were not run over the same
+/// If the two samples are different lengths - that means they were not run over the same
 /// seed set, and pairing them would be silently wrong rather than merely imprecise.
 #[must_use]
 pub fn paired(a: &[f64], b: &[f64]) -> Paired {
@@ -155,7 +155,7 @@ impl std::fmt::Display for Summary {
 /// is often the question: *how bad is a bad day* is a different question from *what happens
 /// on average*, and for a saturating raid it is the more useful one. A median leakage of
 /// zero with a 95th percentile of four is a defence that usually holds and occasionally
-/// does not — which a mean of 0.4 describes to nobody.
+/// does not - which a mean of 0.4 describes to nobody.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct Quantile {
     /// Which quantile, in `[0, 1]`.
@@ -186,7 +186,7 @@ impl std::fmt::Display for Quantile {
 /// The `p`-quantile of a sample, by linear interpolation between order statistics.
 ///
 /// # Panics
-/// If `xs` is empty — there is no quantile of nothing, and returning zero would be a
+/// If `xs` is empty - there is no quantile of nothing, and returning zero would be a
 /// number that looks like an answer.
 #[must_use]
 pub fn quantile(xs: &[f64], p: f64) -> f64 {
@@ -210,7 +210,7 @@ pub fn quantile(xs: &[f64], p: f64) -> f64 {
 /// discrete, clear-time is censored at the run length. The bootstrap asks the sample what
 /// its own sampling distribution looks like, and makes no shape assumption at all.
 ///
-/// Deterministic given `seed`, like everything else here — a confidence interval that moved
+/// Deterministic given `seed`, like everything else here - a confidence interval that moved
 /// between runs of the same data would be worse than none.
 ///
 /// # Panics
@@ -301,7 +301,7 @@ mod tests {
             .count();
         let rate = covered as f64 / reps as f64;
         // Nominal 90%. The percentile bootstrap is approximate for a quantile, so the band
-        // is generous — but an interval that covered 50% or 100% of the time would be
+        // is generous - but an interval that covered 50% or 100% of the time would be
         // useless in opposite ways, and both are excluded.
         assert!(
             (0.80..=0.99).contains(&rate),

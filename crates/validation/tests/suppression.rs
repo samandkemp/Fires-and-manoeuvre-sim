@@ -11,7 +11,7 @@ fn rng(seed: u64) -> sim_core::SimRng {
 }
 
 // V28: under a constant up-rate β and down-rate μ, long-run occupancy matches the
-// birth–death stationary distribution π_k ∝ (β/μ)^k, k ∈ {0,1,2}.
+// birth-death stationary distribution π_k ∝ (β/μ)^k, k ∈ {0,1,2}.
 #[test]
 fn v28_stationary_distribution() {
     let (beta, mu, dt) = (0.04f32, 0.08f32, 0.5f32);

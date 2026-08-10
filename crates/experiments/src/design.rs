@@ -4,8 +4,8 @@
 //! against the first. This runs the full Cartesian product of several dials and reports two
 //! things a one-dial sweep cannot produce:
 //!
-//! * a **main effect** — what a factor does, averaged over every level of the others;
-//! * an **interaction** — whether the effect of one factor *depends* on another's level.
+//! * a **main effect** - what a factor does, averaged over every level of the others;
+//! * an **interaction** - whether the effect of one factor *depends* on another's level.
 //!
 //! The second is the reason this exists. The `fires_c2` investigation needed a 2×2 over the
 //! overkill cap and acquisition speed, it was hand-stitched from four separate sweeps, and
@@ -39,7 +39,7 @@ impl Factor {
     /// survives (`priority=["c2","all"],["all"]` is two levels, not three).
     ///
     /// # Errors
-    /// A message naming what was wrong, for a missing `=` or fewer than two levels — a
+    /// A message naming what was wrong, for a missing `=` or fewer than two levels - a
     /// factor with one level is not a factor, and silently accepting it would report a main
     /// effect of exactly zero as though it meant something.
     pub fn parse(arg: &str) -> Result<Self, String> {
@@ -89,7 +89,7 @@ pub struct Factorial {
     pub factors: Vec<Factor>,
     /// Level indices per cell, in [`cells`] order.
     pub cells: Vec<Vec<usize>>,
-    /// `values[cell][seed]` — the metric for that cell on that seed.
+    /// `values[cell][seed]` - the metric for that cell on that seed.
     pub values: Vec<Vec<f64>>,
 }
 
@@ -160,7 +160,7 @@ impl Factorial {
     /// Whether factor `a`'s effect depends on factor `b`'s level: the classic difference of
     /// differences, formed per seed.
     ///
-    /// Measured across each factor's **range** — its last level against its first — with
+    /// Measured across each factor's **range** - its last level against its first - with
     /// every other factor averaged out. For a 2×2 that is the whole interaction. For more
     /// levels it is the corner-to-corner contrast, which is a summary rather than the full
     /// picture; the per-cell CSV is there when the full picture is wanted.
@@ -202,7 +202,7 @@ impl Factorial {
         if self.factors.len() < 2 {
             let _ = writeln!(
                 s,
-                "\n(one factor, so no interactions — this is a `sweep` with extra steps)"
+                "\n(one factor, so no interactions - this is a `sweep` with extra steps)"
             );
             return s;
         }
@@ -288,7 +288,7 @@ mod tests {
         );
     }
 
-    // An additive metric has main effects equal to its coefficients and no interaction —
+    // An additive metric has main effects equal to its coefficients and no interaction -
     // the case where reasoning about factors separately is valid.
     #[test]
     fn an_additive_metric_has_its_coefficients_and_no_interaction() {
@@ -310,7 +310,7 @@ mod tests {
             (d.interaction(0, 1).mean - 7.0).abs() < 1e-9,
             "the whole effect is the interaction"
         );
-        // The main effect is the marginal average, so it is half the product term — real,
+        // The main effect is the marginal average, so it is half the product term - real,
         // but it describes neither level of the other factor.
         assert!((d.main_effect(0, 1).mean - 3.5).abs() < 1e-9);
     }
@@ -406,7 +406,7 @@ mod tests {
     }
 
     /// A factor the model cannot be affected by must produce no interaction with one that
-    /// matters — and, being an exact identity rather than a small effect, every seed ties.
+    /// matters - and, being an exact identity rather than a small effect, every seed ties.
     ///
     /// `suppression_radius_m` is swept against a dial that genuinely does nothing here: the
     /// air-defence overkill cap, on a scenario with no aircraft at all. If the harness were

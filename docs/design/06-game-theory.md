@@ -2,11 +2,11 @@
 
 ---
 
-## 6. Game-theoretic layer *(Phase 6)*
+## 6. Game-theoretic layer
 
 Decisions (user, 2026-07-29): the first game is the **combined detect-then-engage
 interdiction game**; solved by **fictitious play** (no LP dependency); strategies are
-**Blue position vs Red route**. This is the capstone — it exercises terrain, LOS,
+**Blue position vs Red route**. This is the capstone - it exercises terrain, LOS,
 sensing, movement, fires, and suppression through one solved zero-sum game.
 
 ### 6.1 Movement in the sim (prerequisite)
@@ -14,12 +14,12 @@ sensing, movement, fires, and suppression through one solved zero-sum game.
 Units gain a route and a speed. `UnitType.speed_m_s` (default 0 = static);
 `UnitState` carries `route: Vec<Vec2>` + `route_idx`. Each tick, a live **unpinned**
 unit advances `speed·dt` metres along its polyline (consuming multiple segments if a
-tick's travel spans them); a **Pinned** unit does not move (wiring Phase 4 → Phase 5).
+tick's travel spans them); a **Pinned** unit does not move (suppression gating movement).
 Reaching the last waypoint halts it. Detection and fires use the updated positions.
 *Gates:* a unit on a straight route is at distance `speed·t` after `t` s; a pinned unit
 does not advance.
 
-### 6.2 The zero-sum solver — fictitious play
+### 6.2 The zero-sum solver - fictitious play
 
 For a payoff matrix `A` (row = Blue/maximiser, col = Red/minimiser), fictitious play
 alternates best responses to the opponent's empirical play:
@@ -40,25 +40,25 @@ dependency, and the convergence is itself an OR demonstration.
 ### 6.3 The interdiction payoff
 
 - **Blue strategy:** a position `b` holding a sensor + a co-located **observed indirect**
-  shooter (mortar). Detection (Phase 2) gates its fire (indirect ⇒ needs a detection).
-- **Red strategy:** a route `r` (candidate paths across the map — some from the Phase 5
+  shooter (mortar). Detection gates its fire (indirect ⇒ needs a detection).
+- **Red strategy:** a route `r` (candidate paths across the map - some from the
   least-risk pather at varying caution, some direct).
 - **Payoff `A[b][r]` = expected Red attrition** (fraction of Red elements lost) when Red
-  traverses `r` while Blue at `b` watches and bombards — estimated by a short headless
+  traverses `r` while Blue at `b` watches and bombards - estimated by a short headless
   Monte-Carlo battle averaged over seeds. Blue maximises attrition, Red minimises.
   Zero-sum in the attrition metric.
 
-The matrix is built once (MC estimate per cell), then fictitious play solves it — so the
+The matrix is built once (MC estimate per cell), then fictitious play solves it - so the
 solver stays cheap even though payoff construction is the expensive part. Kept tractable
-with small strategy sets (~6–8 each) and short battles, all in the Bevy-free
+with small strategy sets (~6-8 each) and short battles, all in the Bevy-free
 `experiments` crate; profile before growing.
 
-### 6.4 Validation gates (V32–V39)
+### 6.4 Validation gates (V32-V39)
 
 | # | Property | Reference |
 |---|----------|-----------|
 | V32 | matching pennies | FP value → 0, both strategies → (½, ½) |
-| V33 | rock–paper–scissors | FP value → 0, both strategies → uniform |
+| V33 | rock-paper-scissors | FP value → 0, both strategies → uniform |
 | V34 | saddle point | a game with a pure equilibrium → that value, deterministic strategies |
 | V35 | strict dominance | a strictly dominated strategy converges to ~0 weight |
 | V36 | skew-symmetric | `A = −Aᵀ` ⇒ value 0 (fair game); value bracket closes |

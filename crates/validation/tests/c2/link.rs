@@ -1,4 +1,4 @@
-//! V62 — the C2 link can be degraded, not only destroyed. `docs/DESIGN.md` §11.2.
+//! V62 - the C2 link can be degraded, not only destroyed. `docs/DESIGN.md` §11.2.
 //!
 //! §11 made coordination an asset you can lose by having it killed. That left the link
 //! itself binary and instant: inside the radius or not, from the first tick. Two things
@@ -7,8 +7,8 @@
 //! **Jamming pulls the radius in.** An enemy jammer near the post scales its effective
 //! coordination range by the [`sim_core::ew`] factor, so the batteries on the flanks fall
 //! out of the net first while the one sitting on top of the post keeps talking. That is the
-//! right shape — a link degrades with range against a noise floor, and raising the floor is
-//! what a jammer does — and it gives the raid a *soft* counter beside SEAD's hard one.
+//! right shape - a link degrades with range against a noise floor, and raising the floor is
+//! what a jammer does - and it gives the raid a *soft* counter beside SEAD's hard one.
 //!
 //! **Joining costs time.** `link_latency_s` is how long a battery must have been inside the
 //! radius before it is actually in the net. Zero by default, so the pre-latency behaviour
@@ -171,7 +171,7 @@ fn raid(extras: Extras) -> Sim {
     Sim::new(&scn, &libraries(extras.link_latency_s), 3).unwrap()
 }
 
-/// How many *distinct* airframes the defence has under engagement — the direct reading of
+/// How many *distinct* airframes the defence has under engagement - the direct reading of
 /// whether the net is working.
 fn distinct(sim: &Sim) -> usize {
     let mut t: Vec<usize> = sim
@@ -185,7 +185,7 @@ fn distinct(sim: &Sim) -> usize {
 }
 
 // V62 (headline): jamming the post's link decoheres the defence without touching a single
-// battery, a post, a magazine or an envelope — the soft twin of killing the post (§12.2).
+// battery, a post, a magazine or an envelope - the soft twin of killing the post (§12.2).
 #[test]
 fn v62_jamming_the_link_decoheres_the_defence() {
     let mut clear = raid(Extras::default());
@@ -196,7 +196,7 @@ fn v62_jamming_the_link_decoheres_the_defence() {
         "a clear link must still split the raid three ways"
     );
 
-    // 0.9 at the centre leaves a tenth of the radius — 300 m — so the flanking batteries
+    // 0.9 at the centre leaves a tenth of the radius - 300 m - so the flanking batteries
     // at 500 m drop out and only the one sitting on the post stays in the net.
     let mut jammed = raid(Extras {
         jammer: Some(Jammer {
@@ -225,7 +225,7 @@ fn v62_jamming_the_link_decoheres_the_defence() {
 }
 
 // V62 (side half): a jammer degrades the *enemy's* link, not its own side's. Same asset,
-// same dials, opposite side of the argument from the sensing case (§8.1) — and getting
+// same dials, opposite side of the argument from the sensing case (§8.1) - and getting
 // this backwards would silently make EW self-defeating.
 #[test]
 fn v62_a_friendly_jammer_does_not_cut_its_own_net() {
@@ -244,8 +244,8 @@ fn v62_a_friendly_jammer_does_not_cut_its_own_net() {
     );
 }
 
-// V62 (identity half, §7.4): a jammer of zero power runs the whole new arithmetic — the
-// link-quality fold, the scaled radius, the latency gate — and must change nothing at all.
+// V62 (identity half, §7.4): a jammer of zero power runs the whole new arithmetic - the
+// link-quality fold, the scaled radius, the latency gate - and must change nothing at all.
 // Stronger than simply omitting the jammer, which would skip the code under test.
 #[test]
 fn v62_a_powerless_jammer_is_an_exact_identity() {
@@ -272,7 +272,7 @@ fn v62_a_powerless_jammer_is_an_exact_identity() {
     );
 
     // And the allocation is a proper cover: three batteries, three different drones, one
-    // each. The *permutation* is not asserted — which battery takes which drone is a
+    // each. The *permutation* is not asserted - which battery takes which drone is a
     // solver detail, and pinning it would make an unrelated tie-break look like a defect.
     let taken = engagements(&clear);
     assert!(taken.iter().all(Option::is_some), "every battery engaged");
@@ -280,7 +280,7 @@ fn v62_a_powerless_jammer_is_an_exact_identity() {
 }
 
 // V62 (latency half): joining the net costs time, and a battery that is not yet in it
-// falls back to nearest-first — so a late link cannot retrospectively undo the duplicated
+// falls back to nearest-first - so a late link cannot retrospectively undo the duplicated
 // engagements a defence has already committed to. That consequence is the interesting one.
 #[test]
 fn v62_joining_the_net_costs_time() {
@@ -300,7 +300,7 @@ fn v62_joining_the_net_costs_time() {
             .collect::<Vec<_>>()
     );
 
-    // The ready time is set once, on coming under coverage, and not restarted every tick —
+    // The ready time is set once, on coming under coverage, and not restarted every tick -
     // which would make any latency permanent.
     for ad in slow.air_defence() {
         let ready = ad.net_ready_at_s.expect("under a live post");

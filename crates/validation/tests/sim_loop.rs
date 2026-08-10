@@ -1,7 +1,7 @@
 //! Gates that need the whole simulation loop running (docs/DESIGN.md §3.3):
 //! V14/V15, V18, V24, V30, V31, V37-V40, and the Phase 9 air integration gates.
 //!
-//! These share heavyweight fixtures — a duel, a battle, a raid — so they live in
+//! These share heavyweight fixtures - a duel, a battle, a raid - so they live in
 //! one file rather than being split by V-number across the per-subsystem gate
 //! files. The zero-draw half of V52 is *not* here: it asserts a property of the
 //! RNG draw stream, which is internal by definition, so it stays a unit test
@@ -333,7 +333,7 @@ fn v40_ew_degrades_and_off_is_identity() {
     );
 }
 
-// V39: interdiction sanity — a Red route that no Blue overwatch can see is safe, so
+// V39: interdiction sanity - a Red route that no Blue overwatch can see is safe, so
 // the equilibrium puts Red on it and the game value falls. Builds a 2×2 payoff from
 // real headless battles, then solves it.
 #[test]
@@ -625,7 +625,7 @@ fn air_strike_attrits_its_assigned_target() {
     );
 }
 
-// The counter-air half of §9.4–§9.5: with a self-cueing CIWS on the target, the
+// The counter-air half of §9.4-§9.5: with a self-cueing CIWS on the target, the
 // bomber is shot down before it can release.
 #[test]
 fn air_defence_defeats_the_raid() {
@@ -701,7 +701,7 @@ fn recce_drone_detects_from_overhead() {
 
     let mut sim = Sim::new(&scn, &libs, 4).unwrap();
     // The carried sensor is registered in the ordinary sensor list, bound to the
-    // airframe — that binding is what makes it move.
+    // airframe - that binding is what makes it move.
     assert_eq!(sim.sensors().len(), 1);
     assert_eq!(sim.sensors()[0].carrier, Some(0));
 
@@ -889,12 +889,12 @@ fn v24_fires_attrit_and_are_deterministic() {
 
     let (strength_c, _) = run(12);
     // Different seed usually gives a different attrition outcome (not guaranteed if
-    // both fully kill — but with these dials a 600 s fight kills, so compare killed).
+    // both fully kill - but with these dials a 600 s fight kills, so compare killed).
     assert!(strength_c <= 1.0);
 }
 
 // V30: a homogeneous aimed-fire duel on open ground (suppression off) obeys
-// Lanchester's square law — the winner is annihilation-tested to end with
+// Lanchester's square law - the winner is annihilation-tested to end with
 // √(A₀²−B₀²) elements on average.
 #[test]
 fn v30_lanchester_square_law() {
@@ -1151,7 +1151,7 @@ fn v54_removal_tombstones_keep_logged_indices_valid() {
 
 // ---- V55: track lifecycle (docs/DESIGN.md §10.1) ------------------------------------
 // Detection used to be permanent, which quietly meant EW could *prevent* a track but
-// never *break* one — jamming a unit already seen did nothing at all. A track now lapses
+// never *break* one - jamming a unit already seen did nothing at all. A track now lapses
 // `track_hold_s` after its last observation, and whether a sensor still "observes" is
 // judged on the effective glimpse rate, so degrading a sensor loses the track.
 
@@ -1245,7 +1245,7 @@ fn v55_tracks_decay_and_ew_can_break_them() {
     );
 
     // 3. The headline, and the thing permanent detection made impossible: jam a unit that
-    //    is *already tracked* and the track breaks. Note the jammer arrives mid-run —
+    //    is *already tracked* and the track breaks. Note the jammer arrives mid-run -
     //    testing that EW *breaks* a track, not merely that it prevents one forming.
     let (scn, libs) = track_fixture(4000.0, "");
     let mut sim = Sim::new(&scn, &libs, 1).unwrap();
@@ -1261,7 +1261,7 @@ fn v55_tracks_decay_and_ew_can_break_them() {
         "jamming an already-tracked unit must break the track"
     );
 
-    // And without the jammer the identical run keeps its track — so it was the EW, not
+    // And without the jammer the identical run keeps its track - so it was the EW, not
     // the passage of time.
     let mut clear = Sim::new(&scn, &libs, 1).unwrap();
     clear.run_until(80.0);

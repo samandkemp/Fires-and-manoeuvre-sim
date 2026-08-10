@@ -42,7 +42,7 @@ pub fn nearest_asset(sim: &Sim, pos: Vec2, max_dist_m: f32) -> Option<Selected> 
     .flatten()
     .filter_map(|sel| position(sim, sel).map(|p| (sel, p.distance(pos))))
     // Ties break on list order, so clicking between two coincident markers always picks
-    // the same one — a battery and its command post can sit very close together.
+    // the same one - a battery and its command post can sit very close together.
     .min_by(|a, b| a.1.total_cmp(&b.1))
     .map(|(sel, _)| sel)
 }
@@ -62,7 +62,7 @@ pub fn assets_in_box(sim: &Sim, a: Vec2, b: Vec2) -> Vec<Selected> {
 
 /// Every live asset whose position passes `keep`, in list order.
 ///
-/// Select-all and box-select differ only in that test, so they share the traversal — which
+/// Select-all and box-select differ only in that test, so they share the traversal - which
 /// is what stops a new asset class being added to one and forgotten in the other.
 fn live_assets(sim: &Sim, keep: impl Fn(Vec2) -> bool) -> Vec<Selected> {
     let mut out = Vec::new();
@@ -173,7 +173,7 @@ mod tests {
     use std::path::Path;
 
     /// `ad_c2` is the fixture because it is the only scenario fielding all four asset
-    /// kinds at once — which is exactly the case that used to be half-supported.
+    /// kinds at once - which is exactly the case that used to be half-supported.
     fn fixture() -> Option<Sim> {
         let dir = Path::new("../../scenarios");
         let libs = Libraries::load_dir(dir).ok()?;
@@ -212,7 +212,7 @@ mod tests {
             "select-all must reach every list"
         );
         // Box-select over the whole map must agree with select-all, or the two traversals
-        // have drifted apart — the bug this refactor removed.
+        // have drifted apart - the bug this refactor removed.
         let t = sim.terrain();
         let far = t.width().max(t.height()) as f32 * t.transform().cell_size_m();
         let mut boxed = assets_in_box(&sim, Vec2::new(-far, -far), Vec2::new(far, far));
@@ -246,7 +246,7 @@ mod tests {
     }
 
     /// A battery's organic radar is an ordinary entry in the sensor list, so moving the
-    /// battery without it would leave a detached eye at the old site — visible only as
+    /// battery without it would leave a detached eye at the old site - visible only as
     /// coverage in the wrong place.
     #[test]
     fn moving_a_battery_takes_its_radar_along() {
@@ -263,7 +263,7 @@ mod tests {
     }
 
     /// Emplaced assets have no route, so shift+right-click must leave them alone rather
-    /// than teleporting them — and must still route the movers in a mixed selection.
+    /// than teleporting them - and must still route the movers in a mixed selection.
     #[test]
     fn appending_a_waypoint_skips_emplaced_assets() {
         let Some(mut sim) = fixture() else {

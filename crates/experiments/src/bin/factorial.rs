@@ -1,7 +1,7 @@
 //! Vary several dials at once and report whether they interact.
 //!
 //! `sweep` answers "what does this dial do". This answers "what do these dials do, and does
-//! either one's answer depend on the other" — which is a different question, and on this
+//! either one's answer depend on the other" - which is a different question, and on this
 //! model it has more than once been the more important one.
 //!
 //! ```text
@@ -23,7 +23,7 @@
 //! **Main effects** first, each averaged over every level of the other factors, so a factor
 //! is described by what it does across the design rather than at one corner of it.
 //!
-//! **Interactions** second, and the closing line says whether any is significant — because
+//! **Interactions** second, and the closing line says whether any is significant - because
 //! that decides whether the main effects above may be read on their own. If two dials
 //! interact, "this one is worth −11 s" is a sentence with a missing clause.
 //!

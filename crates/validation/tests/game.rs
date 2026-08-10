@@ -8,7 +8,7 @@ use sim_core::game::*;
 
 const ITERS: usize = 100_000;
 
-// V32: matching pennies — value 0, both play (½, ½).
+// V32: matching pennies - value 0, both play (½, ½).
 #[test]
 fn v32_matching_pennies() {
     let a = arr2(&[[1.0f32, -1.0], [-1.0, 1.0]]);
@@ -24,7 +24,7 @@ fn v32_matching_pennies() {
     );
 }
 
-// V33: rock–paper–scissors — value 0, uniform.
+// V33: rock-paper-scissors - value 0, uniform.
 #[test]
 fn v33_rock_paper_scissors() {
     let a = arr2(&[[0.0f32, -1.0, 1.0], [1.0, 0.0, -1.0], [-1.0, 1.0, 0.0]]);
@@ -35,7 +35,7 @@ fn v33_rock_paper_scissors() {
     }
 }
 
-// V34: a pure saddle point — deterministic equilibrium at its value.
+// V34: a pure saddle point - deterministic equilibrium at its value.
 #[test]
 fn v34_saddle_point() {
     // Row maximises: row 0 dominates (4>2, 3>1). Col minimises: col 1 (3<4, 1<2).

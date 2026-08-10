@@ -2,7 +2,7 @@
 //!
 //! This is the general form of every bespoke sweep in this crate. Any field reachable by a
 //! dotted path in a scenario file is sweepable, because the override is applied to the TOML
-//! before it is parsed ([`experiments::patch`]) — so a dial added next month is sweepable
+//! before it is parsed ([`experiments::patch`]) - so a dial added next month is sweepable
 //! without touching this binary.
 //!
 //! ```text
@@ -24,8 +24,8 @@
 //! # The comparison is paired, by construction
 //!
 //! Every arm runs seeds `0..N` on the same map, so arm *k* and arm 0 are matched trial for
-//! trial and the difference is taken seed by seed. The variance the two arms share — the
-//! map, most of the luck — cancels, which is usually most of it. The report prints that
+//! trial and the difference is taken seed by seed. The variance the two arms share - the
+//! map, most of the luck - cancels, which is usually most of it. The report prints that
 //! paired difference against the **first** arm, with its standard error and t statistic,
 //! and says in as many words whether to believe it. See [`experiments::stats`] for why
 //! this crate offers no unpaired comparison.
@@ -211,7 +211,7 @@ fn report(
         let p = paired(&col, &base_col);
         println!("  {param:>28} = {value:<10}  {}", p.report());
     }
-    // A sweep whose arms are all tied is a sweep of a dial nothing reads — worth saying
+    // A sweep whose arms are all tied is a sweep of a dial nothing reads - worth saying
     // out loud, because the natural reading of "no significant effect" is the opposite.
     if arms.len() > 1 {
         let all_tied = arms[1..].iter().all(|(_, o)| {
@@ -278,7 +278,7 @@ fn sweep_values(args: &[String]) -> Result<Vec<String>, String> {
         .collect())
 }
 
-/// Format a swept value so integral ones stay integers — `2`, not `2.0`, because a `u32`
+/// Format a swept value so integral ones stay integers - `2`, not `2.0`, because a `u32`
 /// dial refuses a TOML float (see [`experiments::patch::parse_value`]).
 fn format_value(x: f64) -> String {
     if (x - x.round()).abs() < 1e-9 {

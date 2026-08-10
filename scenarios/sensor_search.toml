@@ -1,7 +1,7 @@
 # Belief-driven sensor tasking, made watchable (docs/DESIGN.md §10.3).
 #
-# Three Blue observers with **narrow arcs** — 70°, so none of them can watch more than a
-# slice of the map at once — against Red units dispersed across ground none of them starts
+# Three Blue observers with **narrow arcs** - 70°, so none of them can watch more than a
+# slice of the map at once - against Red units dispersed across ground none of them starts
 # pointed at. With `sensor_tasking = true` each observer re-points itself every epoch to
 # wherever it expects to learn the most, and the result looks like a coordinated search:
 # each sensor drains its own belief out of the ground it has cleared, so the
@@ -20,7 +20,7 @@ default_seed = 5
 dt_s = 1.0
 epoch_s = 10.0
 sensor_tasking = true
-# Belief runs on a 48x48 grid regardless of map size — choosing between twelve 30°
+# Belief runs on a 48x48 grid regardless of map size - choosing between twelve 30°
 # sectors does not need 10 m fidelity.
 belief_cells = 48
 # Tracks lapse quickly here, so a sensor that looks away really does lose contact and the

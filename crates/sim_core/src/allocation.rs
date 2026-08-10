@@ -1,7 +1,7 @@
-//! Weapon–target assignment: which shooter engages which target.
+//! Weapon-target assignment: which shooter engages which target.
 //! Spec: `docs/DESIGN.md` §10.2. Gates: V56.
 //!
-//! Pure functions over a payoff matrix — no `Sim`, no terrain, no randomness. The sim
+//! Pure functions over a payoff matrix - no `Sim`, no terrain, no randomness. The sim
 //! builds the matrix from its own fires model and calls [`solve`]; everything here is a
 //! combinatorial optimisation that can be tested on its own.
 //!
@@ -23,13 +23,13 @@
 //! "the optimal solver is worth having" from an assumption into a measured number, which
 //! a `sweep --param sim.allocation` reports.
 
-/// A payoff below this counts as ineligible — the pairing is not allowed at all.
+/// A payoff below this counts as ineligible - the pairing is not allowed at all.
 ///
 /// A finite sentinel, not `-inf`: the Hungarian algorithm subtracts potentials, and
 /// `inf - inf` is `NaN`.
 ///
 /// The sentinel never reaches the solver's arithmetic either. It is mapped to **zero**
-/// first, because a huge magnitude would destroy the real payoffs it sits beside —
+/// first, because a huge magnitude would destroy the real payoffs it sits beside -
 /// `1e18 + 10.0 == 1e18` in `f64`, so every matching with the same number of forbidden
 /// cells would score identically and the solver would pick among them arbitrarily.
 /// Mapping to zero is exact rather than a fudge: see [`hungarian`].
@@ -53,13 +53,13 @@ pub type Assignment = Vec<Option<usize>>;
 /// Which solver to use.
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
 pub enum Solver {
-    /// Kuhn–Munkres: the optimal assignment.
+    /// Kuhn-Munkres: the optimal assignment.
     #[default]
     Optimal,
     /// Repeatedly take the best remaining cell. The baseline the optimum is measured
     /// against.
     Greedy,
-    /// Each shooter independently takes its own best slot, ignoring the others — the
+    /// Each shooter independently takes its own best slot, ignoring the others - the
     /// pre-Phase-10 behaviour, kept so the cost of *not* coordinating is measurable too.
     Independent,
 }
@@ -88,7 +88,7 @@ pub fn total(payoff: &[Vec<f64>], assignment: &Assignment) -> f64 {
 
 /// Every shooter takes its own best slot, with no regard for what anyone else does.
 ///
-/// Slots are *not* exclusive here — this reproduces the pre-Phase-10 rule where each unit
+/// Slots are *not* exclusive here - this reproduces the pre-Phase-10 rule where each unit
 /// chose independently, so two shooters can pile onto the same target. Kept as the
 /// baseline that shows what coordination buys.
 #[must_use]
@@ -143,18 +143,18 @@ pub fn greedy(payoff: &[Vec<f64>]) -> Assignment {
     assignment
 }
 
-/// The optimal assignment, by the Kuhn–Munkres (Hungarian) algorithm.
+/// The optimal assignment, by the Kuhn-Munkres (Hungarian) algorithm.
 ///
-/// `O(n²m)` with the potentials formulation, which handles a rectangular matrix directly
-/// — there are usually far more slots than shooters, and padding to a square would waste
-/// most of the work.
+/// `O(n²m)` with the potentials formulation, which handles a rectangular matrix
+/// directly - there are usually far more slots than shooters, and padding to a square
+/// would waste most of the work.
 ///
 /// The algorithm minimises, so payoffs are negated on the way in. Rows are added one at a
 /// time, each extending the alternating tree until it reaches a free column.
 ///
 /// # Forbidden pairings, and idle shooters
 ///
-/// Kuhn–Munkres produces a **perfect** matching — every row gets a column. What we
+/// Kuhn-Munkres produces a **perfect** matching - every row gets a column. What we
 /// actually want is a maximum-weight matching that may leave a shooter idle, and that
 /// forbids some pairings outright. Both fall out of one substitution: forbidden cells are
 /// scored **0** for the solver.
@@ -164,7 +164,7 @@ pub fn greedy(payoff: &[Vec<f64>]) -> Assignment {
 /// above). Any partial matching then extends to a perfect one using only zero-weight
 /// cells without changing its total, so the best perfect matching and the best partial
 /// matching have the same value. Afterwards, assignments sitting on a forbidden or
-/// worthless cell are simply dropped — a shooter that would contribute nothing is idle.
+/// worthless cell are simply dropped - a shooter that would contribute nothing is idle.
 ///
 /// # Panics
 /// Debug builds assert the non-negativity requirement; a negative eligible payoff would
@@ -199,7 +199,7 @@ pub fn hungarian(payoff: &[Vec<f64>]) -> Assignment {
 
     const INF: f64 = f64::INFINITY;
     // 1-indexed with a sentinel row/column 0, as the standard formulation is written.
-    // Forbidden cells score 0 here — see the doc comment for why that is exact.
+    // Forbidden cells score 0 here - see the doc comment for why that is exact.
     let cost = |i: usize, j: usize| {
         let p = payoff[i - 1][j - 1];
         if is_eligible(p) {

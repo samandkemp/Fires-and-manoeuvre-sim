@@ -1,5 +1,5 @@
 //! Performance baseline harness (P0). Times the hot paths so optimisation is guided by
-//! measurement, not guesswork (a project guardrail). Plain `std::time` — no bench crate.
+//! measurement, not guesswork (a project guardrail). Plain `std::time` - no bench crate.
 //!
 //! Run: `cargo run -p experiments --release --bin bench`
 //!      `cargo run -p experiments --bin bench   # dev profile (what the app uses)`
@@ -75,7 +75,7 @@ fn main() {
     }
 
     // Slant range (docs/DESIGN.md §9.1): the cost of the convention, and how far it
-    // actually moves the answer on relief — the number behind "no re-baseline needed".
+    // actually moves the answer on relief - the number behind "no re-baseline needed".
     let mut acc = 0.0f32;
     let t = Instant::now();
     for _ in 0..n {
@@ -122,7 +122,7 @@ fn main() {
     // The simulation tick: what every batch run and every app frame pays, and what the
     // rasters above don't cover.
     //
-    // Treat the tick figure as a sanity check, not an optimisation target — it is
+    // Treat the tick figure as a sanity check, not an optimisation target - it is
     // sub-millisecond and swings 2-3x run to run on a busy machine. `build` is the number
     // that matters, paid on every scenario load.
     println!(

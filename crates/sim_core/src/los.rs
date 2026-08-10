@@ -1,9 +1,9 @@
 //! Line of sight. Every fires and sensing calculation goes through here.
-//! Spec: `docs/DESIGN.md` §1.4. Gates: V5–V11.
+//! Spec: `docs/DESIGN.md` §1.4. Gates: V5-V11.
 //!
 //! The sightline runs between two actors at `z(endpoint) + h`. Ground and urban feature
 //! height block hard; trees attenuate, with canopy path length `L` giving transmittance
-//! `τ = exp(−Σ κ·L)`. An endpoint's own cell never blocks — someone in woods can see out
+//! `τ = exp(−Σ κ·L)`. An endpoint's own cell never blocks - someone in woods can see out
 //! from under their own canopy.
 
 use crate::terrain::{TerrainGrid, TerrainType};
@@ -11,7 +11,7 @@ use glam::Vec2;
 use std::cell::RefCell;
 
 thread_local! {
-    // Reused breakpoint buffers so `line_of_sight` — called per cell in every viewshed —
+    // Reused breakpoint buffers so `line_of_sight` - called per cell in every viewshed -
     // does not allocate on the hot path. Three buffers: the two per-axis crossing streams
     // and the merged result (see `fill_breakpoints`).
     static SCRATCH: RefCell<Scratch> = const {
@@ -30,7 +30,7 @@ struct Scratch {
     merged: Vec<f32>,
 }
 
-/// Everything one LOS query learns. Cheap to compute — the traversal produces all of it.
+/// Everything one LOS query learns. Cheap to compute - the traversal produces all of it.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct LosResult {
     /// True if no hard (ground / urban) mask blocks the sightline.
@@ -244,7 +244,7 @@ pub fn visible(terrain: &TerrainGrid, a: Vec2, h_a: f32, b: Vec2, h_b: f32) -> b
 /// True 3-D range between two actors (`docs/DESIGN.md` §9.1): the horizontal separation
 /// combined with the difference in absolute endpoint heights `z + h`.
 ///
-/// This is the project's one range convention — detection cutoffs and weapon range gates
+/// This is the project's one range convention - detection cutoffs and weapon range gates
 /// all use it. On flat ground with equal actor heights the height term vanishes and it
 /// reduces exactly to `a.distance(b)`; for an airborne endpoint it is the difference
 /// between "overhead" and "point blank".
@@ -261,8 +261,8 @@ pub fn slant_range(terrain: &TerrainGrid, a: Vec2, h_a: f32, b: Vec2, h_b: f32) 
 /// at `observer` (height `h_obs`) to a target of height `h_tgt` at every cell centre
 /// within `max_range_m`. `0.0` marks hard-blocked or out-of-range cells.
 ///
-/// Correct by construction — one validated pairwise query per cell — and the reference
-/// oracle for any faster sweep that may come later (V12–V13).
+/// Correct by construction - one validated pairwise query per cell - and the reference
+/// oracle for any faster sweep that may come later (V12-V13).
 #[must_use]
 pub fn viewshed(
     terrain: &TerrainGrid,
@@ -275,7 +275,7 @@ pub fn viewshed(
     let range_sq = max_range_m * max_range_m;
     let mut out = ndarray::Array2::<f32>::zeros((h, w));
     // Parallel over cells: each writes its own slot and the LOS scratch buffer is
-    // thread-local, so the result is identical to the sequential version (V12–V13) —
+    // thread-local, so the result is identical to the sequential version (V12-V13) -
     // determinism preserved, just faster on many cores.
     ndarray::Zip::indexed(&mut out).par_for_each(|(iy, ix), v| {
         let target = terrain.transform().cell_center(ix, iy);
@@ -300,9 +300,9 @@ pub fn viewshed(
 /// The two per-axis crossing streams are each generated **already ascending in path
 /// distance** (see [`axis_crossings`]), so they are combined by an O(n) merge rather than
 /// an O(n log n) sort. On a multi-kilometre ray this buffer holds ~2000 breakpoints and
-/// the sort was a measurable share of the query — this is the micro-optimisation
+/// the sort was a measurable share of the query - this is the micro-optimisation
 /// `docs/DESIGN.md` §1.5 flagged as outstanding. The output order is identical to the
-/// sorted one, so results are bit-for-bit unchanged (V5–V13 are the check).
+/// sorted one, so results are bit-for-bit unchanged (V5-V13 are the check).
 fn fill_breakpoints(scratch: &mut Scratch, p0: Vec2, p1: Vec2, span: f32, step: f32) {
     let Scratch { xs, ys, merged } = scratch;
     xs.clear();

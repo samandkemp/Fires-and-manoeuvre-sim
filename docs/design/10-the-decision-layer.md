@@ -2,9 +2,9 @@
 
 ---
 
-## 10. The decision layer *(Phase 10 — complete)*
+## 10. The decision layer
 
-Phases 1–9 modelled everything except anyone *deciding* anything. Fires picked the
+Phases 1-9 modelled everything except anyone *deciding* anything. Fires picked the
 nearest enemy, routes were drawn by hand, sensors stared where they were placed, and the
 belief filter of §8.2 was computed for a UI overlay that no sim code read. This phase
 closes the loop **sensing → belief → decision → action**: tracks now decay (§10.1), fire
@@ -37,21 +37,21 @@ detected  ⟺  now − last_seen_s  <  track_hold_s
 per-sensor `seen_by` record as well, because §9.5 needs to know *which* battery saw the
 target.
 
-A lapsed air track clears the whole cueing record — `detected_at_s`, `detected_by` and
-`seen_by` — not just the flag. Otherwise reacquisition would find a stale `detected_at_s`
+A lapsed air track clears the whole cueing record - `detected_at_s`, `detected_by` and
+`seen_by` - not just the flag. Otherwise reacquisition would find a stale `detected_at_s`
 already aged past `cue_latency_s + reaction_time_s` and a battery would fire the instant
 the target reappeared, skipping the §9.5 timeline the scenario exists to exercise.
 
 **Maintenance runs at the decision epoch, not the tick.** The glimpse loop skips
-already-detected targets, so refreshing a track means looking again — measured at
+already-detected targets, so refreshing a track means looking again - measured at
 4 sensors × 6 units × 97 µs ≈ 2.3 ms/tick, up to 20× the whole tick budget. At a 10 s
 epoch that amortises to 0.23 ms/tick. The cadence is also right on its own terms: tracks
 decay over tens of seconds, and maintaining one is a decision-layer concern.
 
 **Maintenance is deterministic, not a fresh glimpse.** Acquisition stays stochastic;
 keeping eyes on something already found is not a coin flip. A track refreshes when the
-sensor's *effective* rate `λ_eff` — the §8.1 jammed rate, with concealment, range and
-canopy folded in — clears a `track_maintain_p` threshold:
+sensor's *effective* rate `λ_eff` - the §8.1 jammed rate, with concealment, range and
+canopy folded in - clears a `track_maintain_p` threshold:
 
 $$
 \text{refresh} \iff 1 - e^{-\lambda_{\text{eff}} \Delta t_{\text{epoch}}} \ge p_{\text{maintain}}
@@ -72,18 +72,18 @@ $$
 $$
 
 `q(i,j)` is the **fraction of the target destroyed this epoch**, from the existing fires
-model — `direct_p_hit` or `expected_area_damage`, times cover, suppression factor and
-round count, exactly as a round resolves — clamped to `[0,1]`. Ineligible pairings (out
+model - `direct_p_hit` or `expected_area_damage`, times cover, suppression factor and
+round count, exactly as a round resolves - clamped to `[0,1]`. Ineligible pairings (out
 of range, no LOS, undetected for indirect) are forbidden outright.
 
 `value(j)` is `elements × per_element`, where `per_element` is the optional `value` dial
 on the stat block, or `1 + threat/threat_max` when absent, with
 `threat = rof × p_kill_given_hit × max_range`. So an unscored stat block still ranks
-sensibly — a unit is worth its size, doubled if it is the most dangerous thing on the
-field — and doctrine ("kill the radar first") can be stated when wanted. Per *element*,
+sensibly - a unit is worth its size, doubled if it is the most dangerous thing on the
+field - and doctrine ("kill the radar first") can be stated when wanted. Per *element*,
 so a half-destroyed unit is correctly worth less.
 
-`q(i,j)` is an **expectation, clamped** — not a probability. For direct fire it is
+`q(i,j)` is an **expectation, clamped** - not a probability. For direct fire it is
 `rounds · p_kill / elements`; for indirect, `rounds · E[damage per round]`. Both are linear
 in the round count rather than the exact `1 − (1 − q)^rounds`, and both are clamped to
 `[0, 1]`. That is fine for *ordering* pairings, which is all the assignment needs, but it
@@ -95,7 +95,7 @@ therefore the ones where the discount does least work.
 
 **Slots and the discount.** Every target offers a slot to every free shooter, and
 slot `k` is discounted by `(1 − q̄)^k` for a representative `q̄`: the (k+1)-th shooter
-only helps if the `k` before it all failed. This is the standard weapon–target-assignment
+only helps if the `k` before it all failed. This is the standard weapon-target-assignment
 decomposition and is exact when the shooters on a target are alike. It turns diminishing
 returns into extra columns, keeping the problem a plain linear assignment rather than a
 submodular one.
@@ -105,19 +105,19 @@ truncating the discount idled shooters rather than discouraging them, and a shoo
 nothing else to engage contributed nothing at all. Gate V68 holds the replacement.
 
 `q̄` is averaged over the shooters that *could* engage the target, not over those actually
-assigned to it — which is the only thing available before the problem is solved. The bias
+assigned to it - which is the only thing available before the problem is solved. The bias
 has a direction: a distant shooter that will never be chosen drags `q̄` down, which
 under-discounts the later slots and so mildly *encourages* piling on. Exact when the
 shooters are alike, as above; worth re-checking with a `sim.allocation` sweep on a scenario with
 deliberately heterogeneous shooters.
 
-Solved by Hungarian (Kuhn–Munkres) over shooters × slots, with greedy and `independent`
+Solved by Hungarian (Kuhn-Munkres) over shooters × slots, with greedy and `independent`
 (the old per-shooter rule) alongside. `[sim] allocation` chooses.
 
-**Forbidden pairings are scored zero, not `−∞`.** Kuhn–Munkres produces a *perfect*
+**Forbidden pairings are scored zero, not `−∞`.** Kuhn-Munkres produces a *perfect*
 matching, while what is wanted is a maximum-weight matching that may leave a shooter
 idle. With non-negative payoffs and rows ≤ columns, any partial matching extends to a
-perfect one using only zero-weight cells without changing its total — so the two optima
+perfect one using only zero-weight cells without changing its total - so the two optima
 coincide, and assignments landing on a forbidden or worthless cell are simply dropped
 afterwards. A large negative sentinel would have been worse than wrong: `1e18 + 10.0`
 is `1e18` in `f64`, so every matching with the same number of forbidden cells would have
@@ -126,7 +126,7 @@ scored identically.
 #### Measured: coordination pays, optimality does not *(2026-08-04)*
 
 `sweep --param sim.allocation --values optimal,greedy,independent` runs all three rules on the same seeds,
-and compares **paired** — the per-seed difference cancels the map and the dice, leaving
+and compares **paired** - the per-seed difference cancels the map and the dice, leaving
 only the effect of the rule. On `scenarios/fire_allocation.toml` (four shooters that can
 all reach all four targets), 2,000 seeds:
 
@@ -139,14 +139,14 @@ all reach all four targets), 2,000 seeds:
 **Coordinating is worth ~17%**, unambiguously, and the mechanism is the spread: the old rule
 sent every gun at the nearest target while three others stood untouched.
 
-**Solving the assignment optimally is measurably *worse* than greedy** — by
+**Solving the assignment optimally is measurably *worse* than greedy** - by
 **0.405 ± 0.051 s** (t = 8.0) when the two are compared directly against each other rather
 than each against `independent`. They agree outright on 96% of seeds; the cost is
 concentrated in the 4% where they diverge.
 
 That is not a defect in the solver, and V56 still holds: the Hungarian result *is* the
 optimum of the objective it is given. The objective is the problem. §10.2 scores a **single
-epoch** — expected value destroyed now — so an exact solution to it is myopically right and
+epoch** - expected value destroyed now - so an exact solution to it is myopically right and
 can be worse across a whole engagement than a greedy rule that happens to spread fire and
 keep more targets under pressure. Optimising a surrogate harder does not improve the thing
 the surrogate stands for.
@@ -154,25 +154,11 @@ the surrogate stands for.
 This is the strongest argument yet for the multi-epoch objective on the roadmap: the gap it
 would close is no longer hypothetical but measured.
 
-> **This finding has been wrong twice, in opposite directions, and the history is the
-> lesson.**
->
-> *First*, it claimed greedy beat optimal "consistently and outside the noise", from two
-> unpaired means (30 and 200 seeds) with no standard error to show the difference sat inside
-> the sampling error. *Then* it claimed no effect: −0.12 s with SE 0.22 (t = −0.55), which
-> was correct for the model **as it stood**.
->
-> §11.4 then removed the hard ground overkill cap. That changed how many shooters may pile
-> onto one target, which is exactly the freedom the assignment objective is exercised over —
-> and the difference resolved into the significant one above. The old number was not
-> mismeasured; it was **invalidated by a model change**, and nothing re-ran it for two
-> phases.
->
-> Two habits come out of this. Report a standard error on every figure and pair every
-> comparison, because a bare mean invited the first error. And compare two arms **against
-> each other**, not by eye against a shared baseline: greedy and optimal differ by 0.405 with
-> SE 0.051, but read off their separate `independent` baselines the gap looks like 0.4
-> against SEs of ~0.23 — five times noisier, and the reason the effect hid for so long.
+> Measured directly against each other rather than each against `independent`: the two
+> baselines do not combine the way a paired comparison does, and reading a difference across
+> them overstates its error roughly fivefold. [The build
+> log](../DESIGN.md#the-allocation-finding-wrong-twice-in-opposite-directions) records how
+> this figure was arrived at.
 
 On the other shipped scenarios the difference is exactly zero on every seed: with one or
 two shooters that can each reach one enemy, all three rules agree. Allocation only matters
@@ -203,28 +189,28 @@ and each steerable sensor takes the facing maximising `gain`. Sensors with no
 `for_width_deg` see all round and have nothing to choose.
 
 **Why it is affordable.** The expensive part of a detection rate is the line-of-sight
-walk, and **LOS does not depend on facing** — only the field-of-regard gate does. So the
+walk, and **LOS does not depend on facing** - only the field-of-regard gate does. So the
 per-cell rate is computed once per sensor with the arc removed, cached against the pose it
 was built for, and each of the twelve candidate facings is then a cheap arc mask over that
 raster. Without this, one epoch would cost a viewshed per facing per sensor.
 
 **Carried sensors, and the cache key that pays for them.** A drone-mounted sensor moves
-every tick, so an exact pose key would rebuild its raster every epoch and never hit — which
-is why carried sensors were originally excluded from this layer altogether. That was wrong
+every tick, so an exact pose key would rebuild its raster every epoch and never hit - which
+is why a moving raster cannot be cached on an exact pose. The resolution
 in a specific way: *not finding anything is evidence*, negative information is the whole
 point of the POMDP layer (§8.2), and the most mobile observer on the field was the one
 asset excluded from it. A recce drone could fly the length of the map and leave its side's
 belief unchanged.
 
 They are now included, keyed on a pose **quantised to the coarse belief grid** (and to a
-25 m altitude band). This is not a fudge: the raster *is* a coarse-grid object — every
-entry is a rate at a coarse cell centre — so keying it on the coarse cell the sensor stands
+25 m altitude band). This is not a fudge: the raster *is* a coarse-grid object - every
+entry is a rate at a coarse cell centre - so keying it on the coarse cell the sensor stands
 in is consistent with the resolution the whole layer runs at. The cost becomes proportional
 to how far the drone has flown rather than to how long it has been airborne. Quantisation
 is integer arithmetic, so the rebuild schedule is identical on every run.
 
 Emplaced sensors keep their **exact** pose as the key. They do not move, so the cache hits
-every epoch after the first and there is nothing to buy by approximating — and V57 stays
+every epoch after the first and there is nothing to buy by approximating - and V57 stays
 pinned to the real geometry.
 
 A carried sensor still has nothing to *steer*: it faces where its airframe points, and
@@ -234,16 +220,16 @@ contributes coverage without participating in the facing decision.
 **Off by default (`[sim] sensor_tasking`).** A `facing_deg` written in a scenario is a
 statement of intent, and silently overriding it would change what every existing scenario
 means. It would also dissolve the §6.3 interdiction game, whose Blue strategies *are*
-committed postures — a sensor that re-points itself is no longer playing a strategy. V39
+committed postures - a sensor that re-points itself is no longer playing a strategy. V39
 caught exactly this when the default was briefly `true`.
 
 *Measured*, on `scenarios/sensor_search.toml` (three 70°-arc observers, five Red units,
 none of them in the sectors the observers start on): a fixed stare finds **2 of 5**; the
-belief-driven sweep finds **5 of 5**. Nothing about the sweep is scripted — each sensor
+belief-driven sweep finds **5 of 5**. Nothing about the sweep is scripted - each sensor
 drains its own belief out of ground it has cleared, so the best-information facing moves
 on by itself.
 
-### 10.4 Validation gates (V54–V58, V61)
+### 10.4 Validation gates (V54-V58, V61)
 
 | # | Property | Reference |
 |---|----------|-----------|
@@ -251,7 +237,7 @@ on by itself.
 | V55 | track lifecycle & EW | a track lapses `track_hold_s` after its last observation and is cleared; continuous observation refreshes it indefinitely; jamming drives `λ_eff` below the maintenance threshold and so *breaks* a track, which permanent detection made impossible |
 | V56 | allocation optimality | Hungarian matches an exhaustive brute-force optimum for n ≤ 7; its total payoff is never below greedy's; no shooter is committed to two targets in one epoch; an ineligible pairing is never chosen |
 | V57 | tasking beats staring | against an enemy hidden outside its initial arc, a belief-tasked sensor detects where a fixed stare never does, with a shorter mean time-to-detect; belief stays a normalised non-negative distribution with finite entropy across many updates (extends V42); tasking draws no randomness |
-| V58 | decision-layer identity | with one shooter and one reachable target, every allocation rule and both tasking settings produce the identical detection and fire logs — the decision phases draw zero randomness, so the stream cannot shift |
+| V58 | decision-layer identity | with one shooter and one reachable target, every allocation rule and both tasking settings produce the identical detection and fire logs - the decision phases draw zero randomness, so the stream cannot shift |
 | V61 | carried sensors inform belief | a recce drone that overflies ground and finds nothing drains its side's belief out of that ground, against a control with no drone; belief stays normalised; an emplaced-only scenario is unchanged (only carried poses are quantised); the cleared ground moves with the drone, so the raster is genuinely refreshed |
 
 **Regression risk, as predicted and as found.** Allocation changes what units shoot at, so
@@ -259,25 +245,25 @@ V24, V30 (Lanchester), V31 and V39 were flagged as able to move. **V24, V30 and 
 not**, exactly as reasoned: they are single-shooter or homogeneous-line scenarios where
 allocation degenerates to the old choice.
 
-**V39 did move**, and for an instructive reason — not allocation, but *tasking*. Its Blue
+**V39 did move**, and for an instructive reason - not allocation, but *tasking*. Its Blue
 strategies are committed sensor postures, so a sensor that re-points itself is not playing
 a strategy at all, and the "unwatched lane" stopped being unwatched. That is what settled
 `sensor_tasking` defaulting to off rather than on. The gate was doing its job: it caught a
 model change that would otherwise have quietly invalidated the Phase 6 game.
 
-### 10.5 Movement decisions in the loop *(Phase 17)*
+### 10.5 Movement decisions in the loop
 
 Fires are allocated (§10.2) and sensors are tasked (§10.3), but movement stayed scripted:
 `movement::least_risk_path` was called only from `experiments/` and `validation/`, so the
 dynamic-programming strand sat *beside* the model rather than inside it.
 
-A unit now declares **either** a `route` — scripted, exactly as before — **or** an
+A unit now declares **either** a `route` - scripted, exactly as before - **or** an
 `objective`, which it plans its own way to, re-solving each decision epoch against the live
 risk raster. Declaring both is a load error (§7.6's family): neither "plan then ignore the
 plan" nor "follow the route then re-plan" is obviously the one meant.
 
 **Per unit, deliberately, not a `[sim]` switch.** Two things follow. The identity holds by
-*construction* — a scenario with no objective builds no planner and computes no raster, so
+*construction* - a scenario with no objective builds no planner and computes no raster, so
 there is nothing to switch off (V72). And a scripted unit and a planning unit can share one
 map on one seed, which makes control and treatment a single trial rather than two runs that
 have to be trusted to differ in only one way. Same argument as doctrine's
@@ -291,8 +277,8 @@ fortnight. So planning happens on the same coarse grid §10.3 uses for belief, f
 reason: a commander choosing an approach every ten seconds is not choosing between adjacent
 10 m cells. The unit still *moves* continuously at full resolution.
 
-The coarse edge cost is `TerrainGrid::move_cost`'s own formula — distance × mean mobility ×
-slope factor — evaluated on cell **aggregates** rather than point samples, so it is an
+The coarse edge cost is `TerrainGrid::move_cost`'s own formula - distance × mean mobility ×
+slope factor - evaluated on cell **aggregates** rather than point samples, so it is an
 approximation of the real cost rather than a different cost that resembles it. A coarse cell
 is impassable only when *every* fine cell in it is: at 150 m resolution "there is a way
 through" is the honest reading.
@@ -303,13 +289,13 @@ constrain the shared core, so their guarantees reach the in-loop planner rather 
 implementation needing its own gates.
 
 **Hysteresis, named in advance.** A unit re-deciding every epoch flips between two near-equal
-routes as costs wobble — the movement analogue of §13.4's target-lock problem, and it gets
+routes as costs wobble - the movement analogue of §13.4's target-lock problem, and it gets
 the same answer. A new route is adopted only if it beats the held one by `repath_margin`
 (default 10%), with the held route re-costed on the *current* raster so a route only looks
 worse when the risk has actually moved.
 
-**Dials.** `[sim] risk_weight` is §5.1's exchange rate — the metres of movement cost a
-commander will spend to avoid one unit of exposure — and a unit may override it. Sweeping it
+**Dials.** `[sim] risk_weight` is §5.1's exchange rate - the metres of movement cost a
+commander will spend to avoid one unit of exposure - and a unit may override it. Sweeping it
 traces the Pareto frontier between arriving quickly and arriving alive, which is a better
 answer than any single "optimal" route.
 
@@ -317,23 +303,22 @@ answer than any single "optimal" route.
 
 - **The planned route is quantised to the decision grid.** Waypoints are coarse-cell
   centres, so a unit deviates up to about half a cell from the ideal line even at
-  `risk_weight = 0` — measured at ~170 m on a 7 km map at 48 cells. It is the cost of
+  `risk_weight = 0` - measured at ~170 m on a 7 km map at 48 cells. It is the cost of
   planning affordably, and it is why V73 measures deviation in *hundreds* of metres rather
   than asserting a straight line.
 - **Risk is enemy observation only.** §5.2's definition: how detectable a reference mover
-  would be. It does not include being shot — a unit will happily route through a beaten zone
+  would be. It does not include being shot - a unit will happily route through a beaten zone
   it cannot be seen from. Folding weapon reach into the raster is the natural next step.
 - **The mover is a reference, not the unit.** Risk is a property of the ground and the
   enemy's sensors, computed once per side, so an unusually stealthy unit is not routed
   differently from a conspicuous one.
-- **No demonstration scenario yet.** V72–V74 pin the mechanism on controlled fixtures, but
+- **No demonstration scenario yet.** V72-V74 pin the mechanism on controlled fixtures, but
   the bundled scenarios do not exercise it. A scenario in which the route choice visibly
   changes the outcome needs geometry where the direct line is watched, the detour is
-  affordable, and the crossing completes inside the run — three constraints that took more
+  affordable, and the crossing completes inside the run - three constraints that took more
   tuning than the phase had. Outstanding.
 
 ### 10.7 Deferred
 
-~~**Movement decisions in-loop**~~ — built, and it is §10.5 above. The prediction it was
-deferred on turned out right: the coarse-grid machinery built for §10.3 is exactly what made
-it affordable, and a full-resolution raster would have cost ~4 s an epoch.
+**A multi-epoch allocation objective.** §10.2 scores a single epoch, which is what makes an
+exactly solved assignment myopic; see §10.2's measured cost.

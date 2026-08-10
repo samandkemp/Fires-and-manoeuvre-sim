@@ -1,11 +1,11 @@
-# C2 post stat blocks. Abstract placeholder dials — see docs/DESIGN.md §11.
+# C2 post stat blocks. Abstract placeholder dials - see docs/DESIGN.md §11.
 #
 # A C2 post does not shoot, sense, or move. Its only effect is that air-defence batteries
 # within `coordination_range_m` allocate as one group instead of each independently taking
 # whatever is nearest. Remove the post and they revert.
 #
 # The signature values are deliberately HIGH. A command post concentrates antennas and
-# vehicles, which is what makes it findable — and being findable is the point, because it
+# vehicles, which is what makes it findable - and being findable is the point, because it
 # is the asset an attacker most wants to kill first.
 
 [ad_command_post]
@@ -28,7 +28,7 @@ optical = 0.45
 # side-wide fire plan and artillery outside it picks targets for itself.
 #
 # The radius is deliberately small enough that a scenario can put some guns in and some
-# out — which is the case worth studying, because a net covering everybody and a net
+# out - which is the case worth studying, because a net covering everybody and a net
 # covering nobody both collapse to a single rule. See `scenarios/fires_c2.toml`.
 [fires_net]
 coordination_range_m = 1500.0

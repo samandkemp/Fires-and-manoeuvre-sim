@@ -8,14 +8,14 @@ publish = false
 # The Bevy front-end: reads sim_core state, renders the tactical map + egui controls.
 # Depends on sim_core; sim_core never depends on this crate or on Bevy.
 #
-# `dynamic_linking` is a dev-only convenience for fast rebuilds — remove it
+# `dynamic_linking` is a dev-only convenience for fast rebuilds - remove it
 # (or feature-gate it) before making a release build.
 
 [dependencies]
 sim_core = { path = "../sim_core" }
 bevy = { version = "0.19", features = ["dynamic_linking"] }
-# bevy_egui pinned to 0.40 (not 0.41): bevy_pancam's egui integration — don't pan the
-# map while the cursor is over a panel — requires ^0.40.
+# bevy_egui pinned to 0.40 (not 0.41): bevy_pancam's egui integration - don't pan the
+# map while the cursor is over a panel - requires ^0.40.
 bevy_egui = "0.40"
 bevy_pancam = { version = "0.21", features = ["bevy_egui_0_40"] }
 ndarray = { version = "0.16", features = ["rayon"] }  # raster type + parallel overlays

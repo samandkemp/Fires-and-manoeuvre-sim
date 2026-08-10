@@ -43,7 +43,7 @@ fn v19_direct_hit_probability_monte_carlo() {
     );
 }
 
-// V20: P_hit monotone — down in range, up in target size.
+// V20: P_hit monotone - down in range, up in target size.
 #[test]
 fn v20_direct_hit_monotonicity() {
     let mut last = 1.1;

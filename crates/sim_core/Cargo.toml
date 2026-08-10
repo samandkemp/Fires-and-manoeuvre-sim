@@ -5,7 +5,7 @@ edition = "2021"
 description = "Headless, deterministic OR engine: terrain, LOS, sensing, fires, suppression, movement DP, game theory, EW"
 publish = false
 
-# The headless OR engine. No Bevy, no rendering, no wall-clock — pure and
+# The headless OR engine. No Bevy, no rendering, no wall-clock - pure and
 # deterministic given (scenario, seed). See the README's "Design goals".
 #
 # NOTE: SETUP.md calls this crate `core`, but a dependency named `core` shadows
@@ -13,12 +13,12 @@ publish = false
 # `::core::` paths (verified: thiserror's derive fails to compile). Hence `sim_core`.
 
 [dependencies]
-# SETUP.md says glam 0.29, but Bevy 0.19 resolves glam 0.32 (checked Cargo.lock) —
+# SETUP.md says glam 0.29, but Bevy 0.19 resolves glam 0.32 (checked Cargo.lock) -
 # versions must match or the "types interop cleanly" promise breaks silently.
 glam = "0.32"        # vectors/matrices; same lib Bevy uses, so types interop cleanly
 ndarray = { version = "0.16", features = ["rayon"] }  # terrain rasters; rayon = parallel Zip
 rand = "0.9"         # seeded RNG (0.9: gen->random rename; portable ChaCha stream)
-rand_chacha = "0.9"  # ChaCha8Rng — the versioned-stable SimRng (see lib.rs)
+rand_chacha = "0.9"  # ChaCha8Rng - the versioned-stable SimRng (see lib.rs)
 rand_distr = "0.5"   # normal/other distributions for dispersion & stochastic models
 serde = { version = "1", features = ["derive"] }  # TOML <-> struct mapping
 toml = "0.8"         # scenario / stat-block parsing

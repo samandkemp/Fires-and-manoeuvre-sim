@@ -2,33 +2,33 @@
 
 ---
 
-## 8. Electronic warfare & partial observability *(Phase 8)*
+## 8. Electronic warfare & partial observability
 
 EW degrades sensing; with imperfect detection the observer reasons over a **belief** (a
-probability distribution) rather than ground truth — the POMDP layer. EW is a clean
+probability distribution) rather than ground truth - the POMDP layer. EW is a clean
 modifier on the sensing channel: with no jammers it is the identity, so EW-off reduces
 bit-for-bit to §3 (V40).
 
-### 8.1 EW — jamming as a sensing modifier
+### 8.1 EW - jamming as a sensing modifier
 
 A jammer protects its own side's units by degrading the enemy's detection of them. A
 jammer at `p` with `power ∈ [0,1]` and `radius` contributes a factor
 `g = 1 − power·(1 − d/radius)` inside its radius (so `1−power` at the centre, `1` at the
 edge); factors compose multiplicatively. The glimpse rate becomes
-`λ_eff = λ · Π_j g_j(target)` over the target's own side's jammers — identity when there
+`λ_eff = λ · Π_j g_j(target)` over the target's own side's jammers - identity when there
 are none. Data-driven: `[[side.jammers]] pos/power/radius_m` in the scenario.
 
-### 8.2 Belief state — the POMDP layer
+### 8.2 Belief state - the POMDP layer
 
 An **inference layer over the sim**, not sim state. `bayes_update(prior, likelihood)`
 is the generic discrete posterior; a `SpatialBelief` holds a per-cell distribution over
 enemy position with `update` (Bayes by an observation-likelihood raster), `predict` (a
 diffusion motion model that raises entropy), `entropy`, and `most_likely_cell`. The key
 observation model is **negative information**: `no_detection_likelihood` = per cell,
-`P(no detection | enemy there)`, which reuses the sensing model *and EW* — cells the
+`P(no detection | enemy there)`, which reuses the sensing model *and EW* - cells the
 sensor covers well get low likelihood (the enemy would have been seen), dead ground and
 jammed cells get ~1. Multiplying an uninformative prior by the exposure-window
-no-detection likelihood is "where an undetected enemy could be" — the app's belief
+no-detection likelihood is "where an undetected enemy could be" - the app's belief
 heatmap (green = cleared coverage, magenta = plausible hiding ground).
 
 **`predict` is not mass-conserving at the map edge.** It mixes each cell with the *mean of
@@ -40,7 +40,7 @@ moves, and repeated prediction drifts belief slightly toward the map interior wi
 evidence behind it. At the §10.3 grid (48×48) over a few dozen epochs this is far below the
 resolution any decision is taken at.
 
-### 8.3 Validation gates (V40–V43)
+### 8.3 Validation gates (V40-V43)
 
 | # | Property | Reference |
 |---|----------|-----------|

@@ -9,7 +9,7 @@ publish = false
 # tables lives here, named for its V-number, and checks a model against a *stated*
 # analytical reference rather than against remembered output.
 #
-# Depends on sim_core ONLY — never Bevy. Because this crate is outside sim_core, the gates
+# Depends on sim_core ONLY - never Bevy. Because this crate is outside sim_core, the gates
 # can only reach the public API, which is deliberate: a model that cannot be validated
 # from outside is a model whose interface is wrong. The handful of tests that check
 # genuinely internal properties (the RNG draw stream) stay as unit tests inside sim_core.

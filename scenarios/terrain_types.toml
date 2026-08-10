@@ -1,4 +1,4 @@
-# Per-terrain-type dials. Abstract placeholder values — the models are the product,
+# Per-terrain-type dials. Abstract placeholder values - the models are the product,
 # these are the knobs. See docs/DESIGN.md §1.3.
 #
 #   feature_height_m : canopy / building height above ground (blocking surface z + f)

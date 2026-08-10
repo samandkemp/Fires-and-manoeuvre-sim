@@ -5,7 +5,7 @@
 //! the observation channel the POMDP layer consumes.
 //!
 //! Events hold **indices** into the asset lists, which is why removal tombstones instead
-//! of shifting those lists (V54) — a shift would silently repoint recorded history at
+//! of shifting those lists (V54) - a shift would silently repoint recorded history at
 //! the wrong asset.
 
 use glam::Vec2;
@@ -28,7 +28,7 @@ pub struct DetectionEvent {
 /// Ground fires used to iterate the unit list alone, which is what made counter-battery
 /// against a SAM impossible to express. Every asset class has elements and takes §2.3 area
 /// damage identically, so the only thing that had to change was *which lists are searched*
-/// — this names the list.
+/// - this names the list.
 ///
 /// Ordered so a fire log sorts by target list then index, which keeps the ordering stable
 /// as new asset classes are added at the end.
@@ -44,7 +44,7 @@ pub enum FireTarget {
 
 impl FireTarget {
     /// The unit index, if this was a unit. For readers that only care about the ground
-    /// fight — most metrics, and every gate written before counter-battery existed.
+    /// fight - most metrics, and every gate written before counter-battery existed.
     #[must_use]
     pub fn unit(self) -> Option<usize> {
         match self {
@@ -61,7 +61,7 @@ pub struct FireEvent {
     pub time_s: f64,
     /// Index of the shooting unit.
     pub shooter: usize,
-    /// What was hit — a unit, an air-defence battery, or a C2 post.
+    /// What was hit - a unit, an air-defence battery, or a C2 post.
     pub target: FireTarget,
     /// Sub-elements destroyed this epoch.
     pub casualties: u32,

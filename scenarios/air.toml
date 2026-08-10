@@ -1,4 +1,4 @@
-# Air asset stat blocks. Abstract placeholder dials — see docs/DESIGN.md §9.
+# Air asset stat blocks. Abstract placeholder dials - see docs/DESIGN.md §9.
 #
 # `sensor` (optional) makes the airframe a recce platform: the id keys into sensors.toml
 # and the sensor rides the airframe, seeing from its altitude and facing its heading.
@@ -7,7 +7,7 @@
 # `munitions` + `expendable` span the spectrum: a reusable carrier drops several bombs
 # and flies on; a one-way attack munition carries one and dies with it.
 #
-# `max_turn_rate_deg_s` implies a minimum turn radius v/ω — small quadcopters turn on a
+# `max_turn_rate_deg_s` implies a minimum turn radius v/ω - small quadcopters turn on a
 # pin, larger fixed-wing airframes carve wide arcs, which is what makes an orbit legible.
 
 [recce_uas]
@@ -33,8 +33,8 @@ munitions = 2
 expendable = false             # a carrier: releases and flies on
 # Standoff release, deliberately **outside** a CIWS envelope (`ciws` reaches 2000 m).
 # This dial and the CIWS's max_range are a matched pair: set it inside that bubble and the
-# drone must fly through the gun to reach its release point, so the long-range SAM — and
-# the cueing chain feeding it — stop mattering at all.
+# drone must fly through the gun to reach its release point, so the long-range SAM - and
+# the cueing chain feeding it - stop mattering at all.
 release_range_m = 2500.0
 [strike_uas.signature]
 optical = 0.35
@@ -44,7 +44,7 @@ role = "strike"
 height_m = 0.4
 silhouette_width_m = 0.5
 cruise_speed_m_s = 30.0
-max_turn_rate_deg_s = 90.0     # r_min ≈ 19 m — turns on a pin
+max_turn_rate_deg_s = 90.0     # r_min ≈ 19 m - turns on a pin
 endurance_s = 900.0
 payload = "fpv_warhead"
 munitions = 1
@@ -53,14 +53,14 @@ release_range_m = 15.0         # flies into the target
 [fpv.signature]
 optical = 0.12                 # very hard to see, very short legs
 
-# `role` sorts a target-priority list (DESIGN §13.1) — air defence uses it to decide
+# `role` sorts a target-priority list (DESIGN §13.1) - air defence uses it to decide
 # whether to engage the spotter or the shooter first.
 
 # A standoff SEAD platform: a strike airframe whose payload is an anti-radiation missile.
 #
 # `release_range_m` sits just **outside** the `ciws` envelope (2000 m), which is what makes
-# this a SEAD aircraft rather than a suicide mission. Measured: at 1500 m — inside the
-# bubble — the drone is shot down before it can release on 99.6% of seeds, and the seeker's
+# this a SEAD aircraft rather than a suicide mission. Measured: at 1500 m - inside the
+# bubble - the drone is shot down before it can release on 99.6% of seeds, and the seeker's
 # accuracy never gets tested at all. The release range and the defending battery's
 # `max_range_m` are a matched pair, and this is what happens when you get it wrong.
 #

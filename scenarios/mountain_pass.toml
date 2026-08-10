@@ -1,6 +1,6 @@
 # A composable terrain recipe (docs/DESIGN.md §1.3): the same map described rather than
 # picked from a menu. A rolling base, a ridge driven through the middle, woodland on the
-# flanks, then a small town in the valley — layers applied in the order written.
+# flanks, then a small town in the valley - layers applied in the order written.
 #
 # The whole point of the map: the ridge splits the battlespace, so whoever holds
 # observation over the pass sees the other side move, and everyone else is in defilade.

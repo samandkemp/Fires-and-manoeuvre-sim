@@ -1,8 +1,8 @@
-//! V58 — the decision layer is an identity when there is nothing to decide.
+//! V58 - the decision layer is an identity when there is nothing to decide.
 //! `docs/DESIGN.md` §10.4.
 //!
 //! Phase 10 added three phases to the epoch: track maintenance, sensor tasking and fire
-//! allocation. All three are *deterministic* — they read state and write decisions, and
+//! allocation. All three are *deterministic* - they read state and write decisions, and
 //! draw no random numbers. This gate holds them to that in the way the project has held
 //! every other added phase (V40 for EW, V52 for air):
 //!
@@ -107,7 +107,7 @@ fn duel(allocation: &str, tasking: bool) -> Sim {
 }
 
 // V58 (identity half): with one shooter and one reachable target there is only one
-// targeting answer, so every allocation rule must produce the *same* fire log — and
+// targeting answer, so every allocation rule must produce the *same* fire log - and
 // switching sensor tasking on must change nothing when no sensor can be steered. Any
 // randomness drawn by the new phases would shift the stream and break this.
 #[test]
@@ -139,7 +139,7 @@ fn v58_decision_layer_is_a_zero_draw_identity() {
 }
 
 // V58 (reproducibility half): the same scenario and seed reproduce every log exactly,
-// and the decision phases are stable under repeated evaluation — running the sim twice
+// and the decision phases are stable under repeated evaluation - running the sim twice
 // must agree down to the last round.
 #[test]
 fn v58_single_shooter_matches_the_old_rule() {

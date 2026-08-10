@@ -16,7 +16,7 @@ fn v45_slant_range() {
     let a = Vec2::new(100.0, 100.0);
 
     // Equal actor heights on flat ground ⇒ exactly the horizontal distance. This is
-    // why adopting slant range leaves V14–V18 (all flat-range gates) untouched.
+    // why adopting slant range leaves V14-V18 (all flat-range gates) untouched.
     let b = Vec2::new(500.0, 100.0);
     assert_eq!(slant_range(&flat, a, 2.0, b, 2.0), a.distance(b));
 
@@ -104,7 +104,7 @@ fn v7_symmetry() {
     let g = hills(17);
     let mut rng_s = 0x9E37u64;
     let mut next = move || {
-        // Tiny LCG — test-local, deterministic, no rand dependency questions.
+        // Tiny LCG - test-local, deterministic, no rand dependency questions.
         rng_s = rng_s
             .wrapping_mul(6364136223846793005)
             .wrapping_add(1442695040888963407);

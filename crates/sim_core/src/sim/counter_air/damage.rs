@@ -1,6 +1,6 @@
 //! What a burst does to the ground (`docs/DESIGN.md` §2.3, §12).
 //!
-//! Batteries, posts and units take the **same** Carleton kernel — they are all vehicles
+//! Batteries, posts and units take the **same** Carleton kernel - they are all vehicles
 //! sitting on the ground, and nothing about the maths cares which list they live in. That
 //! is what made air defence SEAD-able rather than immortal.
 
@@ -18,7 +18,7 @@ impl Sim {
     /// Assets beyond `3·R_L` are skipped: the kernel is below 1.2e-4 there, so the cutoff
     /// keeps the sweep `O(assets)` without changing the model in any observable way.
     ///
-    /// Batteries and posts take the same kernel as a unit — they are vehicles sitting on
+    /// Batteries and posts take the same kernel as a unit - they are vehicles sitting on
     /// the ground, and nothing about the maths cares which list they live in. That is what
     /// makes them SEAD-able (§12); before it, a battery was simply immortal.
     ///
@@ -54,7 +54,7 @@ impl Sim {
             }
         }
 
-        // A post shoots nothing, so killing it costs the defender no firepower at all —
+        // A post shoots nothing, so killing it costs the defender no firepower at all -
         // only the coordination (§11).
         for i in 0..self.c2.len() {
             let (alive, side, pos, elements) = {
@@ -101,7 +101,7 @@ impl Sim {
     /// taken), else the number of its elements destroyed.
     ///
     /// The one place the §2.3 kernel meets the dice, shared by all three asset lists. They
-    /// had three copies of this loop, which had already begun to drift — only the unit copy
+    /// had three copies of this loop, which had already begun to drift - only the unit copy
     /// applied suppression, correctly, but as an absence rather than a decision.
     ///
     /// **One draw per surviving element, in element order**, exactly as before: the caller

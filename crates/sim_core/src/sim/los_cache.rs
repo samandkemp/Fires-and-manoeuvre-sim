@@ -3,7 +3,7 @@
 //! # Why this exists
 //!
 //! The glimpse loop tests every (sensor, untracked target) pair *every tick*, and each
-//! test walks the terrain grid — ~77 µs on a 10 km map. Profiling the shipped scenarios
+//! test walks the terrain grid - ~77 µs on a 10 km map. Profiling the shipped scenarios
 //! showed the tick cost tracking the undetected-unit count almost exactly: a unit that
 //! stays hidden behind a ridge is re-walked by every sensor, every tick, for the whole
 //! run, always to be told the same thing.
@@ -14,8 +14,8 @@
 //!
 //! # Why it is exact, not approximate
 //!
-//! An entry is reused only when all four endpoint quantities — both positions and both
-//! actor heights — compare **exactly equal** to the ones cached. No tolerance, no
+//! An entry is reused only when all four endpoint quantities - both positions and both
+//! actor heights - compare **exactly equal** to the ones cached. No tolerance, no
 //! rounding, no staleness window. Anything that moves by so much as one float ulp misses
 //! the cache and pays the full traversal, so a cache hit is the same computation the
 //! cache miss would have performed. That is why the event logs stay bit-identical (V18,
@@ -30,7 +30,7 @@ use glam::Vec2;
 
 /// The two endpoints a query was asked about: positions and actor heights.
 ///
-/// Compared with `==` on every field, so any movement at all — down to one float ulp —
+/// Compared with `==` on every field, so any movement at all - down to one float ulp -
 /// misses the cache. That exactness is what keeps a hit indistinguishable from a miss.
 #[derive(Clone, Copy, PartialEq)]
 pub(super) struct Endpoints {
@@ -81,7 +81,7 @@ pub(super) struct LosCache {
 }
 
 impl LosCache {
-    /// Resize and clear if the asset lists have changed shape — placing or removing an
+    /// Resize and clear if the asset lists have changed shape - placing or removing an
     /// asset renumbers the table, so the old contents are meaningless rather than merely
     /// stale.
     pub(super) fn fit(&mut self, sensors: usize, units: usize, air: usize) {
@@ -106,7 +106,7 @@ impl LosCache {
     }
 
     /// Row-major slot for one (sensor, target) pair, or `None` if either index is beyond
-    /// the table — which happens between an asset being added and the next `fit`.
+    /// the table - which happens between an asset being added and the next `fit`.
     fn slot(&self, key: Key) -> Option<usize> {
         let stride = self.units + self.air;
         let offset = match key.kind {
@@ -139,7 +139,7 @@ impl LosCache {
         }
     }
 
-    /// Hits and misses since the last reset — for the bench harness and for checking the
+    /// Hits and misses since the last reset - for the bench harness and for checking the
     /// cache is actually earning its keep on a given scenario.
     pub(super) fn stats(&self) -> (u64, u64) {
         (self.hits, self.misses)

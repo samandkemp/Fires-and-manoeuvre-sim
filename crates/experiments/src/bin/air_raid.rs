@@ -29,23 +29,23 @@ const START_X: f32 = 6000.0;
 const TARGET: Vec2 = Vec2::new(1000.0, 2500.0);
 const DRONE_SPEED: f32 = 50.0;
 const DRONE_ALT: f32 = 400.0;
-/// Gun envelope, metres — also what sets the time a drone spends inside it.
+/// Gun envelope, metres - also what sets the time a drone spends inside it.
 const AD_RANGE: f32 = 2500.0;
 const KILL_RATE: f32 = 0.35;
 const REACTION_S: f32 = 2.0;
 /// Slant range at which the drone releases. Note it must exceed `DRONE_ALT`: release
 /// range is a *slant* range (§9.1), so a drone at 400 m that only releases inside 300 m
-/// can never release at all — directly overhead it is still 400 m from the aim point.
+/// can never release at all - directly overhead it is still 400 m from the aim point.
 const RELEASE_RANGE: f32 = 900.0;
 
 /// Horizontal distance at which a level drone at `DRONE_ALT` is `slant_m` from a ground
-/// point — the geometry that turns a slant envelope into a time in that envelope.
+/// point - the geometry that turns a slant envelope into a time in that envelope.
 fn horizontal_at_slant(slant_m: f32) -> f32 {
     (slant_m * slant_m - DRONE_ALT * DRONE_ALT).max(0.0).sqrt()
 }
 
 /// Seconds of warning a radar of `radar_range_m` gives before the drone reaches the gun's
-/// envelope — the warning lead `D` of the §9.5 timeline.
+/// envelope - the warning lead `D` of the §9.5 timeline.
 fn warning_lead_s(radar_range_m: f32) -> f32 {
     ((horizontal_at_slant(radar_range_m) - horizontal_at_slant(AD_RANGE)) / DRONE_SPEED).max(0.0)
 }
@@ -197,7 +197,7 @@ fn main() {
         println!("{latency:>9.1}  {w_eff:>9.1}  {observed:>10.3}  {theory:>12.3}  {bar}");
     }
 
-    // Self-cueing is the same battery with the latency term switched off — the cleanest
+    // Self-cueing is the same battery with the latency term switched off - the cleanest
     // statement of what an organic sensor is worth.
     let delay = l_star * 0.9; // deep enough into the curve to bite
     let self_cued: u32 = (0..SEEDS)
@@ -218,7 +218,7 @@ fn main() {
     // The §9.5 clock starts at *detection*, not at envelope entry. A radar that reaches
     // further starts it earlier, so a cue can be ageing through the comms chain while the
     // drone is still inbound. Early-warning range and comms latency trade directly
-    // against one another — the practical form of the sensor-to-shooter timeline, and
+    // against one another - the practical form of the sensor-to-shooter timeline, and
     // the reason 1a has to suppress early warning to see the closed form at all.
     let late = l_star + 20.0; // a latency that is fatal without early warning
     println!("--- 1b. early-warning range vs a fixed {late:.0} s comms latency ---");
@@ -263,7 +263,7 @@ fn main() {
         }
         println!();
     }
-    println!("(cells are mean leakers per raid — drones that survived to release)\n");
+    println!("(cells are mean leakers per raid - drones that survived to release)\n");
 
     // --- 3. Channels: what saturation actually costs ---------------------------------
     println!("--- 3. engagement channels vs raid size (self-cued, unlimited magazine) ---");

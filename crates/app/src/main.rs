@@ -172,7 +172,7 @@ fn setup(mut commands: Commands, mut images: ResMut<Assets<Image>>) {
 /// the new extent.
 ///
 /// Separate from the panel because a scenario switch changes the *terrain*, so it must
-/// hold mutable access to the map sprite and the camera — queries the panel cannot take
+/// hold mutable access to the map sprite and the camera - queries the panel cannot take
 /// while it already borrows the camera immutably for its click handling.
 fn apply_scenario_load(
     mut pending: ResMut<PendingLoad>,
@@ -189,7 +189,7 @@ fn apply_scenario_load(
     let data = match terrain_view::load_scenario(&name) {
         Ok(d) => d,
         Err(e) => {
-            // A bad scenario must not take the app down mid-session — keep the old one.
+            // A bad scenario must not take the app down mid-session - keep the old one.
             error!("could not load scenario '{name}': {e}");
             return;
         }

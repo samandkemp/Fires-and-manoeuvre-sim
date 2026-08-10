@@ -1,4 +1,4 @@
-//! V70 — what blocks an indirect shooter is a lapsed track, not terrain.
+//! V70 - what blocks an indirect shooter is a lapsed track, not terrain.
 //! `docs/DESIGN.md` §2, §10.1, §13.4.
 //!
 //! V66 established that line of sight and range **block** a pairing rather than merely
@@ -7,12 +7,12 @@
 //! unengageable. Its fixture exercises **direct** fire throughout.
 //!
 //! Indirect fire is eligible on different terms, and this gate says so in both directions.
-//! A shell arcs, so a ridge is irrelevant to it — what it needs is a *track*, held by
+//! A shell arcs, so a ridge is irrelevant to it - what it needs is a *track*, held by
 //! somebody on its own side. So the asymmetry is:
 //!
 //! | | blocked by terrain | blocked by a lapsed track |
 //! |---|---|---|
-//! | direct | yes | no — it needs no track at all |
+//! | direct | yes | no - it needs no track at all |
 //! | indirect | **no** | **yes**, `track_hold_s` after the last look |
 //!
 //! Both halves matter. Without the first, artillery would inherit the sightline
@@ -47,14 +47,14 @@ fn libraries() -> Libraries {
                 class,
                 rof_rounds_per_min: 12.0,
                 // Both reach far past the target, so range can never be the reason either
-                // one holds its fire — leaving line of sight as the only difference.
+                // one holds its fire - leaving line of sight as the only difference.
                 max_range_m: 8000.0,
                 dispersion_mrad: 0.5,
                 p_kill_given_hit: 0.9,
                 // Deliberately almost harmless: expected damage per round is
                 // R^2/(sigma^2 + R^2) ~ 0.01 at this CEP, so the target survives long
                 // enough for a track to lapse under it. This gate is about *eligibility*,
-                // and a target that dies releases the lock for the wrong reason — which is
+                // and a target that dies releases the lock for the wrong reason - which is
                 // exactly what an earlier cut of this fixture measured.
                 cep_m: 400.0,
                 lethal_radius_m: 35.0,
@@ -100,7 +100,7 @@ fn libraries() -> Libraries {
     libs
 }
 
-/// One gun west of a ridge, the target east of it, and an observer east of it too — so the
+/// One gun west of a ridge, the target east of it, and an observer east of it too - so the
 /// target is *tracked* by the side while being *invisible* to the gun.
 fn masked_target(gun_type: &str) -> Sim {
     let scn = Scenario::from_toml_str(&format!(
@@ -173,7 +173,7 @@ fn v70_the_ridge_masks_the_shooter_but_not_the_observer() {
 }
 
 // Half one: a shell arcs. The howitzer engages a target it cannot see, because the side
-// holds a track on it — and the direct-fire gun in the identical position does not.
+// holds a track on it - and the direct-fire gun in the identical position does not.
 #[test]
 fn v70_indirect_fire_is_not_blocked_by_terrain_but_direct_fire_is() {
     let mut indirect = masked_target("howitzer");
@@ -208,7 +208,7 @@ fn v70_an_indirect_lock_is_released_when_the_track_lapses() {
     sim.add_jammer(Side::Red, glam::Vec2::new(TARGET_X, LANE_Y), 1.0, 1500.0);
 
     // The target must survive this, or the lock would be released because it died rather
-    // than because the track lapsed — which is what an earlier cut of this fixture actually
+    // than because the track lapsed - which is what an earlier cut of this fixture actually
     // measured, and it passed.
     sim.run_until(sim.time_s() + 120.0);
     assert!(

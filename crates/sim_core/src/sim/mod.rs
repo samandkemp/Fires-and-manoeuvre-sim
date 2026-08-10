@@ -8,13 +8,13 @@
 //! | Module | What it holds |
 //! |---|---|
 //! | this file | the [`Sim`] struct, [`Sim::step_one`] (the tick), and the read accessors |
-//! | [`state`] | what a placed asset *is* — [`UnitState`], [`SensorState`], [`JammerState`] |
+//! | [`state`] | what a placed asset *is* - [`UnitState`], [`SensorState`], [`JammerState`] |
 //! | [`events`] | the append-only logs every metric is read back from |
 //! | [`setup`] | building a sim and placing assets into it |
 //! | [`commands`] | what the app's mouse can change between ticks |
 //! | [`detection`] | the glimpse process, EW, and the track lifecycle |
 //! | [`engagement`] | ground fires: target selection and round resolution |
-//! | [`counter_air`] | the air phases — air detection, air defence, strike release |
+//! | [`counter_air`] | the air phases - air detection, air defence, strike release |
 //! | [`planning`] | movement decisions: a unit with an objective plans its own route |
 //!
 //! Those are all child modules of `sim`, which is what lets them reach [`Sim`]'s private
@@ -73,7 +73,7 @@ pub struct Sim {
     repath_margin: f32,
     planner: Option<planning::Planner>,
     // Each side's target priority and its directly ordered engagements (§13). Indexed
-    // Blue, Red — an array rather than two fields so every lookup goes through `Side`.
+    // Blue, Red - an array rather than two fields so every lookup goes through `Side`.
     doctrine: [crate::doctrine::Doctrine; 2],
     orders: [Vec<crate::doctrine::Order>; 2],
     // Sensor-tasking dials and state (§10.3).
@@ -93,7 +93,7 @@ pub struct Sim {
     air_defence_events: Vec<AirDefenceEvent>,
     strike_events: Vec<StrikeEvent>,
     // Scratch buffers, reused across epochs so a long battle does not allocate per epoch.
-    // They carry no state between epochs — each user clears before filling.
+    // They carry no state between epochs - each user clears before filling.
     near_misses: Vec<u32>,
     views: Vec<(usize, SensorView)>,
     /// Memoised line-of-sight for (sensor, target) pairs whose endpoints have not moved.
@@ -108,14 +108,14 @@ impl Sim {
     /// The phase order is the determinism contract (`docs/DESIGN.md` §9.6). The air
     /// phases are **appended and draw zero RNG values when there are no air or
     /// air-defence assets**, so a drone-free scenario reproduces the pre-air event log
-    /// bit-for-bit (V52) — the same identity posture EW takes (V40).
+    /// bit-for-bit (V52) - the same identity posture EW takes (V40).
     pub fn step_one(&mut self) {
         self.time_s += f64::from(self.dt_s);
 
         // 1. Ground movement: advance each live, unpinned unit along its route.
         self.advance_units();
 
-        // 2. Air movement — pure, no RNG, before sensing so positions are current.
+        // 2. Air movement - pure, no RNG, before sensing so positions are current.
         let dt = self.dt_s;
         for a in &mut self.air {
             a.advance(dt);
@@ -127,13 +127,13 @@ impl Sim {
         // unless it is carried, so a sim with no air is bit-identical here.
         self.detect_units();
 
-        // 4. Sensing vs air. Zero iterations — and so zero draws — with no air assets.
+        // 4. Sensing vs air. Zero iterations - and so zero draws - with no air assets.
         self.detect_air();
 
         // 5. Suppression recovery: memoryless per-tick step-down (fixed unit order).
         self.recover_suppression();
 
-        // 6, 7. Counter-air and strike — both no-ops without air assets. The C2 link is
+        // 6, 7. Counter-air and strike - both no-ops without air assets. The C2 link is
         // refreshed first, because who is in the net decides how the batteries allocate;
         // it is a no-op without C2 posts and draws no randomness either way (§11.2).
         self.update_c2_links();
@@ -162,7 +162,7 @@ impl Sim {
         }
     }
 
-    /// Move every live, unpinned unit along its route (§6.1). Pure — a Pinned unit does
+    /// Move every live, unpinned unit along its route (§6.1). Pure - a Pinned unit does
     /// not advance, which is the Phase 4 → Phase 5 wiring (V38).
     fn advance_units(&mut self) {
         let dt = self.dt_s;
@@ -400,7 +400,7 @@ mod tests {
 
     // V52 (identity half): the air phases must draw **zero** RNG values when there are no
     // air or air-defence assets. Driving them repeatedly between ticks of an otherwise
-    // ordinary ground run must therefore leave the event log bit-identical — if any of
+    // ordinary ground run must therefore leave the event log bit-identical - if any of
     // them ever draws unconditionally, the streams diverge and this fails.
     #[test]
     fn v52_air_off_is_a_zero_draw_identity() {

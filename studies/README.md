@@ -1,8 +1,8 @@
 # Studies
 
 A **study** is a dial space: which dials to explore, over what ranges, measuring what. It is
-a file rather than a pile of command-line flags because a dial space is a *design* —
-something to commit, review and re-run — not something to retype and half-remember.
+a file rather than a pile of command-line flags because a dial space is a *design* -
+something to commit, review and re-run - not something to retype and half-remember.
 
 ```
 cargo run -p experiments --release --bin sensitivity -- studies/sensing.toml --seeds 40
@@ -40,7 +40,7 @@ design_seed  = 1               # the dial-space sample; separate from simulation
 ```
 
 Dials are **continuous only**. A range is a pair of numbers, and every design point is a
-float within it, so a categorical dial like `sim.allocation` has no place here — use
+float within it, so a categorical dial like `sim.allocation` has no place here - use
 `factorial` for those.
 
 ## What comes back
@@ -55,7 +55,7 @@ what can be ignored before the expensive pass runs.
 |---|---|
 | `S1` | the share of the outcome's variance this dial explains **alone** |
 | `ST` | the share it is involved in altogether, including every interaction |
-| `ST − S1` | the share that runs **through** interactions — what a one-dial sweep cannot see |
+| `ST − S1` | the share that runs **through** interactions - what a one-dial sweep cannot see |
 
 The closing line adds up the first-order indices. Near 1 means the dials are close to
 additive and one-at-a-time sweeps are sound. Well below 1 means a large share of the variance
@@ -76,6 +76,6 @@ A high `ST` says a dial matters *on this scenario, over this range, for this met
 three qualifiers are load-bearing: widen a range and a dial can go from inert to dominant,
 because a dial that is already saturated over its range has nothing left to give.
 
-The estimator itself is gated — V71 checks it against the analytic Sobol indices of the
+The estimator itself is gated - V71 checks it against the analytic Sobol indices of the
 Ishigami function, whose third input has a first-order index of exactly zero and a large
 total one. See [`docs/VALIDATION.md`](../docs/VALIDATION.md).

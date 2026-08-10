@@ -2,7 +2,7 @@
 //! whether it held.
 //!
 //! `cargo test` answers "are the tests green". This answers the question the project
-//! actually cares about — *is the maths still right, and right against what?* — by
+//! actually cares about - *is the maths still right, and right against what?* - by
 //! printing each gate beside the closed form or invariant it is compared to.
 //!
 //! Run: `cargo run -p validation --bin validation_report`

@@ -124,7 +124,7 @@ fn v27_matches_bellman_ford() {
     }
 }
 
-/// Independent shortest-cost reference by repeated relaxation (Bellman–Ford style).
+/// Independent shortest-cost reference by repeated relaxation (Bellman-Ford style).
 fn bellman_ford_cost(
     g: &TerrainGrid,
     risk: &Array2<f32>,

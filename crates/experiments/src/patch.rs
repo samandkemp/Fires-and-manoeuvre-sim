@@ -5,8 +5,8 @@
 //! parsed [`Scenario`]: the file is read as a `toml::Value`, the named leaf is replaced,
 //! and the result is handed back to `Scenario::from_toml_str`.
 //!
-//! Doing it that way means the sweep needs no knowledge of the scenario schema at all —
-//! any field reachable by a dotted path is sweepable, including ones added later — and,
+//! Doing it that way means the sweep needs no knowledge of the scenario schema at all -
+//! any field reachable by a dotted path is sweepable, including ones added later - and,
 //! more importantly, the patched scenario goes through **exactly the same validation** as
 //! one loaded from disk. A typo'd path or an out-of-range value fails at load with the
 //! normal error, not silently.
@@ -18,7 +18,7 @@
 //! ```
 //!
 //! **Stat-block libraries too.** A path whose first segment names a library file is applied
-//! to that file instead — so a sensor's detection rate and a weapon's dispersion are as
+//! to that file instead - so a sensor's detection rate and a weapon's dispersion are as
 //! sweepable as a `[sim]` dial:
 //!
 //! ```text
@@ -122,7 +122,7 @@ pub fn split_values(list: &str) -> Vec<String> {
 /// --set 'red.units.0.pos=[4800.0, 1500.0]'
 /// ```
 ///
-/// Without this, list-valued dials — a target priority, a position, a route — would be the
+/// Without this, list-valued dials - a target priority, a position, a route - would be the
 /// one part of the schema a sweep could not reach.
 #[must_use]
 pub fn parse_value(text: &str) -> toml::Value {
@@ -179,7 +179,7 @@ pub fn split(overrides: &[Override]) -> (Vec<Override>, Vec<Override>) {
 ///
 /// Loads the directory normally first, then re-parses only the files a path names. The
 /// patched text goes through the same `library_from_toml_str` a file does, so a bad value
-/// fails identically — and, since the stat blocks carry `deny_unknown_fields`, a misspelt
+/// fails identically - and, since the stat blocks carry `deny_unknown_fields`, a misspelt
 /// dial is an error rather than a silent default.
 ///
 /// # Errors
@@ -252,7 +252,7 @@ pub fn scenario_with_overrides(
 
 /// Replace the value at a dotted path. Numeric segments index into an array.
 ///
-/// Every segment *but the last* must already exist — `red.air.0` has to be a drone that is
+/// Every segment *but the last* must already exist - `red.air.0` has to be a drone that is
 /// there. The **leaf** may be created, and usually is: nearly every dial in `[sim]` has a
 /// serde default, so a scenario that is happy with 45 s of track hold simply does not
 /// mention `track_hold_s`, and refusing to add it would make most of the interesting dials
@@ -289,7 +289,7 @@ fn set_path(doc: &mut toml::Value, path: &str, value: toml::Value) -> Result<(),
 ///
 /// A missing *table* is created, for the same reason a missing leaf is: a scenario content
 /// with the defaults omits the whole `[sim]` block, and `sim.track_hold_s` still has to be
-/// settable on it. A missing *array element* is not — there is no sensible drone to invent.
+/// settable on it. A missing *array element* is not - there is no sensible drone to invent.
 fn descend<'a>(cursor: &'a mut toml::Value, seg: &str) -> Result<&'a mut toml::Value, String> {
     match cursor {
         toml::Value::Table(t) => Ok(t
@@ -355,7 +355,7 @@ heading_deg = 90.0
         assert!((scn.sim.track_hold_s - 30.0).abs() < 1e-6);
     }
 
-    /// List-valued dials — a target priority, a position, a route — are the one part of
+    /// List-valued dials - a target priority, a position, a route - are the one part of
     /// the schema a scalar-only parser could not reach.
     #[test]
     fn an_array_literal_sets_a_list_valued_dial() {
@@ -485,7 +485,7 @@ elevation_m = 0.0
         assert_eq!(lib[0].within_library(), "mortar.cep_m");
     }
 
-    /// A library dial really is patched, and a misspelt one is refused — the stat blocks
+    /// A library dial really is patched, and a misspelt one is refused - the stat blocks
     /// carry `deny_unknown_fields` for the same reason the scenario schema does.
     #[test]
     fn a_library_dial_is_patched_and_a_typo_is_refused() {

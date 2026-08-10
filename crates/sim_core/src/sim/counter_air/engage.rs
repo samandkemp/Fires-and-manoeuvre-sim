@@ -1,5 +1,5 @@
 //! Deciding whether a battery may shoot, and resolving the shots that are due
-//! (`docs/DESIGN.md` §9.4–§9.5, §11.2).
+//! (`docs/DESIGN.md` §9.4-§9.5, §11.2).
 //!
 //! The envelope and cueing gates live here; *who shoots at what*, once a side is
 //! coordinated, lives in [`super::coordinate`].
@@ -9,7 +9,7 @@ use crate::air_defence;
 use crate::sim::{AirDefenceEvent, Side, Sim};
 
 impl Sim {
-    /// One tick of air defence (§9.4–§9.5): drop engagements whose target died or left
+    /// One tick of air defence (§9.4-§9.5): drop engagements whose target died or left
     /// the envelope, resolve shots that are due, then open new ones on the nearest
     /// actionable targets while channels and magazine last. Fixed index order throughout,
     /// which is the determinism unit.
@@ -26,7 +26,7 @@ impl Sim {
             .collect();
 
         let mut resolutions = Vec::new();
-        // Batteries under C2 defer their opening to a coordinated pass (§11) — one pass
+        // Batteries under C2 defer their opening to a coordinated pass (§11) - one pass
         // **per side**. Indexed by `Side`, exactly as `doctrine` and `orders` are, because
         // a post coordinates its own side and nobody else's: pooling both sides into one
         // problem would score every battery under whichever side happened to be first in
@@ -46,7 +46,7 @@ impl Sim {
                     if !air.alive || air.side == ad.side {
                         continue;
                     }
-                    // A track must have arrived *and* aged through the cueing timeline —
+                    // A track must have arrived *and* aged through the cueing timeline -
                     // by whichever route reaches this battery first (§9.5).
                     if !ad
                         .actionable_at(air.detected_at_s, ad.own_sensor_seen(&air.seen_by))
@@ -71,7 +71,7 @@ impl Sim {
 
             resolutions.clear();
             {
-                // Borrow the two fields separately — `self.air_defence` and `self.rng`
+                // Borrow the two fields separately - `self.air_defence` and `self.rng`
                 // are disjoint, which the borrow checker accepts as long as we reach
                 // them as fields rather than through a `&mut self` method.
                 let ad = &mut self.air_defence[ad_idx];
@@ -97,7 +97,7 @@ impl Sim {
 
             // A battery under a live friendly C2 post defers its opening to the
             // coordinated pass below (§11). One that is not opens for itself, right here,
-            // by exactly the rule it always used — which is what keeps a scenario with no
+            // by exactly the rule it always used - which is what keeps a scenario with no
             // C2 post bit-identical to the pre-C2 engine (V59).
             if self.coordinated(ad_idx) {
                 let side = self.air_defence[ad_idx].side;
@@ -107,7 +107,7 @@ impl Sim {
 
             // Commit new engagements, **doctrine tier first, then nearest**; ties break on
             // index so the order is deterministic. Being outside the net costs a battery
-            // its coordination, not its orders — a lone gun still shoots what it was told
+            // its coordination, not its orders - a lone gun still shoots what it was told
             // to shoot first, it just does not know what anyone else is shooting (§13.2).
             // With no doctrine every tier is 0 and this is exactly nearest-first.
             let side = self.air_defence[ad_idx].side;
@@ -146,9 +146,9 @@ impl Sim {
     ///
     /// Two things can take a battery out of the net without touching the battery:
     ///
-    /// - **The post dies** — `covers_jammed` is false for a dead post, so the group
+    /// - **The post dies** - `covers_jammed` is false for a dead post, so the group
     ///   decoheres from the next tick (§12.2).
-    /// - **The link is jammed** — an enemy jammer near the post pulls its effective radius
+    /// - **The link is jammed** - an enemy jammer near the post pulls its effective radius
     ///   in, so the batteries on the flanks fall out first and the ones sitting on top of
     ///   it keep talking. SEAD hard-kills the post; EW soft-kills its reach.
     ///
@@ -156,7 +156,7 @@ impl Sim {
     /// `now + link_latency_s`, and dropping out clears that, so a battery jammed out and
     /// back in pays the joining cost again.
     ///
-    /// Draws no randomness, and is exactly a no-op when there are no posts — which is what
+    /// Draws no randomness, and is exactly a no-op when there are no posts - which is what
     /// keeps a post-free scenario bit-identical to the pre-C2 engine (V59).
     pub(in crate::sim) fn update_c2_links(&mut self) {
         if self.c2.is_empty() {

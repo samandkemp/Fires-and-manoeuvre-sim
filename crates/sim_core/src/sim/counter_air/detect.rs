@@ -1,7 +1,7 @@
 //! Finding an airframe (`docs/DESIGN.md` §9.1).
 //!
 //! The ground glimpse loop with two changes: the target's actor height comes from its
-//! altitude, and it contributes no terrain concealment — it is not standing in the cell
+//! altitude, and it contributes no terrain concealment - it is not standing in the cell
 //! below it. Canopy transmittance still applies, being a property of the sightline.
 
 use crate::sim::{AirDetectionEvent, GlimpseTarget, Sim};
@@ -9,7 +9,7 @@ use crate::sim::{AirDetectionEvent, GlimpseTarget, Sim};
 impl Sim {
     /// The glimpse process against airborne targets (§9.1). Same as the ground loop
     /// except the target's actor height comes from its altitude and it contributes no
-    /// terrain concealment — it isn't standing in the cell below it. Canopy transmittance
+    /// terrain concealment - it isn't standing in the cell below it. Canopy transmittance
     /// still applies, being a property of the sightline rather than the target.
     pub(in crate::sim) fn detect_air(&mut self) {
         if self.air.is_empty() {
@@ -35,7 +35,7 @@ impl Sim {
                     height_m: air.actor_height(&self.terrain),
                     signature: air.stats.signature_in(sensor.stats.modality),
                     // Airborne: not standing in the cell below it, so no concealment.
-                    // Canopy transmittance still applies — that is the sightline's.
+                    // Canopy transmittance still applies - that is the sightline's.
                     concealment: 0.0,
                     side: air.side,
                 };

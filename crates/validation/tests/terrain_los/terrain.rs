@@ -5,7 +5,7 @@ use glam::Vec2;
 use ndarray::Array2;
 use sim_core::terrain::*;
 
-/// A params table with distinct, well-formed values for each type — enough to test
+/// A params table with distinct, well-formed values for each type - enough to test
 /// the derived-layer machinery without touching the TOML files.
 fn test_params() -> TerrainParamsTable {
     let mk = |fh, k, cov, con, mob| TerrainParams {
@@ -86,7 +86,7 @@ fn derived_layers_well_formed() {
     }
 }
 
-// V4: procedural generation is deterministic in the seed — all layers.
+// V4: procedural generation is deterministic in the seed - all layers.
 #[test]
 fn procedural_terrain_is_deterministic() {
     let src = TerrainSource::Hills {
@@ -295,7 +295,7 @@ fn v53_presets_expand_to_the_maps_they_name() {
         TerrainSource::Preset(p).build(50.0, 200, 200, 11, &validation::params())
     };
 
-    // The flat plain really is flat and open — it is the fixture other gates lean on.
+    // The flat plain really is flat and open - it is the fixture other gates lean on.
     let plain = build(TerrainPreset::FlatPlain);
     let (lo, hi) = plain
         .elevation()
@@ -304,7 +304,7 @@ fn v53_presets_expand_to_the_maps_they_name() {
     assert_eq!((lo, hi), (0.0, 0.0), "a flat plain has no relief");
     assert_eq!(type_fraction(&plain, TerrainType::Open), 1.0);
 
-    // Dense urban must actually be denser than light urban — the names have to mean
+    // Dense urban must actually be denser than light urban - the names have to mean
     // something relative to each other or the vocabulary is decoration.
     let light = type_fraction(&build(TerrainPreset::LightUrban), TerrainType::Urban);
     let dense = type_fraction(&build(TerrainPreset::DenseUrban), TerrainType::Urban);
@@ -323,7 +323,7 @@ fn v53_presets_expand_to_the_maps_they_name() {
 
     // The mountain pass has a *ridge*: a coherent linear rise, which `max - min` cannot
     // see (a broad ridge lifts the whole map, floor included). The invariant that does
-    // detect it is the one the layer promises — ground on the crest line stands about
+    // detect it is the one the layer promises - ground on the crest line stands about
     // `crest_m` above ground far to either side of it.
     let crest_lift = |g: &TerrainGrid| {
         let centre = Vec2::splat(200.0 * 50.0 * 0.5);

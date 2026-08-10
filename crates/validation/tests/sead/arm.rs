@@ -1,4 +1,4 @@
-//! V64 — anti-radiation homing: the radar buys its own accuracy. `docs/DESIGN.md` §12.3.
+//! V64 - anti-radiation homing: the radar buys its own accuracy. `docs/DESIGN.md` §12.3.
 //!
 //! §12 made air-defence batteries killable, but the missile did not care whether its target
 //! was radiating: the aim point was the battery's position regardless. A real ARM rides the
@@ -7,11 +7,11 @@
 //!
 //! That is the trade this gate pins, and it is a genuine one in both directions. `emitting`
 //! off is not free: the radar is *off*, so the battery detects nothing at all through it.
-//! **Survive the missile, or see the raid coming — not both.**
+//! **Survive the missile, or see the raid coming - not both.**
 //!
 //! `emitting` is a separate flag from `self_cue` for exactly this reason. They were once the
 //! same one, and sharing it meant a battery could take the missile protection of going dark
-//! while its radar carried on seeing everything — the survivability of EMCON without its
+//! while its radar carried on seeing everything - the survivability of EMCON without its
 //! cost, which made this gate pass while measuring the wrong thing (§12.5, gate V69).
 //! `self_cue` now means only "who does this battery listen to"; `emitting` means "is the
 //! radar on".
@@ -19,7 +19,7 @@
 //! Modelled as a dispersion, not a veto. The munition still arrives; with nothing to home on
 //! it flies to where the emitter was last known to be and lands with `silent_cep_m` instead
 //! of `cep_m`. "An ARM cannot engage a silent radar at all" is that with the value set very
-//! large — reachable as a scenario's choice, rather than baked in as the model's opinion.
+//! large - reachable as a scenario's choice, rather than baked in as the model's opinion.
 
 use sim_core::air::{AirType, TargetSpec};
 use sim_core::air_defence::{AdEngagement, AirDefenceType};
@@ -182,8 +182,8 @@ fn v64_a_silent_radar_degrades_the_missile() {
     );
 }
 
-// V64 (counter half): switching the radar off is a real counter — it is what makes the
-// missile miss — but the model must not let it be free. A battery under EMCON still *has* a
+// V64 (counter half): switching the radar off is a real counter - it is what makes the
+// missile miss - but the model must not let it be free. A battery under EMCON still *has* a
 // radar; it is simply not transmitting, so it sees nothing through it.
 #[test]
 fn v64_going_silent_is_the_counter_and_it_costs_the_radar() {
@@ -195,7 +195,7 @@ fn v64_going_silent_is_the_counter_and_it_costs_the_radar() {
     );
     assert!(
         battery.sensor_idx.is_some(),
-        "it still HAS a radar — it has chosen not to run it, which is the whole point"
+        "it still HAS a radar - it has chosen not to run it, which is the whole point"
     );
 
     let loud = sead(true, 1);

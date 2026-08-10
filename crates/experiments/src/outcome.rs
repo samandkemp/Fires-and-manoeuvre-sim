@@ -2,7 +2,7 @@
 //!
 //! Every field is read back from the sim's own event logs and final state, never
 //! accumulated alongside the sim as it runs. There is therefore no second bookkeeping path
-//! to drift out of step with the model — if a metric is wrong, the log is wrong, and the
+//! to drift out of step with the model - if a metric is wrong, the log is wrong, and the
 //! app's feed would be showing the same wrong thing.
 //!
 //! Adding a metric means three edits in this file: a field, a [`COLUMNS`] entry, and a
@@ -66,14 +66,14 @@ pub struct Outcome {
     /// Interceptors left across all batteries with a finite magazine. Phase 11 found that
     /// C2 coordination buys **ammunition**, not kills, which is invisible without this.
     pub ad_rounds_left: f64,
-    /// Batteries and posts reduced to zero elements (§12) — what SEAD is trying to do.
+    /// Batteries and posts reduced to zero elements (§12) - what SEAD is trying to do.
     pub ad_batteries_killed: f64,
     pub c2_posts_killed: f64,
     /// When a side's last ground element died; the run length if it never did.
     ///
     /// Usually the metric that answers "was this better?", because losses saturate. Once
     /// everything on one side is dead by 600 s in every arm, `red_losses` is the same
-    /// number everywhere and only the *time* distinguishes them — which is exactly how
+    /// number everywhere and only the *time* distinguishes them - which is exactly how
     /// the Phase 10 allocation result was measured (`docs/DESIGN.md` §10.2).
     pub blue_cleared_s: f64,
     pub red_cleared_s: f64,
@@ -123,11 +123,11 @@ pub fn run_one(sim: &mut Sim, until_s: f64) -> Outcome {
     let air_launched = sim.air().len() as f64;
 
     // Stepped rather than `run_until`, only so the clearance times can be observed as they
-    // happen — they are not derivable afterwards, because the logs say a unit was killed
+    // happen - they are not derivable afterwards, because the logs say a unit was killed
     // but an air-delivered burst does not name which one. The loop condition is exactly
     // `run_until`'s, so this advances the sim identically; the per-tick check is a handful
     // of integer comparisons against a tick that costs tens of microseconds.
-    // A side that fields no ground units at all is not "cleared at t = 1 s" — there was
+    // A side that fields no ground units at all is not "cleared at t = 1 s" - there was
     // nothing to clear. `air_raid` is exactly that: Red is three drones and no ground.
     let (mut blue_present, mut red_present) = (false, false);
     for u in sim.units() {

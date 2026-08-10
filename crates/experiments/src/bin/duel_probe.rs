@@ -1,5 +1,5 @@
 //! Diagnostic: load the default scenario, report the geometry of every
-//! (blue sensor → red unit) pair — range, LOS, τ, λ — then run the clock and report
+//! (blue sensor → red unit) pair - range, LOS, τ, λ - then run the clock and report
 //! detections. Answers "why so few detections?" without opening the window.
 //!
 //! Run: `cargo run -p experiments --bin duel_probe`
@@ -18,7 +18,7 @@ fn main() {
     let sim = Sim::new(&scenario, &libs, scenario.default_seed).expect("resolve scenario");
     let terrain = sim.terrain();
 
-    // Ranges are **slant** ranges throughout (docs/DESIGN.md §9.1) — the same convention
+    // Ranges are **slant** ranges throughout (docs/DESIGN.md §9.1) - the same convention
     // the sim's gates use, so what this prints and what the sim decides cannot disagree.
     println!("=== pairwise geometry (blue sensors → red units, slant ranges) ===");
     for (i, s) in sim
@@ -28,7 +28,7 @@ fn main() {
         .filter(|(i, s)| s.side == Side::Blue && sim.sensor_active(*i))
     {
         // A carried sensor sees from its airframe's position and altitude, not from its
-        // own `mount_height_m` — `sensor_view` is the accessor that knows the difference.
+        // own `mount_height_m` - `sensor_view` is the accessor that knows the difference.
         let (s_pos, s_height, s_facing) = sim.sensor_view(i);
         for u in sim.units().iter().filter(|u| u.side == Side::Red) {
             let r = sim_core::los::slant_range(terrain, s_pos, s_height, u.pos, u.stats.height_m);
@@ -89,7 +89,7 @@ fn main() {
     sim.run_until(600.0);
     println!("\n=== detections after {:.0} s ===", sim.time_s());
     if sim.events().is_empty() {
-        println!("(none — every pair is out of range, hard-blocked, or too attenuated)");
+        println!("(none - every pair is out of range, hard-blocked, or too attenuated)");
     }
     for e in sim.events() {
         let s = &sim.sensors()[e.sensor];

@@ -1,9 +1,9 @@
-//! V59 — C2-coordinated air defence. `docs/DESIGN.md` §11.
+//! V59 - C2-coordinated air defence. `docs/DESIGN.md` §11.
 //!
 //! The fixture reproduces the failure mode deterministically. Three single-channel
 //! batteries sit in a line; the three drones are placed so that **one of them is the
 //! nearest to all three**. Nearest-first therefore sends every battery at that same drone
-//! while the other two fly on untouched — the classic point-defence failure, and entirely
+//! while the other two fly on untouched - the classic point-defence failure, and entirely
 //! a coordination problem: same batteries, same envelopes, same magazines.
 //!
 //! A C2 post covering the line is the only thing that changes.
@@ -64,7 +64,7 @@ fn libraries() -> Libraries {
                 engagement: sim_core::air_defence::AdEngagement::Gun {
                     // Chosen so the *payoff* is meaningful (P(kill) over the engagement
                     // window is ~0.5) while almost nothing actually dies in the 40 s
-                    // observed — expected attrition here is under a tenth of an airframe.
+                    // observed - expected attrition here is under a tenth of an airframe.
                     // Both halves matter: too lethal and the batteries re-open on
                     // survivors, so the reading is of attrition rather than allocation;
                     // too feeble and every pairing scores alike, so the diminishing-return
@@ -163,7 +163,7 @@ fn distinct(sim: &Sim) -> usize {
 }
 
 // V59 (the headline): uncoordinated batteries all pile onto one drone; a C2 post makes
-// them split the raid. Same batteries, same envelopes, same magazines — the only
+// them split the raid. Same batteries, same envelopes, same magazines - the only
 // difference is whether anything is tying them together.
 #[test]
 fn v59_c2_makes_air_defence_split_the_raid() {
@@ -187,7 +187,7 @@ fn v59_c2_makes_air_defence_split_the_raid() {
 }
 
 // V59 (identity half): a scenario with no C2 post must behave exactly as it did before
-// C2 existed. This is the §7.4 discipline — the coordinated path is *added*, never
+// C2 existed. This is the §7.4 discipline - the coordinated path is *added*, never
 // substituted, so V50/V51/V52 cannot move.
 #[test]
 fn v59_without_a_post_nothing_changes() {
@@ -209,7 +209,7 @@ fn v59_without_a_post_nothing_changes() {
 }
 
 // V59 (decoherence): a *dead* post coordinates nothing. Destroying it costs no battery,
-// no magazine and no envelope — the defence simply stops splitting the raid. That is the
+// no magazine and no envelope - the defence simply stops splitting the raid. That is the
 // property which makes a command post worth attacking, and the hook SEAD will pull.
 #[test]
 fn v59_killing_the_post_decoheres_the_defence() {
@@ -228,9 +228,9 @@ fn v59_killing_the_post_decoheres_the_defence() {
     assert_eq!(
         sim.air_defence().len(),
         3,
-        "killing the post must not remove a single battery — only the coordination"
+        "killing the post must not remove a single battery - only the coordination"
     );
-    // Tombstoned, not removed — the same discipline as every other asset (V54), so any
+    // Tombstoned, not removed - the same discipline as every other asset (V54), so any
     // index already recorded against it still resolves.
     assert_eq!(
         sim.c2().len(),
@@ -243,14 +243,14 @@ fn v59_killing_the_post_decoheres_the_defence() {
 // --- Two sides, two posts -------------------------------------------------------------
 //
 // Coordination is a relationship between a post and *its own* batteries. Nothing about the
-// enemy having a post of its own should reach into my fire plan — but pooling every
+// enemy having a post of its own should reach into my fire plan - but pooling every
 // coordinated battery into one assignment made it do exactly that, scoring the whole field
 // under whichever side happened to be first in the list.
 //
 // The fixture separates doctrine from payoff: each side faces a `juicy` drone (value 3.0)
 // and a `cheap` one (0.5), and each side's doctrine names the **cheap** one. Following
 // orders is therefore unambiguously different from taking the better shot, so a battery
-// scored under the enemy's doctrine — which names neither of its targets — falls through to
+// scored under the enemy's doctrine - which names neither of its targets - falls through to
 // the payoff and takes the juicy drone instead.
 
 /// Where each side's battery and post sit, metres.
@@ -329,7 +329,7 @@ fn two_sided(blue_post: bool, red_post: bool) -> Sim {
         ));
     }
     // Each side's drones sit between the two batteries, in reach of the enemy's gun only.
-    // Blue's are placed first, so they take the lower air indices — which is what put the
+    // Blue's are placed first, so they take the lower air indices - which is what put the
     // Blue battery first in the pooled list and made Blue's doctrine the one that won.
     for (side, suffix, y) in [("blue", 'b', 1000.0f32), ("red", 'r', 2000.0)] {
         for kind in ["juicy", "cheap"] {
@@ -360,7 +360,7 @@ fn engaging_id(sim: &Sim, id: &str) -> Option<String> {
 //
 // Both halves matter, and the second is the general property. The first names the symptom:
 // each battery must follow the fire plan it was given. The second says *why* that has to
-// hold however the doctrines are set — my decision cannot depend on whether the enemy
+// hold however the doctrines are set - my decision cannot depend on whether the enemy
 // happens to have a command post, because his post is not talking to my battery.
 #[test]
 fn v59_each_side_coordinates_only_its_own_batteries() {

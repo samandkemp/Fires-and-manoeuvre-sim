@@ -1,4 +1,4 @@
-//! V72–V74 — movement decisions in the loop. `docs/DESIGN.md` §5, §10.5.
+//! V72-V74 - movement decisions in the loop. `docs/DESIGN.md` §5, §10.5.
 //!
 //! Fires are allocated and sensors are tasked, but until now a route was drawn by hand:
 //! `movement::least_risk_path` was called only from `experiments/` and this crate, so the
@@ -7,12 +7,12 @@
 //! A unit with an `objective` plans its own route each decision epoch against the live risk
 //! raster. Three properties hold it honest, and they pull against each other:
 //!
-//! * **V72** — a scenario with no objective is bit-identical to before, and draws no extra
+//! * **V72** - a scenario with no objective is bit-identical to before, and draws no extra
 //!   randomness. Structural, not dial-gated: no objective means no planner at all.
-//! * **V73** — a unit *avoids* what watches it, and with `risk_weight = 0` stops avoiding
+//! * **V73** - a unit *avoids* what watches it, and with `risk_weight = 0` stops avoiding
 //!   and takes the short way. Without the second half the first proves only that the router
 //!   produces some route.
-//! * **V74** — it does not dither. A unit re-deciding every epoch can flip between two
+//! * **V74** - it does not dither. A unit re-deciding every epoch can flip between two
 //!   near-equal routes forever; the hysteresis that prevents it is the movement analogue of
 //!   §13.4's target lock.
 
@@ -112,11 +112,11 @@ fn max_lateral_deviation(sim: &mut Sim, until_s: f64) -> f32 {
 }
 
 // ---------------------------------------------------------------------------------------
-// V72 — the identity
+// V72 - the identity
 // ---------------------------------------------------------------------------------------
 
 // A scenario with no objective must be untouched: same event log, same everything. This is
-// structural rather than a dial being off — `replan_movement` returns before doing anything
+// structural rather than a dial being off - `replan_movement` returns before doing anything
 // if no unit has an objective, so there is no planner and no raster.
 #[test]
 fn v72_a_scenario_without_objectives_is_bit_identical() {
@@ -146,7 +146,7 @@ fn v72_a_scenario_without_objectives_is_bit_identical() {
     };
     assert_eq!(run(), run(), "a scripted scenario must reproduce exactly");
 
-    // And the scripted unit went where it was told, in a straight line — no planner touched
+    // And the scripted unit went where it was told, in a straight line - no planner touched
     // it. Any deviation would mean planning ran on a unit that never asked for it.
     let mut s = Sim::new(&scn, &libs, 12).expect("builds");
     let strayed = max_lateral_deviation(&mut s, 300.0);
@@ -191,7 +191,7 @@ fn v72_route_and_objective_together_are_a_load_error() {
 }
 
 // ---------------------------------------------------------------------------------------
-// V73 — it avoids what watches it, and only because it is watched
+// V73 - it avoids what watches it, and only because it is watched
 // ---------------------------------------------------------------------------------------
 
 // The property the phase exists for: a sensor on the direct line pushes the route around it.
@@ -208,7 +208,7 @@ fn v73_a_planner_routes_around_what_is_watching() {
 
 // The other half, and the one that makes the first mean something: with the exchange rate at
 // zero the unit stops caring who is watching and takes the short way. Same map, same sensor,
-// same planner — this is V25's "zero risk is the shortest path" arriving in the loop.
+// same planner - this is V25's "zero risk is the shortest path" arriving in the loop.
 #[test]
 fn v73_with_no_risk_weight_it_takes_the_short_way() {
     let reckless = max_lateral_deviation(&mut planned("risk_weight = 0.0"), 900.0);
@@ -220,17 +220,17 @@ fn v73_with_no_risk_weight_it_takes_the_short_way() {
 }
 
 // ---------------------------------------------------------------------------------------
-// V74 — it does not dither
+// V74 - it does not dither
 // ---------------------------------------------------------------------------------------
 
 // A unit re-deciding every epoch can flip between two near-equal routes indefinitely,
 // making no progress while looking busy. With a watcher squarely on the line, going north
-// and going south cost almost exactly the same — which is precisely the situation that
+// and going south cost almost exactly the same - which is precisely the situation that
 // makes a fresh solve wobble.
 //
 // Note what is NOT the property: distance to the objective is *not* monotone, and should
 // not be. A detour increases straight-line distance before it decreases it; that is what a
-// detour is. Asserting monotone progress would forbid routing around anything at all — an
+// detour is. Asserting monotone progress would forbid routing around anything at all - an
 // earlier cut of this test did exactly that and failed for the right behaviour.
 //
 // The property is that the **committed direction does not flip**. Once the unit has decided
@@ -273,7 +273,7 @@ fn v74_a_planner_does_not_flip_between_equal_routes() {
     );
 }
 
-// A unit whose objective is unreachable must not wander or panic — it keeps whatever it has
+// A unit whose objective is unreachable must not wander or panic - it keeps whatever it has
 // and the simulation carries on. Walled off by impassable terrain is the case; here the
 // objective is simply where the unit already stands, the degenerate end of the same path.
 #[test]

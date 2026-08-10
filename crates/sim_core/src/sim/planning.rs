@@ -1,8 +1,8 @@
 //! Movement decisions in the loop: a unit with an objective plans its own route.
-//! Spec: `docs/DESIGN.md` §5, §10.5. Gates: V72–V74.
+//! Spec: `docs/DESIGN.md` §5, §10.5. Gates: V72-V74.
 //!
 //! Until now movement was the one decision still scripted. Fires are allocated (§10.2) and
-//! sensors are tasked (§10.3), but a route was drawn by hand — so `movement::least_risk_path`
+//! sensors are tasked (§10.3), but a route was drawn by hand - so `movement::least_risk_path`
 //! was called only from `experiments/` and `validation/`, and the dynamic-programming strand
 //! sat *beside* the model rather than inside it.
 //!
@@ -17,13 +17,13 @@
 //! walks a sightline. At one decision epoch per 10 s that is a hundred times the cost of the
 //! rest of the simulation put together, and a 500-seed study becomes a fortnight.
 //!
-//! So planning happens on a coarse grid — the same reasoning §10.3 gives for belief, and the
+//! So planning happens on a coarse grid - the same reasoning §10.3 gives for belief, and the
 //! same resolution dial. A commander choosing an approach at ten-second intervals is not
 //! choosing between adjacent 10 m cells; the unit still *moves* continuously at full
 //! resolution, and only the route it is following is planned coarsely.
 //!
-//! The coarse edge cost is `terrain::move_cost`'s own formula — distance x mean mobility x
-//! slope factor — evaluated on cell **aggregates** rather than point samples. At a coarse
+//! The coarse edge cost is `terrain::move_cost`'s own formula - distance x mean mobility x
+//! slope factor - evaluated on cell **aggregates** rather than point samples. At a coarse
 //! grid equal to the terrain it is exactly `move_cost`, which is a property worth stating
 //! because it says the coarsening is an approximation of the real cost rather than a
 //! different cost that happens to look similar.
@@ -31,7 +31,7 @@
 //! # Determinism
 //!
 //! Planning draws **no randomness**, and a scenario in which no unit has an objective does
-//! no work here at all — the identity is structural rather than dial-gated (V72).
+//! no work here at all - the identity is structural rather than dial-gated (V72).
 
 use super::{Side, Sim};
 use crate::movement::least_cost_path;
@@ -48,7 +48,7 @@ const DOWNHILL_PENALTY: f32 = 1.5;
 /// The mover risk is scored against.
 ///
 /// Risk is "how detectable would *a* unit be here", not "how detectable is this particular
-/// unit" — so it is a property of the ground and the enemy's sensors, computed once per side
+/// unit" - so it is a property of the ground and the enemy's sensors, computed once per side
 /// rather than once per unit. A unit that is unusually stealthy is not less endangered by a
 /// well-watched valley; it just survives it more often, which the detection model already
 /// says at the point it matters. §5.2 defines the raster this way.
@@ -70,7 +70,7 @@ pub(super) struct Planner {
     /// World size of one coarse cell, metres.
     cell_size_m: f32,
     /// Mean mobility cost per coarse cell; infinite only where *every* fine cell is
-    /// impassable — at 200 m resolution "there is a way through" is the honest reading.
+    /// impassable - at 200 m resolution "there is a way through" is the honest reading.
     mobility: Array2<f32>,
     /// Mean elevation per coarse cell, for the slope factor.
     elevation: Array2<f32>,
@@ -181,7 +181,7 @@ impl Sim {
     /// Re-plan every unit that has an objective. Called at the decision epoch, after tracks
     /// are maintained and before fires are resolved.
     ///
-    /// A no-op — and a zero-allocation, zero-draw one — when no unit has an objective, which
+    /// A no-op - and a zero-allocation, zero-draw one - when no unit has an objective, which
     /// is what makes V72 an identity by construction.
     pub(super) fn replan_movement(&mut self) {
         if !self
@@ -222,7 +222,7 @@ impl Sim {
             return;
         }
 
-        // Enemy sensors that are actually emitting — a dead battery's radar and one under
+        // Enemy sensors that are actually emitting - a dead battery's radar and one under
         // EMCON both drop out here for free, because `sensor_active` is the one predicate
         // (§12.5).
         let enemy: Vec<(Vec2, f32, f32, crate::sensing::SensorType)> = (0..self.sensors.len())

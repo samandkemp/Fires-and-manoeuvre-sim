@@ -58,8 +58,8 @@ pub fn load_scenario(name: &str) -> Result<LoadedData, ScenarioError> {
 /// Every scenario in `scenarios/`, by bare name, sorted.
 ///
 /// The directory mixes scenarios with stat-block libraries (`units.toml` and friends),
-/// and rather than hard-code which names are which — a list that would rot the moment a
-/// library is added — a file counts as a scenario **if it parses as one**. `Scenario`
+/// and rather than hard-code which names are which - a list that would rot the moment a
+/// library is added - a file counts as a scenario **if it parses as one**. `Scenario`
 /// requires a `name` and a `[terrain]` block, which no library has.
 #[must_use]
 pub fn list_scenarios() -> Vec<String> {
@@ -81,7 +81,7 @@ pub fn list_scenarios() -> Vec<String> {
 /// normalised elevation, shaded by a hillshade so relief reads at a glance.
 ///
 /// The image's top row is the northernmost grid row (`iy = height − 1`), so that when
-/// the sprite is placed with +Y up, north is up — matching the world frame.
+/// the sprite is placed with +Y up, north is up - matching the world frame.
 pub fn terrain_image(terrain: &TerrainGrid) -> Image {
     let w = terrain.width();
     let h = terrain.height();

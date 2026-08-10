@@ -5,8 +5,8 @@
 //!
 //! §10.2 allocates fire by maximising `P(kill) × value`, which is what an omniscient
 //! optimiser would do. Real crews are not omniscient optimisers. They do not hold a
-//! kill-probability table; they hold **orders** — engage air defence before manoeuvre,
-//! shoot the command post first — and they follow them whether or not the shot is a good
+//! kill-probability table; they hold **orders** - engage air defence before manoeuvre,
+//! shoot the command post first - and they follow them whether or not the shot is a good
 //! one.
 //!
 //! So a declared priority is **strict by default**: a shooter that can reach anything in a
@@ -16,7 +16,7 @@
 //!
 //! Which makes the mode switch a measurable question rather than a preference. Running the
 //! same scenario under `strict` doctrine and under the payoff-optimal allocation puts a
-//! number on **what directive control costs against optimal control** — an answer this
+//! number on **what directive control costs against optimal control** - an answer this
 //! model can give and hand-waving cannot.
 //!
 //! # What a priority entry may name
@@ -25,15 +25,15 @@
 //!
 //! | Entry | Matches |
 //! |---|---|
-//! | an asset **id** | that one asset — how a gate pins an exact target |
+//! | an asset **id** | that one asset - how a gate pins an exact target |
 //! | a **role** | every asset whose stat block declares it (`role = "artillery"`) |
-//! | a **class** | `unit`, `air_defence`, `c2`, `air` — always available, no declaration |
-//! | [`ALL`] | anything at all — the tier that says "and then everyone else, equally" |
+//! | a **class** | `unit`, `air_defence`, `c2`, `air` - always available, no declaration |
+//! | [`ALL`] | anything at all - the tier that says "and then everyone else, equally" |
 //!
 //! # There is no "no doctrine"
 //!
 //! A side always has one. Omitting the block gives `priority = ["all"]`: a single tier
-//! holding every target, ranked among itself by the ordinary §10.2 payoff — which *is* the
+//! holding every target, ranked among itself by the ordinary §10.2 payoff - which *is* the
 //! undirected behaviour. So the engine has one code path rather than two, and the identity
 //! with the pre-doctrine model holds **by construction** (one tier means one solve over
 //! every target, which is exactly what the old code did) rather than by a separate branch
@@ -46,7 +46,7 @@
 //! `"air_defence"`, so a coarse doctrine keeps working when a stat block gets more specific.
 //!
 //! Every name is checked against the scenario when the sim is built. A priority naming
-//! nothing is a load error, not an empty tier — the same reasoning as the schema's
+//! nothing is a load error, not an empty tier - the same reasoning as the schema's
 //! `deny_unknown_fields`: a tier that silently matches nothing produces a study of a
 //! doctrine nobody is following.
 
@@ -66,7 +66,7 @@ pub enum DoctrineMode {
     ///
     /// The default, because a side that has bothered to write a priority list means it.
     /// Implemented by solving the assignment one tier at a time, which makes the ordering
-    /// exact — no large-number bonus that float arithmetic could quietly swallow.
+    /// exact - no large-number bonus that float arithmetic could quietly swallow.
     #[default]
     Strict,
     /// Priority multiplies the target's value; the payoff still decides.
@@ -77,7 +77,7 @@ pub enum DoctrineMode {
     Weighted,
 }
 
-/// A side's target priority. Always present — see the module header.
+/// A side's target priority. Always present - see the module header.
 #[derive(Clone, Debug, serde::Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Doctrine {
@@ -112,7 +112,7 @@ impl Default for Doctrine {
 }
 
 impl Doctrine {
-    /// Is this the default — one tier, everything equal?
+    /// Is this the default - one tier, everything equal?
     ///
     /// Not used to branch the allocation, which has one path either way. It is what lets a
     /// front-end say "no fire plan" instead of printing `["all"]` at someone.
@@ -131,7 +131,7 @@ impl Doctrine {
     /// (`priority.len()`) if nothing names it.
     ///
     /// The **first** matching entry wins, so a list can name one battery by id and then the
-    /// whole class beneath it — `["sam-1", "air_defence"]` singles out that launcher and
+    /// whole class beneath it - `["sam-1", "air_defence"]` singles out that launcher and
     /// leaves the others a tier lower.
     #[must_use]
     pub fn tier_of(&self, names: &TargetNames) -> usize {
@@ -156,7 +156,7 @@ impl Doctrine {
 
 /// The names one asset answers to: its id, its declared role, and its class.
 ///
-/// Built per target rather than matched inline so the three-way rule lives in one place —
+/// Built per target rather than matched inline so the three-way rule lives in one place -
 /// and so the load-time check and the per-epoch lookup cannot disagree about what a
 /// priority entry means.
 pub struct TargetNames<'a> {
@@ -179,7 +179,7 @@ impl TargetNames<'_> {
     }
 }
 
-/// Every name anything on the field answers to — the vocabulary a priority list may use.
+/// Every name anything on the field answers to - the vocabulary a priority list may use.
 ///
 /// Collected once when the sim is built, so an unmatched entry is caught at load with a
 /// list of what *would* have worked, rather than becoming an empty tier nobody notices.
@@ -221,7 +221,7 @@ impl Vocabulary {
 #[derive(Clone, Debug, serde::Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Order {
-    /// Id of the shooter — a unit or an air-defence battery.
+    /// Id of the shooter - a unit or an air-defence battery.
     pub shooter: String,
     /// Id of what it is to engage.
     pub target: String,
@@ -274,7 +274,7 @@ mod tests {
         assert!((doc.weight_for_tier(2) - 0.25).abs() < 1e-6);
     }
 
-    /// A falloff of 1 or less would make every tier equal — doctrine silently off, with
+    /// A falloff of 1 or less would make every tier equal - doctrine silently off, with
     /// nothing in the output to say so.
     #[test]
     fn a_degenerate_falloff_is_clamped_rather_than_ignored() {

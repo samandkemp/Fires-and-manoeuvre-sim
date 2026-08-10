@@ -1,7 +1,7 @@
 //! Shared fixtures for the validation gates.
 //!
 //! Every gate needs terrain to run over, and before this crate existed each test module
-//! carried its own copy of the same `params()` / `flat()` helpers — four copies of the
+//! carried its own copy of the same `params()` / `flat()` helpers - four copies of the
 //! terrain dial table alone, which meant a dial could be changed in one gate's world and
 //! not another's. They live here once.
 //!
@@ -21,7 +21,7 @@ use std::path::{Path, PathBuf};
 /// numbers in a failing assertion read the same as they do in a scenario.
 pub const CELL_M: f32 = 10.0;
 
-/// The canonical per-terrain-type dials the gates run against — the same values as
+/// The canonical per-terrain-type dials the gates run against - the same values as
 /// `scenarios/terrain_types.toml`, but pinned here so a gate's analytical reference
 /// cannot be invalidated by retuning a placeholder.
 #[must_use]
@@ -40,7 +40,7 @@ pub fn params() -> TerrainParamsTable {
     }
 }
 
-/// A flat, all-`Open` grid — the fixture that isolates a model from terrain entirely.
+/// A flat, all-`Open` grid - the fixture that isolates a model from terrain entirely.
 #[must_use]
 pub fn flat(w: usize, h: usize) -> TerrainGrid {
     TerrainGrid::from_layers(
@@ -51,7 +51,7 @@ pub fn flat(w: usize, h: usize) -> TerrainGrid {
     )
 }
 
-/// Flat ground with a rectangular patch of `patch` terrain over the given cell ranges —
+/// Flat ground with a rectangular patch of `patch` terrain over the given cell ranges -
 /// the wall/canopy fixture the LOS gates are built on.
 #[must_use]
 pub fn flat_with_patch(
@@ -71,7 +71,7 @@ pub fn flat_with_patch(
     TerrainGrid::from_layers(CELL_M, ndarray::Array2::zeros((h, w)), ttype, &params())
 }
 
-/// Bare seeded relief — no woods, no urban — so the invariant under test is purely
+/// Bare seeded relief - no woods, no urban - so the invariant under test is purely
 /// geometric.
 #[must_use]
 pub fn hills(seed: u64) -> TerrainGrid {
@@ -85,7 +85,7 @@ pub fn hills(seed: u64) -> TerrainGrid {
     .build(CELL_M, 96, 96, seed, &params())
 }
 
-/// A north–south ridge of height `crest` occupying cell columns `[x0, x1)` — the fixture
+/// A north-south ridge of height `crest` occupying cell columns `[x0, x1)` - the fixture
 /// that makes terrain masking (and the AGL/AMSL distinction) observable.
 #[must_use]
 pub fn ridge(w: usize, h: usize, x0: usize, x1: usize, crest: f32) -> TerrainGrid {
@@ -131,7 +131,7 @@ pub fn scenarios_dir() -> PathBuf {
 }
 
 /// The *shipped* terrain dials, loaded from `scenarios/terrain_types.toml`. Used by the
-/// gates that exercise scenario loading and the shipped scenarios themselves — unlike
+/// gates that exercise scenario loading and the shipped scenarios themselves - unlike
 /// [`params`], this is meant to change when the dials do.
 #[must_use]
 pub fn scenario_params() -> TerrainParamsTable {

@@ -1,13 +1,13 @@
-//! V60 — SEAD: air defence and C2 are attritable. `docs/DESIGN.md` §12.
+//! V60 - SEAD: air defence and C2 are attritable. `docs/DESIGN.md` §12.
 //!
 //! Before this, a battery was immortal and a post could only be removed by calling
 //! `Sim::remove_c2` from outside the simulation. Neither could be *attacked*, so the
-//! §11 finding — that a command post is the thing worth killing first — was a claim the
+//! §11 finding - that a command post is the thing worth killing first - was a claim the
 //! model could not actually demonstrate.
 //!
 //! These gates run the whole chain instead: a strike drone is assigned a named air-defence
 //! asset, flies to its release point, drops, and the asset dies. What follows from the
-//! death is the part that matters — a battery's radar goes dark with it, and a post's
+//! death is the part that matters - a battery's radar goes dark with it, and a post's
 //! group decoheres.
 
 use sim_core::air::AirType;
@@ -137,7 +137,7 @@ fn strike_on(target_id: &str) -> Sim {
 
 // V60 (the headline): a strike drone assigned a named C2 post actually destroys it, and
 // the batteries it was coordinating lose their group. Nothing removes the post from
-// outside — the whole chain runs inside the simulation.
+// outside - the whole chain runs inside the simulation.
 #[test]
 fn v60_sead_kills_a_c2_post_and_decoheres_the_defence() {
     let mut sim = strike_on("cp");
@@ -167,7 +167,7 @@ fn alive_ad(ad: &sim_core::air_defence::AirDefenceState) -> bool {
 }
 
 // V60 (battery half): a battery can be destroyed too, and when it is, its organic radar
-// goes dark with it. That is what makes SEAD worth more than the launchers it removes —
+// goes dark with it. That is what makes SEAD worth more than the launchers it removes -
 // a self-cueing battery is also an emitter the rest of the network was leaning on.
 #[test]
 fn v60_killing_a_battery_takes_its_radar_with_it() {
@@ -197,12 +197,12 @@ fn v60_killing_a_battery_takes_its_radar_with_it() {
 }
 
 // V60 (identity half): naming a *unit* still behaves exactly as it did before batteries
-// and posts became targetable — the new lists are additional sweep targets, not a
+// and posts became targetable - the new lists are additional sweep targets, not a
 // replacement, so no existing scenario changes (the §7.4 discipline).
 #[test]
 fn v60_air_defence_assets_are_additive_not_a_replacement() {
     // With nothing named, the drone falls back to its final waypoint (§9.3) and the
-    // munition lands there — on top of the post, which sits at that waypoint.
+    // munition lands there - on top of the post, which sits at that waypoint.
     let mut sim = strike_on("no-such-asset");
     sim.run_until(300.0);
     assert!(

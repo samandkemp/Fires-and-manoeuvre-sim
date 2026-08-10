@@ -17,7 +17,7 @@
 #    1500        2            -2.26 +- 1.09  (t = -2.1)
 #    2500        3            -2.18 +- 1.08  (t = -2.0)
 #
-# Coordination is worth about two seconds, and **the third gun adds nothing** — 1500 m and
+# Coordination is worth about two seconds, and **the third gun adds nothing** - 1500 m and
 # 2500 m are within noise of each other. That is the shape to expect rather than a
 # disappointment: with three targets for three guns, two netted guns covering two targets
 # plus a loose gun taking its nearest already covers the field. The net earns its keep by
@@ -26,7 +26,7 @@
 # The dial itself is correspondingly quiet on this scenario:
 #
 #   sweep fires_c2 --param sim.fires_need_c2 --values false,true --seeds 500 --until 300
-#   # -0.080 +- 0.460 (t = -0.2, 468 of 500 seeds identical) — not significant
+#   # -0.080 +- 0.460 (t = -0.2, 468 of 500 seeds identical) - not significant
 #
 # --- Why this file reads as a correction ------------------------------------------------
 #
@@ -34,7 +34,7 @@
 # **opposite**: requiring a net made Blue clear Red 24.5 s *faster* (t = -10.0), and
 # widening the net was monotonically worse. Coordination appeared to be a liability.
 #
-# It was not. The cap was a hard limit that **idled** shooters — a target offered
+# It was not. The cap was a hard limit that **idled** shooters - a target offered
 # `min(elements, cap)` slots, so once targets were scarcer than guns the surplus guns were
 # assigned nothing and fired nothing. Indirect fire needs a track, so scarcity is the normal
 # state of the opening. And because the cap was applied once per fire-control problem, a
@@ -44,15 +44,15 @@
 # The cap is gone (§11.4, gate V68). §10.2's `(1 - qbar)^k` discount already prices piling
 # on; truncating it as well said "rather than overkill, do nothing", which is the wrong
 # trade whenever there is nothing else to shoot. With the discount alone the coordinated
-# baseline improves from 103.40 s to 66.80 s — that gap is the fire the cap was throwing
-# away — and the inversion disappears.
+# baseline improves from 103.40 s to 66.80 s - that gap is the fire the cap was throwing
+# away - and the inversion disappears.
 #
 # The lesson worth keeping is not about C2 at all: **a dial whose meaning depends on the
 # scope it is applied over will invert when that scope changes.** The cap was reasonable
 # when a side was one problem and became incoherent the moment a side could be two.
 #
 # Note the default is `fires_need_c2 = false`, so this file left alone runs with all three
-# guns coordinating and the post inert. That is deliberate — the identity is visible in the
+# guns coordinating and the post inert. That is deliberate - the identity is visible in the
 # scenario rather than hidden in a default.
 
 name = "fires_c2"

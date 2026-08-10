@@ -1,8 +1,8 @@
 //! The two map overlays, both computed from the same sensing model the simulation uses.
 //!
-//! - **Coverage** answers "what can this sensor see?" — per cell, `P(detect by T)`.
+//! - **Coverage** answers "what can this sensor see?" - per cell, `P(detect by T)`.
 //! - **Belief** answers the harder question "given Blue has seen nothing, where could Red
-//!   be?" — the §8.2 negative-information posterior, with Red's jamming folded in.
+//!   be?" - the §8.2 negative-information posterior, with Red's jamming folded in.
 //!
 //! Both are read-only views of `sim_core`; neither feeds anything back into the model.
 
@@ -95,7 +95,7 @@ pub fn rebuild_coverage_overlay(
 ///
 /// Distinct from [`rebuild_belief_overlay`], and worth keeping both. That one is a
 /// *snapshot*: given where the sensors are right now, where could an undetected enemy be?
-/// This one is the *filter the sim is actually flying on* — a posterior accumulated over
+/// This one is the *filter the sim is actually flying on* - a posterior accumulated over
 /// every epoch of negative information and diffused between them (`docs/DESIGN.md`
 /// §10.3). It is what the tasking layer reads when it decides where to look.
 ///
@@ -133,7 +133,7 @@ pub fn rebuild_sim_belief_overlay(
                 Transform {
                     translation: Vec3::new(ex / 2.0, ey / 2.0, 1.0),
                     // The belief grid is coarse and covers the whole map, so one cell of
-                    // it spans the map extent divided by the grid edge — not the terrain
+                    // it spans the map extent divided by the grid edge - not the terrain
                     // cell size.
                     scale: Vec3::new(ex / cw as f32, ey / ch as f32, 1.0),
                     ..default()
@@ -145,7 +145,7 @@ pub fn rebuild_sim_belief_overlay(
 
 /// Belief overlay: assuming Blue has *not* detected Red, where could an `afv` be hiding?
 /// The product of each Blue sensor's no-detection likelihood (including Red jamming),
-/// normalised — mass concentrates in dead ground and inside Red's EW bubbles. This is the
+/// normalised - mass concentrates in dead ground and inside Red's EW bubbles. This is the
 /// Phase 8 partial-observability picture (POMDP negative information + EW).
 pub fn rebuild_belief_overlay(
     sim: &SimRes,
@@ -154,7 +154,7 @@ pub fn rebuild_belief_overlay(
     commands: &mut Commands,
     images: &mut Assets<Image>,
 ) {
-    // Live Blue sensors, each paired with its *effective* placement — a carried sensor
+    // Live Blue sensors, each paired with its *effective* placement - a carried sensor
     // reports its airframe's position, altitude and heading (docs/DESIGN.md §9).
     let blue: Vec<PlacedSensor> = sim
         .sim
@@ -189,7 +189,7 @@ pub fn rebuild_belief_overlay(
     // A moderate grid (parallel over cells): full-resolution over two long-range sensors
     // is ~10 s even threaded, so a light stride keeps the button interactive while still
     // being far crisper than before. Per cell: P(Red stays undetected for the exposure
-    // window) = Π_sensors e^{−λ·T} — near 0 inside coverage, ~1 in dead ground/jamming.
+    // window) = Π_sensors e^{−λ·T} - near 0 inside coverage, ~1 in dead ground/jamming.
     const STRIDE: usize = 3;
     let (cw, ch) = (w / STRIDE, h / STRIDE);
     let t0 = std::time::Instant::now();

@@ -1,7 +1,7 @@
 # Operations
 
 Every command for building, running, inspecting and testing the model, in one place.
-Environment setup — installing Rust, the linker, the VSCode extensions — is separate, in
+Environment setup - installing Rust, the linker, the VSCode extensions - is separate, in
 [`SETUP.md`](../SETUP.md).
 
 Related: [`docs/SCENARIOS.md`](SCENARIOS.md) for *writing* a scenario,
@@ -18,7 +18,7 @@ cargo fmt                             # format
 ```
 
 The first build compiles the Bevy engine and takes several minutes. Iterative rebuilds are
-seconds — a fast linker and a dependency-optimisation profile are already configured.
+seconds - a fast linker and a dependency-optimisation profile are already configured.
 
 ## Running the app
 
@@ -30,7 +30,7 @@ cargo run -p app -- path/to/mine.toml  # or by path, for one kept elsewhere
 
 An unknown name prints the scenarios it could have opened rather than failing obscurely.
 The in-app **scenario** dropdown lists every file in `scenarios/` that parses as a scenario
-and switches between them live — terrain, forces and all, no restart.
+and switches between them live - terrain, forces and all, no restart.
 
 ### Controls
 
@@ -38,7 +38,7 @@ The UI is **modeless**. Selection is a set, and the only mode is what a right-cl
 
 | Input | Does |
 |---|---|
-| Left-click | Select — units, drones, AD batteries or C2 posts |
+| Left-click | Select - units, drones, AD batteries or C2 posts |
 | Shift + left-click | Add to / toggle in the selection |
 | Left-drag | Box-select |
 | Right-click | Move the selection here, preserving formation |
@@ -51,7 +51,7 @@ The UI is **modeless**. Selection is a set, and the only mode is what a right-cl
 | **.** | Step one tick |
 
 Space and `.` are on the keyboard as well as the panel deliberately: inspecting a battle
-means keeping your eyes on the map, and reaching for a button loses the moment you paused
+means keeping eyes on the map, and reaching for a button loses the moment that was paused
 for.
 
 ### Watching a battle unfold
@@ -62,7 +62,7 @@ watched. The clock panel exists for that:
 | Control | What it does |
 |---|---|
 | **speed** | **Sim seconds per real second.** 0.2× to study a duel, 60× to skip ahead |
-| **+1 s / +10 s** | Step one integration tick, or one decision epoch — the two units the model actually has |
+| **+1 s / +10 s** | Step one integration tick, or one decision epoch - the two units the model actually has |
 | **pause on** *contact* / *loss* / *air* | Breakpoints: stop *on* the tick that produced the event |
 | **Run to** | Jump ahead at headless speed to a given sim time |
 | **Re-run at seed** | Replay the same battle exactly |
@@ -73,9 +73,9 @@ how big it is: real time accumulates into a budget which is spent in whole `dt_s
 0.2× and 60× produce the same event log, and the slow one is a magnifying glass rather than
 a different experiment.
 
-Breakpoints matter more than they sound. The moments worth seeing — first contact, a
-casualty, a missile away — last a single tick, so slowing down is not enough on its own;
-you also have to be looking at the right pixel at the right moment. A breakpoint stops the
+Breakpoints matter more than they sound. The moments worth seeing - first contact, a
+casualty, a missile away - last a single tick, so slowing down is not enough on its own;
+it also requires looking at the right pixel at the right moment. A breakpoint stops the
 clock on the tick that tripped it.
 
 ### Overlays and inspection
@@ -84,11 +84,11 @@ clock on the tick that tripped it.
 |---|---|
 | **Coverage overlay (Pd)** | Detection probability across the map for the placed sensors |
 | **Belief snapshot** | Where Red could be, given what Blue has and has not seen |
-| **Belief the sim is flying on (Blue)** | The sim's own per-side belief — what tasking is actually reading |
+| **Belief the sim is flying on (Blue)** | The sim's own per-side belief - what tasking is actually reading |
 | **Legend** | What every marker and colour means |
 
-Live dials in the panel — fire allocation, sensor tasking, the air and decision-layer
-settings — take effect immediately, so you can watch a rule change the battle rather than
+Live dials in the panel - fire allocation, sensor tasking, the air and decision-layer
+settings - take effect immediately, so a rule can be watched changing the battle rather than
 re-reading a CSV.
 
 ### Screenshots
@@ -123,7 +123,7 @@ maths still right, and right against what*. See [`docs/VALIDATION.md`](VALIDATIO
 Two general tools sit on a shared harness: `batch` compares **scenarios**, `sweep` compares
 **dials**. Everything else is a bespoke probe.
 
-### `batch` — a folder of scenarios
+### `batch` - a folder of scenarios
 
 ```
 batch [dir] [--seeds N] [--until SECONDS] [--out DIR] [--only NAME] [--quiet]
@@ -137,7 +137,7 @@ cargo run -p experiments --release --bin batch -- scenarios --only air_raid --se
 Writes `out/<scenario>.csv` (a row per seed) and `out/summary.csv` (mean and standard error
 per scenario). `--seeds N` always means seeds `0..N`, so "run 1,000 more" is `--seeds 2000`.
 
-### `sweep` — one dial, many values
+### `sweep` - one dial, many values
 
 ```
 sweep <scenario> --param PATH (--values a,b,c | --from X --to Y [--steps N])
@@ -159,7 +159,7 @@ cargo run -p experiments --release --bin sweep -- fire_allocation \
 ```
 
 `--param` is a **dotted path**, patched into the TOML before it is parsed, so any dial is
-sweepable — including one added next month — and the patched file goes through exactly the
+sweepable - including one added next month - and the patched file goes through exactly the
 same validation as one on disk. It reaches the **stat-block libraries** as well as the
 scenario, which is where the models actually live:
 
@@ -175,10 +175,10 @@ luck cancel. There is no unpaired option, because an unpaired comparison once pr
 confident and entirely spurious finding about the allocation solvers.
 
 Trials run in parallel, one sim per worker: **10,000 trials in under 20 seconds**, and
-byte-identical to a serial run — pinned by a test, because "we parallelised it and the
+byte-identical to a serial run - pinned by a test, because "the run was parallelised and the
 answer changed" is otherwise discovered months later by a confusing result.
 
-### `factorial` — several dials at once
+### `factorial` - several dials at once
 
 ```
 factorial <scenario> --factor PATH=v1,v2 [--factor PATH=v1,v2]...
@@ -193,11 +193,11 @@ cargo run -p experiments --release --bin factorial -- fires_c2 \
 ```
 
 Runs every combination of levels over one shared seed set and reports main effects plus
-two-way **interactions** — whether one dial's effect depends on another's level. A `sweep`
+two-way **interactions** - whether one dial's effect depends on another's level. A `sweep`
 cannot see that, and where two dials interact, a main effect quoted on its own is misleading.
 Cost is the product of the level counts. See [`docs/EXPERIMENTS.md`](EXPERIMENTS.md).
 
-### `sensitivity` — which dials drive the answer at all?
+### `sensitivity` - which dials drive the answer at all?
 
 ```
 sensitivity <study.toml> [--seeds N] [--until SECONDS] [--dir DIR]
@@ -208,7 +208,7 @@ cargo run -p experiments --release --bin sensitivity -- studies/sensing.toml --s
 ```
 
 Explores a whole dial space rather than a slice of it, and reports Morris screening plus
-Sobol variance decomposition — `S1` (what a dial explains alone), `ST` (what it is involved
+Sobol variance decomposition - `S1` (what a dial explains alone), `ST` (what it is involved
 in), and the gap between them, which is the influence a one-dial sweep cannot see. The dial
 space is a file: see [`studies/README.md`](../studies/README.md).
 
@@ -218,7 +218,7 @@ conclusions survive the numbers being wrong?**
 ### The bespoke probes
 
 Each answers one question and prints a table. Kept because each does something `sweep` and
-`factorial` cannot — search over positions, solve a game, or print a closed form beside the
+`factorial` cannot - search over positions, solve a game, or print a closed form beside the
 measurement. Three others were deleted once the harness subsumed them; see
 [EXPERIMENTS.md](EXPERIMENTS.md#the-bespoke-binaries).
 
@@ -237,7 +237,7 @@ cargo run -p experiments --release --bin fires_bench  # the fires path alone
 ```
 
 `bench` also reports the LOS memo hit rate. Note that **terrain build time is the figure
-that matters** — the sim tick is sub-millisecond and too noisy to optimise against. The
+that matters** - the sim tick is sub-millisecond and too noisy to optimise against. The
 fires path gets its own bench because the tick bench is too sensing-dominated to resolve
 it.
 

@@ -1,7 +1,7 @@
 //! Global sensitivity analysis: which dials actually drive the answer?
 //!
-//! Every number in this project is an abstract placeholder. That is a deliberate choice —
-//! the models are the product and the numbers are knobs — but it leaves one question
+//! Every number in this project is an abstract placeholder. That is a deliberate choice -
+//! the models are the product and the numbers are knobs - but it leaves one question
 //! hanging over every result: **does it matter that these numbers are invented?**
 //!
 //! A `sweep` cannot answer it. It varies one dial with the rest held at whatever the
@@ -11,11 +11,11 @@
 //!
 //! Two estimators here, cheap-then-thorough:
 //!
-//! * **Morris elementary effects** — a screening design. One-factor-at-a-time steps along
+//! * **Morris elementary effects** - a screening design. One-factor-at-a-time steps along
 //!   random trajectories through the dial space. `mu_star` ranks influence, `sigma` flags a
 //!   dial whose effect is non-linear or depends on the others. Cost is `r * (k + 1)` runs
 //!   for `k` dials, so it is affordable first and its job is to say what to ignore.
-//! * **Sobol indices** — a variance decomposition, via Saltelli sampling. `S1` is the
+//! * **Sobol indices** - a variance decomposition, via Saltelli sampling. `S1` is the
 //!   fraction of output variance a dial explains alone; `ST` includes everything it is
 //!   involved in. `ST - S1` is therefore how much of a dial's influence runs *through* its
 //!   interactions, which is exactly what a one-dial sweep is blind to.
@@ -30,7 +30,7 @@
 //! # Sampling, and why it is not the seeded RNG
 //!
 //! The dial-space sample is drawn from its own seeded `ChaCha8Rng`, separate from the
-//! simulation's. A study must be reproducible in *both* — the same study seed gives the
+//! simulation's. A study must be reproducible in *both* - the same study seed gives the
 //! same design, and each design point still runs the same simulation seeds. Mixing them
 //! would make a design point's dial values depend on how many trials ran before it.
 
@@ -59,11 +59,11 @@ impl Dial {
 /// What one dial contributed, by whichever estimator produced it.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct Index {
-    /// Morris: mean absolute elementary effect — how much this dial moves the answer.
+    /// Morris: mean absolute elementary effect - how much this dial moves the answer.
     /// Sobol: unused.
     pub mu_star: f64,
     /// Morris: spread of the elementary effects. Large next to `mu_star` means the dial's
-    /// effect depends on where the others are — non-linearity or interaction.
+    /// effect depends on where the others are - non-linearity or interaction.
     pub sigma: f64,
     /// Sobol first-order index: the share of output variance this dial explains **alone**.
     pub s1: f64,
@@ -82,8 +82,8 @@ pub type Point = Vec<f64>;
 /// `r` trajectories of `k + 1` points each: start at random, then step one dial at a time.
 ///
 /// Returns the points in evaluation order. [`morris_indices`] expects them back in the same
-/// order, which is what lets the caller evaluate them however it likes — in parallel, or on
-/// a cluster — without this module knowing anything about simulations.
+/// order, which is what lets the caller evaluate them however it likes - in parallel, or on
+/// a cluster - without this module knowing anything about simulations.
 #[must_use]
 pub fn morris_design(k: usize, trajectories: usize, levels: usize, seed: u64) -> Vec<Point> {
     let mut rng = ChaCha8Rng::seed_from_u64(seed);
@@ -118,7 +118,7 @@ pub fn morris_design(k: usize, trajectories: usize, levels: usize, seed: u64) ->
 /// Elementary effects from the outputs of [`morris_design`], in the same order.
 ///
 /// # Panics
-/// If `outputs` is not `trajectories * (k + 1)` long — a mismatch means the points and the
+/// If `outputs` is not `trajectories * (k + 1)` long - a mismatch means the points and the
 /// answers have drifted apart, and every index below would be attributed to the wrong dial.
 #[must_use]
 pub fn morris_indices(
@@ -265,7 +265,7 @@ pub fn sobol_indices(outputs: &[f64], k: usize, n: usize) -> Vec<Index> {
         .collect()
 }
 
-/// The Ishigami function — the standard sensitivity-analysis test case, because its Sobol
+/// The Ishigami function - the standard sensitivity-analysis test case, because its Sobol
 /// indices are known in closed form.
 ///
 /// `f(x) = sin(x1) + a·sin²(x2) + b·x3⁴·sin(x1)`, with each `x ~ U(−π, π)`. Note that `x3`
@@ -277,7 +277,7 @@ pub fn ishigami(x: &[f64], a: f64, b: f64) -> f64 {
     x[0].sin() + a * x[1].sin().powi(2) + b * x[2].powi(4) * x[0].sin()
 }
 
-/// Analytic Sobol indices of [`ishigami`] — `(S1, ST)` per input.
+/// Analytic Sobol indices of [`ishigami`] - `(S1, ST)` per input.
 #[must_use]
 pub fn ishigami_analytic(a: f64, b: f64) -> Vec<(f64, f64)> {
     let pi = std::f64::consts::PI;

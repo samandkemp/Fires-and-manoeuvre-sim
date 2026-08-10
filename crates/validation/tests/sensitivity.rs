@@ -1,8 +1,8 @@
-//! V71 — the Sobol estimator against a closed form. `docs/DESIGN.md` §16 (`docs/ROADMAP.md`).
+//! V71 - the Sobol estimator against a closed form. `docs/EXPERIMENTS.md`.
 //!
 //! Every number in this project is an abstract placeholder, so the question hanging over
 //! every result is whether the conclusion survives the numbers being wrong. Global
-//! sensitivity analysis answers it — but only if the estimator is itself trustworthy, and
+//! sensitivity analysis answers it - but only if the estimator is itself trustworthy, and
 //! "the indices looked plausible" is not a check.
 //!
 //! The **Ishigami function** is the standard test case precisely because its Sobol indices
@@ -12,12 +12,12 @@
 //! f(x) = sin(x1) + a·sin²(x2) + b·x3⁴·sin(x1),     x ~ U(−π, π)
 //! ```
 //!
-//! Its third input is the interesting one: `S1 = 0` exactly — `x3` does **nothing** on its
-//! own — while `ST` is large, because it does a great deal *through* `x1`. A one-dial sweep
+//! Its third input is the interesting one: `S1 = 0` exactly - `x3` does **nothing** on its
+//! own - while `ST` is large, because it does a great deal *through* `x1`. A one-dial sweep
 //! of `x3` would report no effect and be wrong about the model. That gap between `S1` and
 //! `ST` is the whole reason this estimator exists, so it is the thing worth gating.
 //!
-//! This is a gate on the **measuring instrument**, not on the simulation — the same kind as
+//! This is a gate on the **measuring instrument**, not on the simulation - the same kind as
 //! V27's Dijkstra-against-Bellman-Ford. An instrument that cannot recover a known answer
 //! cannot be trusted with an unknown one.
 
@@ -73,7 +73,7 @@ fn v71_sobol_indices_match_the_ishigami_closed_form() {
     assert!(
         got[2].st > 0.2,
         "yet x3 is involved in a fifth of the variance through its interaction with x1 \
-         (ST = {:.4}) — that gap is what a sweep is blind to",
+         (ST = {:.4}) - that gap is what a sweep is blind to",
         got[2].st
     );
     assert!(
@@ -82,7 +82,7 @@ fn v71_sobol_indices_match_the_ishigami_closed_form() {
     );
 }
 
-// A total index is never below a first-order one — an input cannot explain more alone than
+// A total index is never below a first-order one - an input cannot explain more alone than
 // it explains in total. A structural invariant, so it holds whatever the tolerance.
 #[test]
 fn v71_total_indices_are_never_below_first_order() {
@@ -100,7 +100,7 @@ fn v71_total_indices_are_never_below_first_order() {
 }
 
 // Morris is the cheap screen that runs first, and its job is to say what can be ignored. It
-// must therefore agree with Sobol about the *ranking* on the same function — the two
+// must therefore agree with Sobol about the *ranking* on the same function - the two
 // estimators are independent, so agreement is evidence for both.
 #[test]
 fn v71_morris_screening_agrees_with_sobol_on_what_matters() {

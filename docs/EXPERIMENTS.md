@@ -1,23 +1,23 @@
 # Running experiments
 
-How to get a number out of this simulation that you can defend.
+How to get a number out of this simulation that can be defended.
 
 The app shows one battle. That is the wrong tool for a question, because one battle is one
 draw from a distribution and it is not the interesting one. This document is about the
 other half: running the same situation thousands of times and reporting what actually
 changed, with an error bar.
 
-This is the **study-design** document — why paired, what the columns mean, how to read the
+This is the **study-design** document - why paired, what the columns mean, how to read the
 output, and what the harness cannot yet do. For the bare command syntax see
 [`docs/OPERATIONS.md`](OPERATIONS.md); for the dials themselves see
 [`docs/SCENARIOS.md`](SCENARIOS.md).
 
 - [The five-minute version](#the-five-minute-version)
 - [The two rules](#the-two-rules)
-- [`batch` — a folder of scenarios](#batch--a-folder-of-scenarios)
-- [`sweep` — one dial, many values](#sweep--one-dial-many-values)
-- [`factorial` — several dials at once](#factorial--several-dials-at-once-and-whether-they-interact)
-- [`sensitivity` — which dials drive the answer at all?](#sensitivity--which-dials-drive-the-answer-at-all)
+- [`batch` - a folder of scenarios](#batch--a-folder-of-scenarios)
+- [`sweep` - one dial, many values](#sweep--one-dial-many-values)
+- [`factorial` - several dials at once](#factorial--several-dials-at-once-and-whether-they-interact)
+- [`sensitivity` - which dials drive the answer at all?](#sensitivity--which-dials-drive-the-answer-at-all)
 - [What the columns mean](#what-the-columns-mean)
 - [Reading the output](#reading-the-output)
 - [How fast, and why](#how-fast-and-why)
@@ -55,11 +55,11 @@ That last command prints:
 
 Read it as: coordinating fires clears the enemy 12.8 s sooner, and that is far outside the
 noise. Solving the assignment *optimally* rather than greedily is worth 0.12 s, which is a
-quarter of one standard error — nothing. Both arms gave literally the same answer on about
+quarter of one standard error - nothing. Both arms gave literally the same answer on about
 90 of the 500 seeds.
 
 Always `--release`. A debug build of a Monte Carlo study is roughly 20× slower and tells
-you nothing a release build does not.
+nothing a release build does not.
 
 ---
 
@@ -79,7 +79,7 @@ Every study here builds the terrain **once per worker, from the scenario's own
 fixed and the question is "what happens on *this* map, on average". It is also far faster:
 terrain generation is seconds, a trial is microseconds.
 
-If you *want* to average over maps — a fair question, just a different one — sweep
+To average over maps - a fair question, just a different one - sweep
 `default_seed` itself:
 
 ```bash
@@ -116,7 +116,7 @@ what it has.
 
 ---
 
-## `batch` — a folder of scenarios
+## `batch` - a folder of scenarios
 
 ```
 batch [dir] [--seeds N] [--until SECONDS] [--out DIR] [--only NAME] [--quiet]
@@ -128,16 +128,16 @@ batch [dir] [--seeds N] [--until SECONDS] [--out DIR] [--only NAME] [--quiet]
 | `--seeds` | 20 | trials per scenario; seeds `0..N` |
 | `--until` | 600 | sim seconds per trial |
 | `--out` | `out` | where the CSVs go |
-| `--only` | — | just this scenario, by bare name |
-| `--quiet` | — | no progress line |
+| `--only` | - | just this scenario, by bare name |
+| `--quiet` | - | no progress line |
 
 Writes `out/<scenario>.csv` (a row per seed, every metric) and `out/summary.csv` (a row per
 scenario, mean and SE for every metric). `.gitignore` already covers `out/` and `*.csv`.
 
-`batch` compares **scenarios**. It is the regression sweep — run it after a change to see
+`batch` compares **scenarios**. It is the regression sweep - run it after a change to see
 whether anything moved that should not have. To compare **dials**, use `sweep`.
 
-## `sweep` — one dial, many values
+## `sweep` - one dial, many values
 
 ```
 sweep <scenario> --param PATH (--values a,b,c | --from X --to Y [--steps N])
@@ -178,7 +178,7 @@ The override is applied to the **TOML**, before it is parsed. Three consequences
 - The patched scenario goes through **exactly the same loader** as a file on disk, so an
   out-of-range value fails the same way rather than reaching the sim.
 
-A dial that is absent from the file — most of them, since nearly all have a default — is
+A dial that is absent from the file - most of them, since nearly all have a default - is
 created. That is safe because the schema sets `deny_unknown_fields` throughout, scenario
 and stat blocks alike: `sim.track_hold` for `sim.track_hold_s` is a load error naming the
 key, not a silent default. (Which also means a typo in a hand-written scenario or stat
@@ -192,10 +192,10 @@ CSV. Output goes to `out/<scenario>_<param>.csv` and `..._summary.csv`.
 
 ---
 
-## `factorial` — several dials at once, and whether they interact
+## `factorial` - several dials at once, and whether they interact
 
 `sweep` answers *what does this dial do*. `factorial` answers *what do these dials do, and
-does either one's answer depend on the other* — which is a different question, and on this
+does either one's answer depend on the other* - which is a different question, and on this
 model it has more than once been the more important one.
 
 ```
@@ -216,7 +216,7 @@ cargo run -p experiments --release --bin factorial -- fires_c2 \
 
 ### What it reports
 
-**Main effects** first, each averaged over every level of the other factors — so a factor is
+**Main effects** first, each averaged over every level of the other factors - so a factor is
 described by what it does across the design, not at one corner of it.
 
 **Interactions** second, as the classic difference of differences, formed per seed:
@@ -255,7 +255,7 @@ through this tool is now the check that it worked:
 ```
 
 The interaction that used to dominate is gone. What remains is a large, clean, *additive*
-effect of seeing sooner — which is what one would expect of a model that no longer has an
+effect of seeing sooner - which is what one would expect of a model that no longer has an
 artefact in it.
 
 ### Multi-level factors
@@ -264,7 +264,7 @@ A factor may have more than two levels. Main effects are reported per level agai
 baseline; the interaction is the corner-to-corner contrast across each factor's **range**,
 which is a summary rather than the whole surface. The per-cell CSV holds the rest.
 
-## `sensitivity` — which dials drive the answer at all?
+## `sensitivity` - which dials drive the answer at all?
 
 Every number in this repository is an **abstract placeholder**. That is deliberate and said
 everywhere, but it leaves one question over every finding: *does it matter that the numbers
@@ -279,7 +279,7 @@ outcome's variance each dial is responsible for.
 cargo run -p experiments --release --bin sensitivity -- studies/sensing.toml --seeds 20
 ```
 
-The dial space is a **file**, not a pile of flags, because it is a design — something to
+The dial space is a **file**, not a pile of flags, because it is a design - something to
 commit, review and re-run. See [`studies/README.md`](../studies/README.md) for the format.
 
 ### What comes back
@@ -294,7 +294,7 @@ ignored before the expensive pass runs.
 |---|---|
 | `S1` | the share of variance this dial explains **alone** |
 | `ST` | the share it is involved in altogether, interactions included |
-| `ST − S1` | the share running **through** interactions — invisible to a one-dial sweep |
+| `ST − S1` | the share running **through** interactions - invisible to a one-dial sweep |
 
 The closing line adds the first-order indices up. Near 1 means the dials are additive and
 one-at-a-time sweeps are sound. Well below 1 means most of the variance lives in
@@ -305,7 +305,7 @@ interactions, and a sweep will mislead.
 > The model side is [§9.5](design/09-air-and-counter-air.md), the cueing timeline. As above,
 > both carry the numbers.
 
-`studies/sensing.toml` asks what decides whether a drone raid gets through — 32,720 trials
+`studies/sensing.toml` asks what decides whether a drone raid gets through - 32,720 trials
 over four dials:
 
 | dial | S1 | ST | ST − S1 |
@@ -315,7 +315,7 @@ over four dials:
 | `sensors.mast_optical.lambda0_per_s` | −0.001 | 0.057 | 0.058 |
 | `sim.track_hold_s` | 0.000 | 0.000 | 0.000 |
 
-**Raid speed dominates** — how fast the attacker crosses the envelope explains more than the
+**Raid speed dominates** - how fast the attacker crosses the envelope explains more than the
 defender's cue latency does. **The sensor barely matters**, which retrospectively explains
 why sweeping its glimpse rate over a 20× range moved leakage by only 0.176: it is not the
 binding constraint here. **`track_hold_s` is exactly inert**, because the engagement resolves
@@ -323,7 +323,7 @@ faster than the shortest hold time in the range. And the first-order total of **
 the dials are additive on this scenario, which is a licence for every earlier `air_raid`
 sweep.
 
-A slightly negative `S1` means "indistinguishable from zero" — the Saltelli estimator is
+A slightly negative `S1` means "indistinguishable from zero" - the Saltelli estimator is
 unbiased rather than non-negative, and clamping it would hide how noisy a near-zero index is.
 
 ### Cost
@@ -332,7 +332,7 @@ unbiased rather than non-negative, and clamping it would hide how noisy a near-z
 point is an **average over seeds**, and the variance being decomposed is the one across the
 *dial space*, not across the dice. The study above is ~13 minutes.
 
-Terrain is built once for the whole design rather than once per point — `study::run_design`
+Terrain is built once for the whole design rather than once per point - `study::run_design`
 exists for exactly that, and without it the study above spends its entire runtime generating
 1000×1000 rasters.
 
@@ -344,7 +344,7 @@ An instrument that cannot recover a known answer cannot be trusted with an unkno
 
 ## What the columns mean
 
-Every metric is read back from the sim's own event logs and final state — never accumulated
+Every metric is read back from the sim's own event logs and final state - never accumulated
 alongside the sim as it runs. So there is no second bookkeeping path to drift: if a metric
 is wrong, the log is wrong, and the app's event feed is showing the same wrong thing.
 
@@ -359,7 +359,7 @@ is wrong, the log is wrong, and the app's event feed is showing the same wrong t
 | `air_leakers` | airframes that survived to **release** a munition |
 | `munitions_released` | munitions released |
 | `ground_casualties_from_air` | elements killed by air-delivered bursts |
-| `ad_shots` | air-defence shots taken — the denominator for rounds-per-kill |
+| `ad_shots` | air-defence shots taken - the denominator for rounds-per-kill |
 | `ad_rounds_left` | interceptors remaining, finite magazines only |
 | `ad_batteries_killed`, `c2_posts_killed` | what SEAD is trying to achieve |
 | `blue_cleared_s`, `red_cleared_s` | when a side lost its last ground element |
@@ -371,14 +371,14 @@ Two that repay attention:
 everything on one side dies by 600 s in every arm, `red_losses` is the same number
 everywhere and only the *time* distinguishes them. That is how the Phase 10 allocation
 result had to be measured. A side that was never cleared reports the run length, so read it
-with the kill counts beside it — `600` means "not by 600 s", not "at 600 s". A side that
+with the kill counts beside it - `600` means "not by 600 s", not "at 600 s". A side that
 fields no ground units at all also reports the run length; there was nothing to clear.
 
 **`ad_rounds_left` is where the Phase 11 C2 result lives.** Coordinating air defence barely
 changes how many drones die; it changes how much ammunition is left afterwards, because a
 missile is a discrete round and overkill is real. A gun is a Poisson process, so stacking
 guns simply adds kill rates and wastes nothing. Coordination pays where the shot is a
-countable resource — and that is invisible without this column.
+countable resource - and that is invisible without this column.
 
 ---
 
@@ -388,21 +388,21 @@ countable resource — and that is invisible without this column.
 sim.allocation = greedy      -12.835 +- 0.224 (t = -57.2, n = 2000, 311 tied) significant
 ```
 
-- **`-12.835`** — the mean paired difference against the *first* arm, in the metric's units.
-- **`+- 0.224`** — its standard error. Roughly: the true value is within about 2 of these.
-- **`t = -57.2`** — `mean / SE`. `|t| > 2` is the line this harness calls significant
+- **`-12.835`** - the mean paired difference against the *first* arm, in the metric's units.
+- **`+- 0.224`** - its standard error. Roughly: the true value is within about 2 of these.
+- **`t = -57.2`** - `mean / SE`. `|t| > 2` is the line this harness calls significant
   (two-sided, ~5%). At 57 there is nothing to argue about.
-- **`311 tied`** — seeds where the two arms gave *exactly* the same number.
+- **`311 tied`** - seeds where the two arms gave *exactly* the same number.
 
 > **Every figure is against the first arm.** To compare two *other* arms, re-run with one of
-> them first — do not eyeball the difference between two rows. Their separate errors do not
+> them first - do not eyeball the difference between two rows. Their separate errors do not
 > combine the way the paired one does, and on this very example that mistake hid a real
 > effect for two phases: greedy and optimal differ by 0.405 ± 0.051 measured directly, but
 > read off their shared baseline the gap looks like 0.4 against SEs of ~0.23.
 - **`significant`** / **`NOT significant`**.
 
 **The tie count is the part people skip, and it is the most informative field.** A small
-difference with a *high* tie count means the two arms are mostly making the same decision —
+difference with a *high* tie count means the two arms are mostly making the same decision -
 a different conclusion from "the effect is real but hard to see". When every arm ties on
 every seed, the report says so explicitly, because "no significant effect" reads as
 evidence of no effect when it is usually evidence that the dial does not reach the metric
@@ -426,7 +426,7 @@ Measured on this machine (12 threads), release build:
 
 A trial costs microseconds; **building the terrain costs seconds**. So the seed list is cut
 into exactly one chunk per worker thread, and each worker builds one sim and resets it
-between trials. That is `threads` terrain builds, paid once and concurrently — not one per
+between trials. That is `threads` terrain builds, paid once and concurrently - not one per
 trial, and deliberately not `rayon::map_init`, whose init closure is called an unspecified
 number of times.
 
@@ -436,19 +436,19 @@ map. Terrain generation is deterministic given its seed, so that is exact.
 **Scheduling cannot change the answer.** Results come back in seed order regardless of how
 the work was split, and each trial is a fresh `reset_to_scenario` whose RNG stream depends
 only on its seed. A parallel study returns byte-identical numbers to a serial one, and
-`study::tests::parallel_matches_serial_exactly` pins that — because "we parallelised the
+`study::tests::parallel_matches_serial_exactly` pins that - because "the study was parallelised and the
 study and the answer changed" is otherwise found out months later, by a confusing result.
 
-The other lever is `--until`. Most scenarios have decided by 200–300 s and the rest of the
+The other lever is `--until`. Most scenarios have decided by 200-300 s and the rest of the
 run is empty ticks; halving `--until` nearly halves the cost. Check `*_cleared_s` first to
-see whether you are paying for time in which nothing happens.
+see whether time is being spent on nothing happening.
 
 ---
 
 ## Worked example: is the overkill cap earning its keep?
 
-> The model side of this — *why* the dial exists and what it says about guns versus missiles
-> — is [§11.2](design/11-command-and-control.md). This page is about the method. Both carry
+> The model side of this - *why* the dial exists and what it says about guns versus missiles
+> - is [§11.2](design/11-command-and-control.md). This page is about the method. Both carry
 > the numbers, so re-measuring means updating both.
 
 `max_batteries_per_air_target` caps how many air-defence batteries may be assigned to one
@@ -466,9 +466,9 @@ cargo run -p experiments --release --bin sweep -- ad_c2 \
 | cap | `air_downed` | `ad_rounds_left` |
 |---|---|---|
 | 1 | 9.907 (baseline) | 3.679 (baseline) |
-| 2 | −0.002 ± 0.007 — **not significant** | −0.252 ± 0.040 (t = −6.3) |
+| 2 | −0.002 ± 0.007 - **not significant** | −0.252 ± 0.040 (t = −6.3) |
 | 3 | −0.028 ± 0.008 (t = −3.7) | −0.642 ± 0.042 (t = −15.2) |
-| 4 | −0.028 | −0.650 — identical to cap 3 |
+| 4 | −0.028 | −0.650 - identical to cap 3 |
 
 Read it in three parts.
 
@@ -476,7 +476,7 @@ Read it in three parts.
 confirming it is measuring what it claims to.
 
 **The second battery buys nothing and costs a quarter of a round.** −0.002 kills against an
-SE of 0.007 is a null result at 2,500 paired seeds — not "too small to see", genuinely
+SE of 0.007 is a null result at 2,500 paired seeds - not "too small to see", genuinely
 nothing.
 
 **The third battery is actively worse**: it costs 0.64 rounds of reserve *and* kills 0.028
@@ -484,14 +484,14 @@ fewer drones (t = −3.7). Stacking is not free even when ammunition is not the 
 constraint, because a battery committed to an airframe another battery has already covered
 is not covering a different one.
 
-So on this scenario the default of 2 is defensible but unearned — it is not harmful, and it
+So on this scenario the default of 2 is defensible but unearned - it is not harmful, and it
 is not doing anything either. Whether that holds when batteries are scarcer relative to the
 raid is the next question, and it is one `--set` away.
 
 ### A stat-block dial: what is a better sensor worth?
 
 The same command shape reaches the models themselves. `mast_optical` is the early-warning
-sensor `air_raid` hangs on — it is what cues the SAM, and the SAM is Blue's only answer
+sensor `air_raid` hangs on - it is what cues the SAM, and the SAM is Blue's only answer
 above the CIWS ceiling. So: what does its detection rate buy?
 
 ```bash
@@ -503,13 +503,13 @@ cargo run -p experiments --release --bin sweep -- air_raid \
 | λ₀ (per s) | leakers, paired against 0.05 |
 |---|---|
 | 0.05 | 0.703 (baseline) |
-| 0.1 | −0.029 ± 0.023 — not significant |
+| 0.1 | −0.029 ± 0.023 - not significant |
 | 0.35 | −0.087 ± 0.032 (t = −2.7) |
 | 1.0 | −0.176 ± 0.031 (t = −5.6) |
 
 A twentyfold better sensor stops a quarter of the leakers. Note the shape: the first
 doubling is worth nothing measurable, and it takes a factor of seven before the effect
-clears the noise. That is what `P = 1 − e^{−λΔt}` looks like from the outside — the sensor
+clears the noise. That is what `P = 1 − e^{−λΔt}` looks like from the outside - the sensor
 is not the binding constraint until it is bad enough to be one, and after that each
 increment matters less than the last.
 
@@ -525,7 +525,7 @@ Three edits, all in [`crates/experiments/src/outcome.rs`](../crates/experiments/
 4. Bump `N`.
 
 `COLUMNS` and `values()` are tied together by the array length `N`, so forgetting one of
-them will not compile. Fill the field in `run_one` **from the sim's logs or final state** —
+them will not compile. Fill the field in `run_one` **from the sim's logs or final state** -
 that is the rule that keeps the metrics honest.
 
 Everything else picks it up automatically: both CSVs, the summary, and `--metric <name>`.
@@ -555,13 +555,13 @@ benches. Each answers one question its own way and prints a table.
 
 | Binary | Question | Why not a sweep |
 |---|---|---|
-| `duel_probe` | mutual-detection duel: who sees whom first | a diagnostic — prints per-pair geometry, not a metric |
+| `duel_probe` | mutual-detection duel: who sees whom first | a diagnostic - prints per-pair geometry, not a metric |
 | `sensor_siting` | where to put a sensor, by coverage | searches over *positions*, which is not a dial |
 | `interdiction` | the §6.3 sensing-vs-routing game equilibrium | solves a game; there is no arm to compare |
 | `air_raid` | counter-air: cue latency vs leakers | reports a closed form beside the measurement |
 | `bench`, `fires_bench` | tick, LOS, viewshed and fires cost | performance, not behaviour |
 
-**Three were deleted once the harness subsumed them** — `pd_sweep` (the sensing gates check
+**Three were deleted once the harness subsumed them** - `pd_sweep` (the sensing gates check
 the same closed form, and `validation_report` prints it), `allocation_gap` (`sweep --param
 sim.allocation --values optimal,greedy,independent` is the same comparison, paired, with
 standard errors) and `risk_path` (§10.5 put least-risk pathing *in the loop*, and V73 gates
@@ -573,7 +573,7 @@ it). A demo that the engine has since absorbed is a maintenance cost, not a feat
   interaction is in the per-cell CSV but not in the report. With more than two levels the
   reported interaction is the corner-to-corner contrast rather than the whole surface.
 - **Sensitivity dials are continuous only.** A range is a pair of numbers, so a categorical
-  dial like `sim.allocation` has no place in a study file — use `factorial` for those.
+  dial like `sim.allocation` has no place in a study file - use `factorial` for those.
 - **A sensitivity study may not vary terrain.** Terrain is built once for the whole design,
   so a terrain dial would ask for a map it does not get.
 - **`--seeds N` always means `0..N`**, so two studies at different `N` share a prefix rather

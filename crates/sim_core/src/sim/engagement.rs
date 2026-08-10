@@ -1,12 +1,12 @@
 //! Ground fires: who shoots whom, and what one epoch of shooting does.
-//! Spec: `docs/DESIGN.md` §2, §4.1–§4.2, §10.2. Gates: V19–V24, V30, V31, V56.
+//! Spec: `docs/DESIGN.md` §2, §4.1-§4.2, §10.2. Gates: V19-V24, V30, V31, V56.
 //!
 //! One epoch:
 //!
-//! 1. [`Sim::allocate_fires`] — each side assigns **all** its shooters at once, by
-//!    solving a weapon–target assignment problem (§10.2). Direct fire needs LOS and
+//! 1. [`Sim::allocate_fires`] - each side assigns **all** its shooters at once, by
+//!    solving a weapon-target assignment problem (§10.2). Direct fire needs LOS and
 //!    range; indirect needs a live *track* and range, but no LOS (it arcs over).
-//! 2. Work out each shot once — range, hit probability, dispersion — since none of it
+//! 2. Work out each shot once - range, hit probability, dispersion - since none of it
 //!    varies across the burst.
 //! 3. Fire `rof × epoch × elements` rounds, each resolving against the target.
 //! 4. Apply suppression from the near-misses afterwards, in a fixed unit order.
@@ -26,14 +26,14 @@ use crate::los;
 use glam::Vec2;
 use rand::Rng;
 
-/// Firing height of a ground shooter above its own ground, metres — the sightline and
+/// Firing height of a ground shooter above its own ground, metres - the sightline and
 /// slant-range origin for direct fire.
 pub(super) const SHOOTER_HEIGHT_M: f32 = 2.0;
 
 /// Everything about a burst that does not change from round to round.
 ///
 /// Range, hit probability and dispersion depend only on the shooter, the target and the
-/// weapon, all fixed for the epoch — so they are computed once here rather than per
+/// weapon, all fixed for the epoch - so they are computed once here rather than per
 /// round. Only the dice differ between rounds.
 enum Shot {
     /// Direct fire: a per-round kill probability against one element.
@@ -42,7 +42,7 @@ enum Shot {
     ///
     /// `cover` and `effectiveness` are kept as separate fields rather than pre-multiplied
     /// into one factor. Float multiplication is not associative, so folding them would
-    /// give `d·(c·e)` where the original computed `(d·c)·e` — a difference of one ulp,
+    /// give `d·(c·e)` where the original computed `(d·c)·e` - a difference of one ulp,
     /// but enough to flip a knife-edge kill roll and silently re-baseline V22/V24.
     Indirect {
         sigma_m: f32,
@@ -55,8 +55,8 @@ enum Shot {
 /// What ground fires need to know about a target, whichever list it lives in.
 ///
 /// Units, air-defence batteries and C2 posts differ in what they *do* and in nothing that
-/// matters to a shell. Gathering the four facts a shot depends on — where, how big, how
-/// many left, is it locatable — is what let counter-battery be added by widening a list
+/// matters to a shell. Gathering the four facts a shot depends on - where, how big, how
+/// many left, is it locatable - is what let counter-battery be added by widening a list
 /// rather than by writing a second fires model (`docs/DESIGN.md` §12.4).
 #[derive(Clone, Copy)]
 pub(super) struct TargetState {
@@ -114,7 +114,7 @@ impl Sim {
         out
     }
 
-    /// This side's target priority. Always present — the undirected case is one tier
+    /// This side's target priority. Always present - the undirected case is one tier
     /// holding everything (`docs/DESIGN.md` §13).
     pub(super) fn doctrine_of(&self, side: Side) -> &Doctrine {
         &self.doctrine[side as usize]
@@ -190,14 +190,14 @@ impl Sim {
     /// - A **battery** has, if it is transmitting (`emitting` with a live radar) or has
     ///   fired. Those are the two real ways a site is located: ESM on its emissions, or a
     ///   counter-battery track back along its rounds.
-    /// - A **post** has, if it is coordinating anything — a command post is found because
+    /// - A **post** has, if it is coordinating anything - a command post is found because
     ///   it is talking, which is the same argument in a different band.
     ///
     /// Deterministic, and draws **no randomness**. That is not just tidiness: a stochastic
     /// acquisition here would insert draws into every scenario fielding air defence and
     /// shift the stream underneath V50, V51, V59 and V60 for no modelling gain.
     ///
-    /// It also joins the two halves of §12.3 — switching a radar off already made an ARM
+    /// It also joins the two halves of §12.3 - switching a radar off already made an ARM
     /// miss; it now also hides the battery from artillery. One decision, two consequences.
     ///
     /// Public because it is a question worth asking from outside: it is what a gate checks
@@ -213,8 +213,8 @@ impl Sim {
                 // `last_fired_s`, not a scan of the event log: this test runs once per
                 // (shooter, target) pair per epoch, and the log grows for the whole run, so
                 // the scan made the cost of an epoch depend on how long the battle had
-                // already lasted. Same answer — both ask whether any engagement has
-                // resolved — at O(1).
+                // already lasted. Same answer - both ask whether any engagement has
+                // resolved - at O(1).
                 d.alive() && (emitting || d.last_fired_s.is_some())
             }
             FireTarget::C2(i) => {
@@ -237,7 +237,7 @@ impl Sim {
         near_misses.clear();
         near_misses.resize(self.units.len(), 0);
 
-        // Both sides allocate against the same board, before anyone shoots — so neither
+        // Both sides allocate against the same board, before anyone shoots - so neither
         // side gets to react to casualties the other has not taken yet. Sorted by shooter
         // so rounds still resolve in unit index order, which is the determinism unit.
         let mut orders: Vec<(usize, FireTarget)> = [Side::Blue, Side::Red]
@@ -247,7 +247,7 @@ impl Sim {
         orders.sort_unstable();
 
         // Record the locks (§13.4). Written for *every* shooter, so one that was allocated
-        // nothing has its lock cleared rather than keeping a stale one — an idle gun is not
+        // nothing has its lock cleared rather than keeping a stale one - an idle gun is not
         // still engaging what it shot at two epochs ago.
         for u in &mut self.units {
             u.engaging = None;
@@ -362,14 +362,14 @@ impl Sim {
     }
 
     /// Resolve one round: returns `(elements_killed, near_miss)`. `remaining` is the
-    /// target's live element count before this round — indirect fire rolls each one.
+    /// target's live element count before this round - indirect fire rolls each one.
     fn fire_one_round(&mut self, shot: &Shot, target_pos: Vec2, remaining: u32) -> (u32, u32) {
         match *shot {
             Shot::Direct { p_kill } => {
                 if self.rng.random::<f32>() < p_kill {
                     (1, 0) // element destroyed
                 } else {
-                    (0, 1) // round passed close — a near-miss
+                    (0, 1) // round passed close - a near-miss
                 }
             }
             Shot::Indirect {
@@ -380,7 +380,7 @@ impl Sim {
             } => {
                 let burst = fires::sample_burst(target_pos, sigma_m, &mut self.rng);
                 let miss = burst.distance(target_pos);
-                // Same multiplication order as before the hoist — see `Shot::Indirect`.
+                // Same multiplication order as before the hoist - see `Shot::Indirect`.
                 let dmg =
                     fires::carleton_damage(miss, lethal_radius_m) * (1.0 - cover) * effectiveness;
                 // Each remaining element independently survives or not.
@@ -398,11 +398,11 @@ impl Sim {
     /// Assign every one of `side`'s shooters, splitting them by whether they are in the
     /// side's fire-control net (`docs/DESIGN.md` §11.3).
     ///
-    /// With `[sim] fires_need_c2` off — the default — this is one call with the whole
+    /// With `[sim] fires_need_c2` off - the default - this is one call with the whole
     /// side, exactly as before, and the C2 lists are never consulted. With it on, the side
     /// solves **two** problems: the netted shooters coordinate, and the rest each pick for
     /// themselves. They are solved separately rather than as one problem with constraints,
-    /// because "not in the net" means precisely "does not know what anyone else is doing" —
+    /// because "not in the net" means precisely "does not know what anyone else is doing" -
     /// an unnetted shooter must not be allowed to avoid a target because a netted one took
     /// it.
     ///
@@ -426,7 +426,7 @@ impl Sim {
         // 2. it is already **locked** onto a target it can still engage (§13.4);
         // 3. otherwise it is allocated.
         //
-        // Orders outrank locks so a new order re-tasks a gun that is mid-engagement —
+        // Orders outrank locks so a new order re-tasks a gun that is mid-engagement -
         // an order is the one thing that should break a lock.
         let mut assigned = self.ordered_engagements(side, &all);
         all.retain(|s| !assigned.iter().any(|(a, _)| a == s));
@@ -472,7 +472,7 @@ impl Sim {
 
     /// Engagements this side has ordered outright (`docs/DESIGN.md` §13.3).
     ///
-    /// An order stands only while the pairing is **actually engageable** — alive, in range,
+    /// An order stands only while the pairing is **actually engageable** - alive, in range,
     /// and in line of sight if the weapon needs it. When it is not, the order lapses for
     /// that epoch and the shooter rejoins the assignment; it resumes the moment the target
     /// is reachable again.
@@ -519,7 +519,7 @@ impl Sim {
         self.target_state(t).elements > 0 && self.kill_fraction(shooter, t).is_some_and(|q| q > 0.0)
     }
 
-    /// Resolve an id to a ground-fire target, searching units, batteries then posts — the
+    /// Resolve an id to a ground-fire target, searching units, batteries then posts - the
     /// same one namespace `TargetSpec::Named` uses for strike targets (§12.1).
     fn named_fire_target(&self, id: &str) -> Option<FireTarget> {
         (0..self.units.len())
@@ -540,17 +540,17 @@ impl Sim {
     /// Allocate `shooters` under this side's doctrine (`docs/DESIGN.md` §13.2).
     ///
     /// - **No doctrine**: one call, exactly the pre-doctrine behaviour (§7.4).
-    /// - **Weighted**: one call, with each target's value scaled by its tier — the payoff
+    /// - **Weighted**: one call, with each target's value scaled by its tier - the payoff
     ///   still decides, doctrine is a thumb on the scale.
     /// - **Strict**: the assignment is solved **one tier at a time**, highest first. Any
     ///   shooter that can reach a tier takes something in it; only those left unassigned
     ///   fall through to the next.
     ///
-    /// Solving tier by tier is what makes strict ordering *exact*. The obvious alternative
-    /// — a large bonus added to a higher tier's payoff — is the trap `allocation::INELIGIBLE`
-    /// already fell into once: at the magnitudes needed to dominate, `1e18 + 10.0 == 1e18`
-    /// in f64 and the payoff differences inside a tier vanish. A sequence of small exact
-    /// problems has no such failure mode.
+    /// Solving tier by tier is what makes strict ordering *exact*. The obvious
+    /// alternative - a large bonus added to a higher tier's payoff - is the trap
+    /// `allocation::INELIGIBLE` already fell into once: at the magnitudes needed to
+    /// dominate, `1e18 + 10.0 == 1e18` in f64 and the payoff differences inside a tier
+    /// vanish. A sequence of small exact problems has no such failure mode.
     fn allocate_by_doctrine(
         &self,
         side: Side,
@@ -636,8 +636,8 @@ impl Sim {
         //
         // There used to be one, `max_shooters_per_target`, and it was a hard cap that
         // *idled* shooters: a target offered `min(elements, cap)` slots, so once targets
-        // were scarcer than shooters — which for indirect fire is most of the opening,
-        // since a target must be tracked before it can be shot at — the surplus shooters
+        // were scarcer than shooters - which for indirect fire is most of the opening,
+        // since a target must be tracked before it can be shot at - the surplus shooters
         // were assigned nothing and fired nothing. Measured on `fires_c2.toml`, that made
         // a side which had been *split in two* by `fires_need_c2` fight better than a
         // coordinated one, because the cap was applied once per fire-control problem and a
@@ -712,7 +712,7 @@ impl Sim {
         if weapon.class == WeaponClass::Indirect && !target.located {
             return None;
         }
-        // Slant range (docs/DESIGN.md §9.1) — the one range convention.
+        // Slant range (docs/DESIGN.md §9.1) - the one range convention.
         let range = los::slant_range(
             &self.terrain,
             shooter.pos,
@@ -795,12 +795,12 @@ impl Sim {
     /// The `value` dial on the stat block wins when set. Otherwise it is derived:
     /// `elements × (1 + threat/threat_max)`, so a unit is worth its size, doubled if it is
     /// the most dangerous thing on the field. Deriving from size *and* threat means an
-    /// unscored stat block still ranks sensibly — an unarmed truck is worth something, a
+    /// unscored stat block still ranks sensibly - an unarmed truck is worth something, a
     /// full-strength gun battery a great deal more.
     ///
     /// **An emplacement scores no derived threat** (§12.4). A battery's danger is to
     /// aircraft and a post's is to nobody at all, so neither has an output measurable on
-    /// the same scale as a unit's `rof × lethality × reach` — and inventing a conversion
+    /// the same scale as a unit's `rof × lethality × reach` - and inventing a conversion
     /// would be arithmetic dressed as doctrine. They fall back to `1.0` per element, and a
     /// scenario that wants artillery to prefer the SAM over the tanks says so with `value`.
     /// That is what the dial is for: expressing "kill the radar first" is a judgement, not

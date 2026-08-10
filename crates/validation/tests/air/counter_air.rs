@@ -70,7 +70,7 @@ fn time_to_kill(
     None
 }
 
-// V48: a gun's time-to-kill is Exp(λ) — mean 1/λ, and P(kill by t) = 1 − e^{−λt}.
+// V48: a gun's time-to-kill is Exp(λ) - mean 1/λ, and P(kill by t) = 1 − e^{−λt}.
 // Structurally the same gate as V14/V15 for detection, because it is the same law.
 #[test]
 fn v48_gun_time_to_kill_is_exponential() {
@@ -186,7 +186,7 @@ fn v49_missile_time_to_kill_is_geometric() {
 
 // V50: cue latency governs leakage. The effective window shrinks one-for-one with
 // latency, leakage rises monotonically, and above the critical latency L* = W − R
-// every target leaks — regardless of how lethal the gun is.
+// every target leaks - regardless of how lethal the gun is.
 #[test]
 fn v50_cue_latency_and_leakage() {
     let (rate, window, reaction) = (0.5f32, 20.0f32, 2.0f32);
@@ -201,7 +201,7 @@ fn v50_cue_latency_and_leakage() {
         let mut leaked = 0u32;
         for seed in 0..trials {
             // The target is in envelope for `window` s but only actionable for
-            // `w_eff` of it — exactly the §9.5 timeline.
+            // `w_eff` of it - exactly the §9.5 timeline.
             match time_to_kill(gun(rate), 500.0, dt, seed, f64::from(w_eff)) {
                 Some(_) => {}
                 None => leaked += 1,
@@ -266,7 +266,7 @@ fn v50_cue_latency_and_leakage() {
     assert!((p_leak_missile(0.5, 2) - 0.25).abs() < 1e-6);
 }
 
-// V51: envelope, cueing and magazine gating are exact — zero engagements outside the
+// V51: envelope, cueing and magazine gating are exact - zero engagements outside the
 // range band, outside the altitude band, without LOS, without a cue, or with an
 // empty magazine; and concurrent engagements never exceed the channel count.
 #[test]
@@ -327,7 +327,7 @@ fn v51_envelope_and_magazine_gating() {
     ));
 
     // Cueing (§9.5): no track ⇒ never actionable; otherwise the battery acts on
-    // whichever route reaches it first — its own radar, or the net plus the delay.
+    // whichever route reaches it first - its own radar, or the net plus the delay.
     let mut ad = AirDefenceState::new(
         "ad",
         Side::Blue,
@@ -389,7 +389,7 @@ fn v51_envelope_and_magazine_gating() {
     assert_eq!(
         ad.actionable_at(Some(100.0), ad.own_sensor_seen(&seen)),
         Some(115.0),
-        "so it pays the latency — the configuration for studying net-cued AD"
+        "so it pays the latency - the configuration for studying net-cued AD"
     );
 
     // Channels cap concurrency; the magazine caps total commitments.

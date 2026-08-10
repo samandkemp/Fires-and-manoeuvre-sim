@@ -56,7 +56,7 @@ fn loads_flat_fixture_scenario() {
 }
 
 // Every scenario shipped in `scenarios/` must parse *and* resolve every instance
-// against the libraries — the gate that catches a typo'd type id or a schema drift in
+// against the libraries - the gate that catches a typo'd type id or a schema drift in
 // air.toml / air_defence.toml, which otherwise only shows up when the app won't start.
 #[test]
 fn shipped_scenarios_load_and_resolve() {
@@ -320,7 +320,7 @@ fn v67_a_stat_block_that_would_evaluate_to_nan_is_refused() {
 
 #[test]
 fn v67_every_shipped_scenario_and_library_passes_its_own_contract() {
-    // The check is only worth having if the repository satisfies it — otherwise it would
+    // The check is only worth having if the repository satisfies it - otherwise it would
     // have to be weakened the first time it was run in anger.
     let dir = validation::scenarios_dir();
     Libraries::load_dir(&dir).expect("the shipped libraries must satisfy the contract");

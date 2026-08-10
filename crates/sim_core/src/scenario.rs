@@ -32,13 +32,13 @@ pub enum ScenarioError {
     Invalid(String),
 }
 
-/// A scenario: a named situation the engine can simulate — terrain, sim clock, and the
+/// A scenario: a named situation the engine can simulate - terrain, sim clock, and the
 /// two forces' placed assets. Weapons join this schema in the fires phase.
 ///
 /// # Unknown keys are rejected
 ///
 /// Every struct in this schema carries `deny_unknown_fields`. Nearly all the dials have a
-/// serde default, so without it a misspelt key — `track_hold` for `track_hold_s` — parses
+/// serde default, so without it a misspelt key - `track_hold` for `track_hold_s` - parses
 /// perfectly, takes the default, and produces a study of a dial nobody set. That failure
 /// is invisible: the run succeeds and the answer is simply about a different question.
 /// Refusing the key turns it into a load error naming the file.
@@ -97,7 +97,7 @@ pub struct SimConfig {
     #[serde(default = "default_track_maintain_p")]
     pub track_maintain_p: f32,
     /// How fire allocation is solved each epoch (`docs/DESIGN.md` §10.2):
-    /// `"optimal"` (Hungarian, the default), `"greedy"`, or `"independent"` — the
+    /// `"optimal"` (Hungarian, the default), `"greedy"`, or `"independent"` - the
     /// pre-Phase-10 rule where every shooter chose for itself.
     ///
     /// A dial rather than a constant so the cost of *not* coordinating is measurable on
@@ -116,14 +116,14 @@ pub struct SimConfig {
     /// Must a ground shooter be under a live friendly C2 post to join its side's
     /// coordinated fire plan (`docs/DESIGN.md` §11.3)?
     ///
-    /// **Off by default.** With it off, ground fires coordinate side-wide for free — the
+    /// **Off by default.** With it off, ground fires coordinate side-wide for free - the
     /// §10.2 assumption, defensible for a battlegroup sharing one fire-control net. With it
     /// on, a shooter inside a live post's (jammed) radius joins the side-wide assignment
     /// and a shooter outside falls back to picking for itself, exactly as air defence
     /// already works (§11.1).
     ///
     /// A dial rather than a change of rule, because flipping it unconditionally would
-    /// silently turn every existing scenario into `independent` — re-baselining the Phase
+    /// silently turn every existing scenario into `independent` - re-baselining the Phase
     /// 10 allocation result, V56 and V39 at once, for a reason invisible in the scenario
     /// files. As a dial the cost of losing the net is *measurable* instead: sweep it.
     #[serde(default)]
@@ -134,7 +134,7 @@ pub struct SimConfig {
     /// **Off by default, deliberately.** A `facing_deg` written in a scenario is a
     /// statement of intent, and silently overriding it would change what every existing
     /// scenario means. It would also dissolve the §6.3 interdiction game, whose Blue
-    /// strategies *are* committed postures — a sensor that re-points itself is no longer
+    /// strategies *are* committed postures - a sensor that re-points itself is no longer
     /// playing a strategy (V39 catches exactly this).
     ///
     /// Only affects sensors with a finite `for_width_deg`; an all-round sensor has no
@@ -150,7 +150,7 @@ pub struct SimConfig {
     /// fraction of the held route's cost (§10.5).
     ///
     /// Without it a unit re-deciding every epoch dithers between two near-equal routes as
-    /// tiny cost differences wobble — the movement analogue of the target-lock problem
+    /// tiny cost differences wobble - the movement analogue of the target-lock problem
     /// (§13.4), and it gets the same answer: switching is itself a decision with a cost, so
     /// it takes something changing on the ground rather than a rounding difference.
     #[serde(default = "default_repath_margin")]
@@ -168,7 +168,7 @@ pub struct SimConfig {
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default, serde::Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum AllocationChoice {
-    /// Kuhn–Munkres: the side-wide optimum.
+    /// Kuhn-Munkres: the side-wide optimum.
     #[default]
     Optimal,
     /// Repeatedly take the best remaining pairing.
@@ -274,7 +274,7 @@ pub struct Force {
     /// Placed jammers (protect this side's units from enemy detection).
     #[serde(default)]
     pub jammers: Vec<JammerInstance>,
-    /// Placed air assets — drones (`docs/DESIGN.md` §9).
+    /// Placed air assets - drones (`docs/DESIGN.md` §9).
     #[serde(default)]
     pub air: Vec<AirInstance>,
     /// Placed air-defence batteries (`docs/DESIGN.md` §9.4).
@@ -285,7 +285,7 @@ pub struct Force {
     pub c2: Vec<C2Instance>,
     /// What this side has been told to shoot first (`docs/DESIGN.md` §13).
     ///
-    /// **Always present.** Omitting the block gives `priority = ["all"]` — one tier holding
+    /// **Always present.** Omitting the block gives `priority = ["all"]` - one tier holding
     /// every target, which *is* the undirected §10.2 behaviour. So there is no "doctrine or
     /// not" branch anywhere downstream; the undirected case is simply the one-tier case.
     #[serde(default)]
@@ -350,7 +350,7 @@ pub struct AirInstance {
 #[derive(Debug, Clone, serde::Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum TargetConfig {
-    /// A named ground asset — a unit, an air-defence battery, or a C2 post. The TOML key
+    /// A named ground asset - a unit, an air-defence battery, or a C2 post. The TOML key
     /// stays `unit` for compatibility with scenarios written before batteries and posts
     /// were targetable; `asset` is the clearer alias and means the same thing.
     #[serde(alias = "asset")]
@@ -374,7 +374,7 @@ pub struct AirDefenceInstance {
     /// Does the battery act on its **own** radar, or wait for a track over the net?
     ///
     /// `false` forces it onto the external cueing chain, so it always pays
-    /// `cue_latency_s` (§9.5) — the lever for studying cued-from-elsewhere air defence.
+    /// `cue_latency_s` (§9.5) - the lever for studying cued-from-elsewhere air defence.
     /// The radar still runs: this is about who the battery listens to, not about
     /// emission. For that, see `emitting`.
     #[serde(default = "default_true")]
@@ -382,7 +382,7 @@ pub struct AirDefenceInstance {
     /// Is the organic radar **transmitting**?
     ///
     /// `false` is EMCON: the radar is off, so it detects nothing, cannot cue its own
-    /// battery, and gives an anti-radiation missile nothing to home on (§12.3) — it
+    /// battery, and gives an anti-radiation missile nothing to home on (§12.3) - it
     /// lands with `silent_cep_m` instead of `cep_m`.
     ///
     /// Separate from `self_cue` because the two are separate decisions and were once the
@@ -446,7 +446,7 @@ pub struct UnitInstance {
     ///
     /// The alternative to `route`, and mutually exclusive with it. A unit with an objective
     /// re-plans each decision epoch against the live risk raster, so a sensor placed on its
-    /// path changes where it goes — which a scripted route cannot express.
+    /// path changes where it goes - which a scripted route cannot express.
     ///
     /// Declaring **neither** is a static unit, exactly as before. That is what makes the
     /// identity structural rather than dial-gated: a scenario with no objective anywhere
@@ -512,8 +512,8 @@ impl Scenario {
             ));
         }
         // A unit either follows a scripted route or decides its own (§10.5). Declaring both
-        // is ambiguous — neither "plan, then ignore the plan" nor "follow the route, then
-        // re-plan" is obviously meant — so it is refused at load rather than resolved by a
+        // is ambiguous - neither "plan, then ignore the plan" nor "follow the route, then
+        // re-plan" is obviously meant - so it is refused at load rather than resolved by a
         // precedence rule nobody would remember. Same argument as `deny_unknown_fields`.
         for (side, force) in [("blue", &self.blue), ("red", &self.red)] {
             for u in &force.units {
@@ -551,7 +551,7 @@ impl Scenario {
 // `deny_unknown_fields` refuses a key the schema does not know. These three refuse a
 // *value* the model cannot run on, which is the same failure wearing different clothes: a
 // dial outside its domain does not crash, it quietly produces a study of a different
-// question — or, for the two clock dials, does not terminate at all.
+// question - or, for the two clock dials, does not terminate at all.
 
 /// Reject a dial that must be finite and strictly positive (zero included in the refusal).
 fn require_positive(name: &str, value: f32) -> Result<(), ScenarioError> {
@@ -586,7 +586,7 @@ fn require_probability(name: &str, value: f32) -> Result<(), ScenarioError> {
 impl SimConfig {
     /// Refuse a `[sim]` block the loop cannot run.
     ///
-    /// Two of these do not merely give a wrong answer — they **fail to terminate**, which
+    /// Two of these do not merely give a wrong answer - they **fail to terminate**, which
     /// is why validating them is worth more than the rest put together:
     ///
     /// - `dt_s = 0` leaves the clock where it is, so [`crate::sim::Sim::run_until`] never
@@ -596,7 +596,7 @@ impl SimConfig {
     ///   and hangs on the first tick.
     ///
     /// Both are reachable from `experiments/sweep`, which by design can set any dotted path
-    /// in the file — `--param sim.epoch_s --from 0` is an ordinary-looking sweep.
+    /// in the file - `--param sim.epoch_s --from 0` is an ordinary-looking sweep.
     fn validate(&self) -> Result<(), ScenarioError> {
         require_positive("[sim] dt_s", self.dt_s)?;
         require_positive("[sim] epoch_s", self.epoch_s)?;
@@ -626,11 +626,11 @@ fn read_to_string(path: &Path) -> Result<String, ScenarioError> {
     })
 }
 
-/// Parse a stat-block library — or the terrain-params table — from TOML **text**.
+/// Parse a stat-block library - or the terrain-params table - from TOML **text**.
 ///
 /// The string half of the `load_*` family below: each of those reads a file and calls
 /// this. Public because a caller that already holds the text should not have to write it
-/// back to disk to load it — `experiments`' sweep patches a dial in memory and parses the
+/// back to disk to load it - `experiments`' sweep patches a dial in memory and parses the
 /// result, exactly as `Scenario::from_toml_str` lets it do for a scenario.
 ///
 /// # Errors
@@ -644,7 +644,7 @@ pub fn library_from_toml_str<T: serde::de::DeserializeOwned>(
 /// Load the per-terrain-type dials (`scenarios/terrain_types.toml`).
 ///
 /// # Errors
-/// As [`Scenario::load`] (validation is structural — serde requires every field).
+/// As [`Scenario::load`] (validation is structural - serde requires every field).
 pub fn load_terrain_params(path: &Path) -> Result<TerrainParamsTable, ScenarioError> {
     library_from_toml_str(&read_to_string(path)?)
 }
@@ -725,7 +725,7 @@ pub struct Libraries {
 }
 
 impl Libraries {
-    /// Terrain dials with every stat-block library empty — the base for tests that
+    /// Terrain dials with every stat-block library empty - the base for tests that
     /// supply only the libraries they exercise:
     /// `Libraries { units, ..Libraries::with_terrain(params) }`.
     #[must_use]
@@ -764,15 +764,15 @@ impl Libraries {
 
     /// Refuse a stat block the models cannot evaluate (`docs/DESIGN.md` §7.6).
     ///
-    /// Deliberately **short**. Most dials being zero is a legitimate statement — a drone
+    /// Deliberately **short**. Most dials being zero is a legitimate statement - a drone
     /// with `cruise_speed_m_s = 0` is stationary (which several gates rely on), a battery
     /// with `max_range_m = 0` engages nothing, an unarmed unit has no weapon. Only values
     /// that reach a **divisor** are refused, because those do not produce a small answer,
-    /// they produce `NaN`, and `NaN` loses every comparison it appears in — so the
+    /// they produce `NaN`, and `NaN` loses every comparison it appears in - so the
     /// subsystem goes silently inert rather than visibly wrong.
     ///
     /// Called by [`Libraries::load_dir`] and again by [`crate::sim::Sim::new`], so a
-    /// library patched in memory — which is exactly what `experiments/sweep` does — is
+    /// library patched in memory - which is exactly what `experiments/sweep` does - is
     /// checked on the same terms as one read from disk.
     ///
     /// # Errors

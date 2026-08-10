@@ -3,7 +3,7 @@
 # One Blue SEAD drone carrying an anti-radiation missile, against one Red gun battery. The
 # missile homes on a **transmitting** radar: `cep_m` 15 m against a battery whose radar is
 # up, `silent_cep_m` 150 m against one that has shut down. Against a 30 m lethal radius the
-# expected damage per round is 0.85 against an emitter and 0.05 against a silent target —
+# expected damage per round is 0.85 against an emitter and 0.05 against a silent target -
 # a near-certain kill, or seventeen rounds to expect one.
 #
 #   sweep sead_arm --param red.air_defence.0.emitting --values true,false \
@@ -18,7 +18,7 @@
 #   AD shots fired        0.020        0.000
 #   munitions released    1.14         1.95
 #
-# The seeker works, and shutting the radar down is a complete answer to it — at the price
+# The seeker works, and shutting the radar down is a complete answer to it - at the price
 # of the entire defence. A battery under EMCON detects **nothing**, so it cues nothing,
 # fires nothing and downs nothing. Survive the missile, or see the raid coming; not both.
 # That is the trade §12.3 describes, and the numbers now say it because the flag says it.
@@ -26,7 +26,7 @@
 # --- This file previously measured something else -----------------------------------------
 #
 # `emitting` used to be `self_cue`, one flag doing two jobs. §9.5 defined it as the *cueing
-# timeline* — does this battery act on its own radar or wait for a track over the net — and
+# timeline* - does this battery act on its own radar or wait for a track over the net - and
 # §12.3 reused it as the *emission* test. So a "silent" battery counted as dark to the
 # missile while its radar carried on detecting perfectly well: 1.000 detections, first
 # contact 9.3 s, indistinguishable from the emitting arm. It bought the survivability of
@@ -39,19 +39,19 @@
 # --- What `self_cue` does here, which is nothing ------------------------------------------
 #
 #   sweep sead_arm --param red.air_defence.0.self_cue --values true,false --seeds 500
-#   # +0.000 +- 0.000 — identical on all 500 seeds
+#   # +0.000 +- 0.000 - identical on all 500 seeds
 #
 # Worth keeping rather than deleting, because the reason is the geometry. `sead_uas`
 # releases at 2200 m and the `ciws` reaches 2000 m, so the battery gets almost no engagement
-# opportunity either way — it fires on 2% of seeds. A dial cannot matter where the thing it
+# opportunity either way - it fires on 2% of seeds. A dial cannot matter where the thing it
 # governs never happens. To make `self_cue` bite, give Red an off-board early-warning radar
 # and bring the release range inside the envelope; the cueing timeline then has something to
 # be early or late for.
 #
 # --- Why the geometry is what it is ------------------------------------------------------
 #
-# That 200 m of standoff is the whole scenario. An earlier cut released at 1500 m — inside
-# the envelope — and the drone was shot down before releasing on 99.6% of seeds, so the
+# That 200 m of standoff is the whole scenario. An earlier cut released at 1500 m - inside
+# the envelope - and the drone was shot down before releasing on 99.6% of seeds, so the
 # seeker was never tested at all and both arms read 0.00 batteries killed. Release range and
 # envelope are a matched pair; sweep `air.sead_uas.release_range_m` through 2000 to price
 # the standoff.
@@ -80,7 +80,7 @@ elevation_m = 0.0
 # --- Red: one battery, and its radar is the dial ----------------------------------------
 #
 # `emitting` is the dial. Setting it false shuts the radar down: with no other sensor on
-# this side the battery is then blind — and, to the missile, silent.
+# this side the battery is then blind - and, to the missile, silent.
 
 [[red.air_defence]]
 id = "ciws-1"
@@ -98,7 +98,7 @@ pos = [1600.0, 1500.0]
 # --- Blue: the SEAD drone -----------------------------------------------------------
 #
 # `target` names the battery. A named target resolves across units, batteries and posts
-# (docs/design/12-sead.md §12.1), so aiming at air defence needs no special syntax — and
+# (docs/design/12-sead.md §12.1), so aiming at air defence needs no special syntax - and
 # the aim point exists whether or not the radar is transmitting. What the transmission
 # changes is the CEP the missile lands with, which is exactly the V64 statement.
 

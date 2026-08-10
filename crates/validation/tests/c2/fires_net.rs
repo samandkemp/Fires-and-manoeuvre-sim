@@ -1,8 +1,8 @@
-//! V63 — ground fires can be made to depend on C2. `docs/DESIGN.md` §11.3.
+//! V63 - ground fires can be made to depend on C2. `docs/DESIGN.md` §11.3.
 //!
 //! §10.2 let a side coordinate its ground fires for free, while §11 made air defence pay
-//! for a C2 post. That asymmetry was deliberate — a battlegroup does share one fire-control
-//! net, where point-defence batteries genuinely do not — but it was an argument, not a
+//! for a C2 post. That asymmetry was deliberate - a battlegroup does share one fire-control
+//! net, where point-defence batteries genuinely do not - but it was an argument, not a
 //! modelled thing, and so could not be measured.
 //!
 //! `[sim] fires_need_c2` makes it modelled. **Off by default**, because turning it on
@@ -11,7 +11,7 @@
 //! in the scenario files. As a dial, the cost of losing the net becomes a number.
 //!
 //! The fixture is V56's, which is the point: two guns that can both reach two six-element
-//! targets. Coordinated, they take one each. Independent, they both pile onto the nearer —
+//! targets. Coordinated, they take one each. Independent, they both pile onto the nearer -
 //! the pre-Phase-10 behaviour. So "how many distinct targets took casualties in the first
 //! epoch" reads directly as "is this side coordinating".
 
@@ -146,7 +146,7 @@ fn targets_hit_first_epoch(sim: &mut Sim) -> usize {
 }
 
 // V63 (headline): with the dial on, a side with a post coordinates and a side without one
-// does not. Same guns, same targets, same solver — the only difference is whether anything
+// does not. Same guns, same targets, same solver - the only difference is whether anything
 // is tying the shooters together, exactly as for air defence (V59).
 #[test]
 fn v63_a_post_is_what_lets_ground_fires_coordinate() {
@@ -165,7 +165,7 @@ fn v63_a_post_is_what_lets_ground_fires_coordinate() {
     );
 }
 
-// V63 (identity half, §7.4): with the dial off — the default — the C2 lists are never
+// V63 (identity half, §7.4): with the dial off - the default - the C2 lists are never
 // consulted, so a scenario coordinates exactly as it did before this existed. Checked with
 // a post present *and* absent, since neither may make any difference.
 #[test]
@@ -194,7 +194,7 @@ fn v63_the_dial_off_is_an_exact_identity() {
 //   no post                ->  1               (everyone takes the nearest)
 //
 // The middle row is the claim. It also shows what being outside the net costs: the loose
-// gun still *fires* — it is not silenced, only uninformed — but it fires at a target one of
+// gun still *fires* - it is not silenced, only uninformed - but it fires at a target one of
 // the netted guns has already destroyed, so its rounds leave no trace at all. That wasted
 // volley is exactly what coordination buys back.
 #[test]
@@ -277,7 +277,7 @@ fn v63_the_net_is_per_shooter_not_per_side() {
 }
 
 // V63 (jamming half): the ground net uses the same degraded radius air defence does
-// (§11.2), so jamming the post breaks ground coordination too — one mechanism, not two.
+// (§11.2), so jamming the post breaks ground coordination too - one mechanism, not two.
 //
 // Tested at two powers, because the claim is that jamming *scales* the radius rather than
 // switching the link off. A jammer strong enough to pull 2000 m down to 1000 m still
@@ -342,7 +342,7 @@ fn v63_jamming_the_post_breaks_ground_coordination() {
     let mut clear = scenario(0.0);
     assert_eq!(targets_hit_first_epoch(&mut clear), 2, "clear air: netted");
 
-    // 0.5 leaves half of 2000 m. Both guns are within 40 m of the post, so the net holds —
+    // 0.5 leaves half of 2000 m. Both guns are within 40 m of the post, so the net holds -
     // the link degraded and the defence did not care, which is the behaviour that stops
     // "jammed" being read as "off".
     let mut light = scenario(0.5);

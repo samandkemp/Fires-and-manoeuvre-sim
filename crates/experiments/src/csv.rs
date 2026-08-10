@@ -1,7 +1,7 @@
 //! Writing the two files every study produces.
 //!
 //! **Per-trial rows** (`<name>.csv`): one line per run, every metric. This is the file to
-//! load into anything else — a histogram of one column answers questions a mean cannot,
+//! load into anything else - a histogram of one column answers questions a mean cannot,
 //! such as whether a bimodal outcome is being averaged into a middle that never happens.
 //!
 //! **A summary** (`summary.csv`): one line per arm, mean and standard error for every
@@ -12,8 +12,9 @@
 //! [`field`] quotes when they need it.
 //!
 //! Those keys did once need nothing. `sweep` then began passing the swept *value* as a key,
-//! and its documented usage includes list-valued dials — `--values '["c2","air_defence"]'`
-//! — which carry commas. An unquoted row for that arm has extra fields and silently
+//! and its documented usage includes list-valued dials such as
+//! `--values '["c2","air_defence"]'`, which carry commas. An unquoted row for that arm
+//! has extra fields and silently
 //! misaligns every column after it, which is worse than failing: the file still loads.
 
 use crate::outcome::{Outcome, COLUMNS};
@@ -26,7 +27,7 @@ use std::path::Path;
 ///
 /// Quoting unconditionally would be simpler but would rewrite every existing results file
 /// (`0` becoming `"0"`), so the common case is left byte-identical and only a field holding
-/// a comma, a quote or a newline is wrapped — with any interior quote doubled.
+/// a comma, a quote or a newline is wrapped - with any interior quote doubled.
 fn field(raw: &str) -> Cow<'_, str> {
     if !raw.contains([',', '"', '\n', '\r']) {
         return Cow::Borrowed(raw);
@@ -96,7 +97,7 @@ pub fn push_summary(out: &mut String, keys: &[String], outcomes: &[Outcome]) -> 
 }
 
 /// Write a file, reporting failure to stderr rather than losing a completed study to a
-/// `?` — the runs are the expensive part and the numbers are still on screen.
+/// `?` - the runs are the expensive part and the numbers are still on screen.
 pub fn write(path: &Path, contents: &str) {
     if let Some(parent) = path.parent() {
         if let Err(e) = std::fs::create_dir_all(parent) {
@@ -142,7 +143,7 @@ mod tests {
         assert_eq!(header.trim_end().split(',').count(), 2 + 2 * COLUMNS.len());
     }
 
-    /// A key holding a comma — which `sweep` produces for a list-valued dial — must not
+    /// A key holding a comma - which `sweep` produces for a list-valued dial - must not
     /// silently add a field and misalign every column after it.
     #[test]
     fn a_key_containing_a_comma_is_quoted_and_keeps_the_row_aligned() {

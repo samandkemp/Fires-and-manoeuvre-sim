@@ -6,7 +6,7 @@
 #
 # Missiles are what make that expensive, and the reason this scenario uses them rather
 # than guns. A gun is a Poisson process, so two batteries on one target simply add their
-# kill rates and nothing is lost — stacking guns is not actually wasteful. A missile
+# kill rates and nothing is lost - stacking guns is not actually wasteful. A missile
 # launch is a **discrete round out of a finite magazine**: three interceptors at a drone
 # that one would have killed is two rounds that will not be there for the next drone. The
 # waste only becomes real when the shot is a countable resource.
@@ -15,7 +15,7 @@
 # radius, so they allocate as a group and take three different drones at once.
 #
 # To see the difference, delete the [[blue.c2]] block and re-run at the same seed. Nothing
-# else changes — same batteries, same envelopes, same magazines.
+# else changes - same batteries, same envelopes, same magazines.
 #
 # The post is also the obvious thing to attack: unarmed, conspicuous (signature 0.85), and
 # killing it decoheres three batteries without destroying any of them. Making it
@@ -56,7 +56,7 @@ pos = [1200.0, 2400.0]
 
 # The SAM carries no organic radar, so it lives entirely on the cueing chain (DESIGN
 # §9.5). Without this early-warning radar the batteries never become actionable and never
-# fire a round — which is itself the §9.5 point, and worth seeing by deleting it.
+# fire a round - which is itself the §9.5 point, and worth seeing by deleting it.
 [[blue.sensors]]
 id = "ew-radar"
 type = "ciws_radar"

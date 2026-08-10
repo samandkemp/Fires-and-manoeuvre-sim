@@ -1,14 +1,14 @@
 //! Seeing and being seen: the glimpse process, the EW modifier, and the track lifecycle.
-//! Spec: `docs/DESIGN.md` §3.2, §8.1, §10.1. Gates: V14–V18, V40, V55.
+//! Spec: `docs/DESIGN.md` §3.2, §8.1, §10.1. Gates: V14-V18, V40, V55.
 //!
 //! Three stages, and they are worth keeping distinct:
 //!
-//! 1. **Acquisition** — stochastic. One seeded draw per (sensor, unseen target) pair per
+//! 1. **Acquisition** - stochastic. One seeded draw per (sensor, unseen target) pair per
 //!    tick, at rate `λ`. This is where a track is born.
-//! 2. **Maintenance** — deterministic, at the decision epoch. A track already held is
+//! 2. **Maintenance** - deterministic, at the decision epoch. A track already held is
 //!    refreshed if a sensor would expect to re-glimpse the target. Keeping eyes on
 //!    something you have already found is not a coin flip.
-//! 3. **Expiry** — a track not refreshed within `track_hold_s` is lost, and the target
+//! 3. **Expiry** - a track not refreshed within `track_hold_s` is lost, and the target
 //!    must be acquired from scratch.
 
 use super::los_cache::{self, TargetKind};
@@ -41,7 +41,7 @@ impl Sim {
 
     /// Is this sensor currently able to sense at all?
     ///
-    /// Two ways for a sensor to go dark, and both matter beyond the detection loop —
+    /// Two ways for a sensor to go dark, and both matter beyond the detection loop -
     /// coverage and belief rasters must drop it too:
     ///
     /// - a **carried** sensor dies with its airframe (a shot-down recce drone);
@@ -54,8 +54,8 @@ impl Sim {
             return self.air.get(a).is_some_and(|air| air.alive);
         }
         // A radar stops emitting when its battery is destroyed, and when the battery is
-        // under EMCON. Both are the same statement to everything downstream — coverage,
-        // belief, detection and the §12.3 emitter test all read this one predicate — which
+        // under EMCON. Both are the same statement to everything downstream - coverage,
+        // belief, detection and the §12.3 emitter test all read this one predicate - which
         // is what stops "silent" meaning one thing to a missile and another to a sensor.
         !self
             .air_defence
@@ -91,7 +91,7 @@ impl Sim {
         &self.jammers
     }
 
-    /// Detection-degradation factor at `pos` for a unit on `side` — the product of that
+    /// Detection-degradation factor at `pos` for a unit on `side` - the product of that
     /// side's own jammers covering the position (1 if none: EW-off identity).
     #[must_use]
     pub fn jamming_at(&self, pos: Vec2, side: Side) -> f32 {
@@ -109,12 +109,12 @@ impl Sim {
     }
 
     /// Communications-link quality at `pos` for an asset on `side`: the product of the
-    /// **enemy's** jammers there (1 if none — the EW-off identity again).
+    /// **enemy's** jammers there (1 if none - the EW-off identity again).
     ///
     /// The mirror image of [`Sim::jamming_at`], and the difference is the point. A jammer
     /// protecting its own side degrades the *enemy's sensing of it*; a jammer degrading a
     /// link degrades the *enemy's own* communications. Same asset, same dials, opposite
-    /// side of the argument — so a Red jammer both hides Red units from Blue eyes and cuts
+    /// side of the argument - so a Red jammer both hides Red units from Blue eyes and cuts
     /// the Blue C2 net (§11.2).
     #[must_use]
     pub fn link_quality_at(&self, pos: Vec2, side: Side) -> f32 {
@@ -138,7 +138,7 @@ impl Sim {
     /// and maintenance (a threshold on it) can never disagree about what a sensor can
     /// currently see.
     ///
-    /// Gates first, then a *cached* line-of-sight walk (see [`los_cache`]) — the gates
+    /// Gates first, then a *cached* line-of-sight walk (see [`los_cache`]) - the gates
     /// cost ~0.1 µs and the walk ~77 µs, and the walk's answer cannot change while both
     /// endpoints hold still.
     fn effective_rate(
@@ -204,7 +204,7 @@ impl Sim {
         los
     }
 
-    /// Line-of-sight cache hits and misses so far — a diagnostic for checking the memo is
+    /// Line-of-sight cache hits and misses so far - a diagnostic for checking the memo is
     /// earning its keep on a given scenario, not part of the model.
     #[must_use]
     pub fn los_cache_stats(&self) -> (u64, u64) {
@@ -214,7 +214,7 @@ impl Sim {
     /// One (sensor, target) glimpse (§3.2): the effective rate and a single seeded draw.
     /// `true` if this tick detected the target.
     ///
-    /// Both passes — ground and air — come through here so the rate model, jamming and
+    /// Both passes - ground and air - come through here so the rate model, jamming and
     /// draw accounting cannot drift apart. They differ only in what they put in
     /// [`GlimpseTarget`] and what they record afterwards.
     ///
@@ -278,7 +278,7 @@ impl Sim {
     ///
     /// Runs at the **decision epoch, not the tick**, for two reasons. Conceptually,
     /// holding a track is a decision-layer concern. Practically, the glimpse loop skips
-    /// already-detected targets, so refreshing means looking again — measured at 4 sensors
+    /// already-detected targets, so refreshing means looking again - measured at 4 sensors
     /// x 6 units that is ~2.3 ms per tick, up to 20x the whole tick; at epoch cadence it
     /// amortises to ~0.23 ms, and tracks decay over tens of seconds so a 10 s cadence is
     /// ample.
@@ -309,7 +309,7 @@ impl Sim {
                 idx: u_idx,
                 pos: unit.pos,
                 height_m: unit.stats.height_m,
-                // Filled in per sensor by `holds_track` — signature is per *modality*, so
+                // Filled in per sensor by `holds_track` - signature is per *modality*, so
                 // it cannot be resolved until it is known which sensor is looking.
                 signature: 0.0,
                 concealment: sensing::concealment_at(&self.terrain, unit.pos),
@@ -372,7 +372,7 @@ impl Sim {
     /// The full effective rate matters here: jamming, concealment, range and canopy all
     /// feed it, so degrading a sensor enough *breaks* an existing track instead of only
     /// preventing a new one. A plain "can it be seen" test would leave EW unable to break
-    /// anything, which is the gap this closes. Still deterministic — the rate decides,
+    /// anything, which is the gap this closes. Still deterministic - the rate decides,
     /// nothing is drawn.
     fn holds_track(&mut self, views: &[(usize, SensorView)], target: GlimpseTarget) -> bool {
         // Not `.any()` over an iterator: the rate lookup needs `&mut self` for the LOS
@@ -383,8 +383,8 @@ impl Sim {
                 continue;
             }
             // Signature is **per modality**, so it belongs to the (sensor, target) pair and
-            // not to the target alone. Reading it once for the whole pass — from whichever
-            // sensor happened to be at index 0, possibly a friendly one — is inert only
+            // not to the target alone. Reading it once for the whole pass - from whichever
+            // sensor happened to be at index 0, possibly a friendly one - is inert only
             // while `Optical` is the sole modality; the moment `Acoustic` lands it would
             // price every track in the wrong channel, silently. Resolved here instead,
             // where the sensor is known.

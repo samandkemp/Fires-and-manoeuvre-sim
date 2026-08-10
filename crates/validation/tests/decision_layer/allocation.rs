@@ -1,4 +1,4 @@
-//! V56 — fire allocation. `docs/DESIGN.md` §10.2.
+//! V56 - fire allocation. `docs/DESIGN.md` §10.2.
 //!
 //! Two halves. The solver is checked against an exhaustive optimum on instances small
 //! enough to enumerate, which is the only reference an assignment algorithm has. The sim
@@ -15,7 +15,7 @@ use std::collections::BTreeMap;
 use validation::scenario_params;
 
 /// Exhaustive best over every injective shooter → slot map, leaving shooters idle where
-/// that is better. Exponential, so only for tiny instances — which is the point.
+/// that is better. Exponential, so only for tiny instances - which is the point.
 fn brute_force(payoff: &[Vec<f64>]) -> f64 {
     fn walk(payoff: &[Vec<f64>], i: usize, m: usize, used: &mut Vec<bool>) -> f64 {
         if i == payoff.len() {
@@ -176,7 +176,7 @@ fn two_on_two(allocation: AllocationChoice) -> Sim {
             WeaponType {
                 class: WeaponClass::Direct,
                 // Deliberately lethal. The fire log records *casualties*, not shots, so a
-                // gun that engages and misses leaves no trace — and the gate would then
+                // gun that engages and misses leaves no trace - and the gate would then
                 // be unable to tell "did not engage" from "engaged and missed". Making a
                 // burst reliably kill removes that ambiguity from the measurement.
                 rof_rounds_per_min: 60.0,
@@ -211,7 +211,7 @@ fn targets_engaged_first_epoch(allocation: AllocationChoice) -> Vec<usize> {
 
 // V56 (sim half): a coordinated side spreads its fire. Two guns that can both reach two
 // six-element targets should engage one each in the same epoch, rather than both piling
-// onto the nearer — which is exactly what the pre-Phase-10 "nearest enemy" rule did. The
+// onto the nearer - which is exactly what the pre-Phase-10 "nearest enemy" rule did. The
 // independent solver reproduces that old behaviour, so the two together show precisely
 // what changed.
 #[test]
@@ -232,7 +232,7 @@ fn v56_allocation_spreads_fire_across_targets() {
     );
 }
 
-// V56 (feasibility half): an assignment is an assignment — no shooter may be committed to
+// V56 (feasibility half): an assignment is an assignment - no shooter may be committed to
 // two targets in the same epoch, however the slots are priced.
 //
 // This used to assert a hard cap of `min(elements, max_shooters_per_target)` shooters per
@@ -266,7 +266,7 @@ fn v56_no_shooter_engages_two_targets_in_one_epoch() {
 }
 
 // V56 (determinism half): allocation draws no randomness, so the same scenario and seed
-// must reproduce the fire log exactly — and choosing a different solver must be the only
+// must reproduce the fire log exactly - and choosing a different solver must be the only
 // thing that changes it.
 #[test]
 fn v56_allocation_is_deterministic() {

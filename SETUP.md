@@ -1,4 +1,4 @@
-# Pre-Project Setup — Rust + Bevy in VSCode
+# Pre-Project Setup - Rust + Bevy in VSCode
 
 Target: **Bevy 0.19** on **stable Rust**, in **VSCode**. Written for someone new to
 both languages. Follow it in order; each step ends with a check so you know it worked.
@@ -14,12 +14,12 @@ both languages. Follow it in order; each step ends with a check so you know it w
 Rust is installed via `rustup`, which manages compiler versions for you.
 
 
-- **Windows** — download and run `rustup-init.exe` from https://rustup.rs.
+- **Windows** - download and run `rustup-init.exe` from https://rustup.rs.
   It will tell you it needs the **Visual Studio C++ Build Tools** (the MSVC linker).
   Let it guide you, or install "Desktop development with C++" from the Visual Studio
-  Installer first. This is required — Rust links through the MSVC toolchain on Windows.
+  Installer first. This is required - Rust links through the MSVC toolchain on Windows.
 
-- **macOS / Linux** — run in a terminal:
+- **macOS / Linux** - run in a terminal:
   ```
   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
   ```
@@ -43,13 +43,13 @@ Both should print a version. `cargo` is Rust's build tool + package manager
 
 Install these from the Extensions panel (Ctrl/Cmd+Shift+X):
 
-- **rust-analyzer** (by rust-lang) — *essential.* The language server: autocomplete,
+- **rust-analyzer** (by rust-lang) - *essential.* The language server: autocomplete,
   inline types, go-to-definition, error highlighting. This is 90% of the experience.
-- **CodeLLDB** (by Vadim Chugunov) — debugger with breakpoints. Cross-platform.
-- **Even Better TOML** — syntax + validation for `Cargo.toml` and config files.
-- **Dependi** — shows latest crate versions inline in `Cargo.toml` (the older "crates"
+- **CodeLLDB** (by Vadim Chugunov) - debugger with breakpoints. Cross-platform.
+- **Even Better TOML** - syntax + validation for `Cargo.toml` and config files.
+- **Dependi** - shows latest crate versions inline in `Cargo.toml` (the older "crates"
   extension is deprecated; Dependi replaces it).
-- **Error Lens** *(optional but great for beginners)* — prints errors inline on the
+- **Error Lens** *(optional but great for beginners)* - prints errors inline on the
   line instead of only underlining them.
 
 **Recommended settings.** Open your workspace settings (Ctrl/Cmd+Shift+P →
@@ -61,7 +61,7 @@ Install these from the Extensions panel (Ctrl/Cmd+Shift+X):
   "[rust]": { "editor.defaultFormatter": "rust-lang.rust-analyzer" }
 }
 ```
-This runs Clippy (Rust's linter — it teaches you idiomatic Rust as you go) on save, and
+This runs Clippy (Rust's linter - it teaches you idiomatic Rust as you go) on save, and
 auto-formats with `rustfmt`.
 
 **Check it worked:** you'll verify rust-analyzer properly in step 4, once there's code.
@@ -71,7 +71,7 @@ auto-formats with `rustfmt`.
 
 ---
 
-## 3. First build — a Bevy window (verify the toolchain)
+## 3. First build - a Bevy window (verify the toolchain)
 
 Before structuring the real project, prove the whole chain works.
 
@@ -103,7 +103,7 @@ Run it:
 cargo run
 ```
 
-**Expect the first build to take several minutes** — you're compiling an entire game
+**Expect the first build to take several minutes** - you're compiling an entire game
 engine from source. This happens once. Every build after is fast. When it finishes, a
 blank window opens. That means Rust, Cargo, Bevy, and your GPU path all work.
 
@@ -131,22 +131,22 @@ still runs at a usable speed while you iterate.
 **(b) Use a fast linker.** Create `.cargo/config.toml` in the project root with the
 block for your OS:
 
-- **Windows** — `rust-lld` ships with Rust, so just:
+- **Windows** - `rust-lld` ships with Rust, so just:
   ```toml
   [target.x86_64-pc-windows-msvc]
   linker = "rust-lld.exe"
   ```
-- **Linux** — first `sudo apt install lld clang` (Debian/Ubuntu), then:
+- **Linux** - first `sudo apt install lld clang` (Debian/Ubuntu), then:
   ```toml
   [target.x86_64-unknown-linux-gnu]
   linker = "clang"
   rustflags = ["-C", "link-arg=-fuse-ld=lld"]
   ```
-- **macOS** — the default linker is already as fast as the alternatives. **Do nothing
+- **macOS** - the default linker is already as fast as the alternatives. **Do nothing
   here**; `dynamic_linking` from step 3 is enough. (Ignore old tutorials pushing `zld`.)
 
 **Check it worked:** make a trivial edit to `main.rs` (e.g. add a comment) and
-`cargo run` again — the rebuild should be seconds, not minutes.
+`cargo run` again - the rebuild should be seconds, not minutes.
 
 ---
 
@@ -175,7 +175,7 @@ fires-sim/
 
 > **Do not call it `core`.** A dependency named `core` shadows Rust's own built-in
 > `core` crate inside anything that depends on it, which breaks every proc macro that
-> emits `::core::` paths — `thiserror`'s derive stops compiling, with an error message
+> emits `::core::` paths - `thiserror`'s derive stops compiling, with an error message
 > that points nowhere near the real cause. `sim_core` costs five characters and avoids
 > the whole problem. (Learned the hard way; the crate manifests still carry a note.)
 
@@ -191,7 +191,7 @@ opt-level = 1
 opt-level = 3
 ```
 
-`crates/sim_core/Cargo.toml` (no Bevy — this is the OR engine):
+`crates/sim_core/Cargo.toml` (no Bevy - this is the OR engine):
 ```toml
 [package]
 name = "sim_core"
@@ -207,7 +207,7 @@ rand_distr = "0.5"   # normal/other distributions for dispersion & stochastic mo
 ```
 
 > **Match glam to Bevy's.** Bevy 0.19 resolves glam 0.32; pin the same version or the
-> "types interop cleanly" promise breaks silently — you get two incompatible `Vec2`
+> "types interop cleanly" promise breaks silently - you get two incompatible `Vec2`
 > types and a wall of confusing errors. Check `Cargo.lock` before bumping either side.
 >
 > **Prefer `ChaCha8Rng` to `StdRng`.** `StdRng` explicitly does not promise a stable
@@ -243,17 +243,17 @@ cargo test -p sim_core
 ## 6. Potential Optional Crates 
 
 Add these with `cargo add <name> -p <crate>` when you reach the relevant phase. For any
-Bevy-ecosystem crate, **check its README for the Bevy version it targets** — they pin to
+Bevy-ecosystem crate, **check its README for the Bevy version it targets** - they pin to
 specific Bevy releases and lag a week or two behind a new Bevy.
 
-- **bevy_egui** (`~0.40`, targets Bevy 0.19) — immediate-mode control panels: dropdowns,
+- **bevy_egui** (`~0.40`, targets Bevy 0.19) - immediate-mode control panels: dropdowns,
   sliders, toggles. Ideal for selecting a sensing asset, placing it, and tweaking unit
   stats live. This is your main tool-UI workhorse.
-- **bevy_pancam** — click-drag pan and scroll-zoom for a 2D camera. Near-essential for a
+- **bevy_pancam** - click-drag pan and scroll-zoom for a 2D camera. Near-essential for a
   tactical map. (Check its Bevy-0.19 compatibility on crates.io.)
-- **nalgebra** *(sim_core, if needed)* — heavier linear algebra than glam, for control/DP
+- **nalgebra** *(sim_core, if needed)* - heavier linear algebra than glam, for control/DP
   maths where you want matrix decompositions etc.
-- **argmin** or **good_lp** *(sim_core, later)* — optimisation / LP solving for the
+- **argmin** or **good_lp** *(sim_core, later)* - optimisation / LP solving for the
   game-theoretic equilibria. Not needed yet: the zero-sum solver uses fictitious play,
   which converges without an LP dependency.
 
@@ -264,14 +264,14 @@ specific Bevy releases and lag a week or two behind a new Bevy.
 Bevy is hard to learn *while* also learning Rust's ownership model. Spend a little time
 on fundamentals alongside the early phases:
 
-- **The Rust Book** — https://doc.rust-lang.org/book — read chapters 1–10 (esp. 4
+- **The Rust Book** - https://doc.rust-lang.org/book - read chapters 1-10 (esp. 4
   "Ownership" and 10 "Generics/Traits"). This is the single best resource.
-- **Rustlings** — https://github.com/rust-lang/rustlings — small in-terminal exercises;
+- **Rustlings** - https://github.com/rust-lang/rustlings - small in-terminal exercises;
   the fastest way to make the concepts stick.
-- **Bevy Quick Start** — https://bevy.org/learn/quick-start — the official intro.
-- **Bevy examples** — the `examples/` folder in the Bevy GitHub repo (check out the tag
+- **Bevy Quick Start** - https://bevy.org/learn/quick-start - the official intro.
+- **Bevy examples** - the `examples/` folder in the Bevy GitHub repo (check out the tag
   matching your version) is the most reliable, always-current reference.
-- **Unofficial Bevy Cheat Book** — https://bevy-cheatbook.github.io — great task-oriented
+- **Unofficial Bevy Cheat Book** - https://bevy-cheatbook.github.io - great task-oriented
   recipes; may lag a version behind, so cross-check against examples.
 
 ---
@@ -286,11 +286,11 @@ on fundamentals alongside the early phases:
 
 ## Common first-time issues
 
-- **First build feels frozen** — it isn't; compiling the engine just takes minutes once.
-- **rust-analyzer shows no types / errors everywhere** — it's still indexing on first
+- **First build feels frozen** - it isn't; compiling the engine just takes minutes once.
+- **rust-analyzer shows no types / errors everywhere** - it's still indexing on first
   open (can take a few minutes and a chunk of RAM). Wait for the spinner to finish.
-- **Windows link errors** — you're missing the MSVC C++ Build Tools; reinstall them.
-- **An ecosystem crate won't compile** — version mismatch with Bevy. Check that crate's
+- **Windows link errors** - you're missing the MSVC C++ Build Tools; reinstall them.
+- **An ecosystem crate won't compile** - version mismatch with Bevy. Check that crate's
   README for the exact Bevy version it supports.
-- **Release build fails to run elsewhere** — you left `dynamic_linking` on. Disable it
+- **Release build fails to run elsewhere** - you left `dynamic_linking` on. Disable it
   for release.

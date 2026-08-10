@@ -1,6 +1,6 @@
 //! What a placed asset *is*: the state structs the simulation advances.
 //!
-//! Data only — no behaviour beyond trivial accessors. The logic that reads and writes
+//! Data only - no behaviour beyond trivial accessors. The logic that reads and writes
 //! these lives in the sibling modules (`setup`, `detection`, `engagement`,
 //! `counter_air`).
 
@@ -44,7 +44,7 @@ pub struct SensorState {
     /// Resolved stat block.
     pub stats: SensorType,
     /// Index into `Sim::air` of the airframe carrying this sensor, if any. A carried
-    /// sensor takes its position, height and facing from the airframe each tick — which
+    /// sensor takes its position, height and facing from the airframe each tick - which
     /// is all a recce drone is: a mobile, elevated entry in the ordinary sensor list, so
     /// it flows through the ordinary detection loop with no special case.
     pub carrier: Option<usize>,
@@ -89,7 +89,7 @@ pub struct UnitState {
     /// Where this unit is trying to get to, if it plans its own route (§10.5).
     ///
     /// Mutually exclusive with a scripted `route` at load. `None` is a unit that either
-    /// follows the route it was given or stands still — which is every unit in every
+    /// follows the route it was given or stands still - which is every unit in every
     /// scenario written before this existed, and is why the identity is structural.
     pub objective: Option<Vec2>,
     /// This unit's own exchange rate between movement cost and exposure; `None` takes
@@ -98,12 +98,12 @@ pub struct UnitState {
     /// What this unit is currently engaging, if anything (`docs/DESIGN.md` §13.4).
     ///
     /// A **lock**, not a preference: once a shooter takes a target it stays on it until the
-    /// target is dead or can no longer be engaged — masked by terrain, out of range, or its
+    /// target is dead or can no longer be engaged - masked by terrain, out of range, or its
     /// track lapsed. Air defence has always worked this way (`AirDefenceState::engagements`
     /// with `drop_engagements`); this is the ground half of the same idea.
     ///
     /// Without it a gun re-decides from scratch every epoch and flip-flops between two
-    /// near-identical targets as tiny payoff differences wobble — wasted fire for a reason
+    /// near-identical targets as tiny payoff differences wobble - wasted fire for a reason
     /// no crew would recognise. Switching targets is itself a decision with a cost, so it
     /// takes something changing on the ground, not a rounding difference.
     pub engaging: Option<super::FireTarget>,
@@ -132,20 +132,20 @@ impl UnitState {
 /// signature rather than nine positional arguments.
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct GlimpseTarget {
-    /// Which asset list [`GlimpseTarget::idx`] refers to — the other half of the
+    /// Which asset list [`GlimpseTarget::idx`] refers to - the other half of the
     /// line-of-sight cache key.
     pub kind: super::los_cache::TargetKind,
     /// Index of this target within its list.
     pub idx: usize,
     /// World position, metres.
     pub pos: Vec2,
-    /// Height above the ground beneath it — the §1.2 actor height.
+    /// Height above the ground beneath it - the §1.2 actor height.
     pub height_m: f32,
     /// Signature in the *sensor's* modality.
     pub signature: f32,
     /// Terrain concealment in `[0, 1]`; always 0 for an airborne target, which is not
     /// standing in the cell below it (§9.1).
     pub concealment: f32,
-    /// Owning side — selects whose jammers protect it.
+    /// Owning side - selects whose jammers protect it.
     pub side: Side,
 }

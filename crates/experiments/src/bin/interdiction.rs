@@ -1,7 +1,7 @@
 //! The interdiction game (Phase 6 capstone). Blue chooses an overwatch *position*
 //! (sensor + co-located observed-indirect mortar); Red chooses a *route* across the map.
 //! The zero-sum payoff is Red's expected attrition as it traverses while Blue detects and
-//! bombards it — estimated by short headless Monte-Carlo battles. Fictitious play then
+//! bombards it - estimated by short headless Monte-Carlo battles. Fictitious play then
 //! solves for the equilibrium: Blue's optimal mixed placement, Red's optimal mixed route,
 //! and the game value (expected attrition).
 //!
@@ -43,7 +43,7 @@ fn main() {
 
     // Stat blocks (inline placeholders for the game).
     // A sector observer: a limited field of regard, so each overwatch covers one lane's
-    // approach and not the others — the geometry that makes this a hide-and-seek game.
+    // approach and not the others - the geometry that makes this a hide-and-seek game.
     let sensor = SensorType {
         modality: Modality::Optical,
         mount_height_m: 2.0,
@@ -82,7 +82,7 @@ fn main() {
 
     // Three lanes (south / centre / north). Each Blue overwatch sits mid-lane facing
     // west (180°) to watch that lane's western approach; each Red route runs the lane
-    // west → east. Blue picks a lane to watch, Red a lane to cross — hide-and-seek.
+    // west → east. Blue picks a lane to watch, Red a lane to cross - hide-and-seek.
     let lanes = [("south", 750.0f32), ("centre", 1500.0), ("north", 2250.0)];
     let blue_sites: Vec<(&str, Vec2, f32)> = lanes
         .iter()

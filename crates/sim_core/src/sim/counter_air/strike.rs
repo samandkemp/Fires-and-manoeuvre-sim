@@ -58,7 +58,7 @@ impl Sim {
 
     /// A strike drone's aim point: its assigned target if it still exists, otherwise the
     /// final waypoint of its flight plan (`docs/DESIGN.md` §9.3). A named target that is
-    /// already dead yields `None` — the drone does not re-target itself, by design.
+    /// already dead yields `None` - the drone does not re-target itself, by design.
     pub(super) fn strike_aim_point(&self, air_idx: usize) -> Option<Vec2> {
         match &self.air[air_idx].target {
             Some(TargetSpec::Point(p)) => Some(*p),
@@ -77,7 +77,7 @@ impl Sim {
     ///
     /// `emitting` is therefore the counter, and it costs the radar: a battery under EMCON
     /// detects nothing through it, so it cannot cue itself and contributes no coverage.
-    /// Survive the missile, or see the raid coming — not both.
+    /// Survive the missile, or see the raid coming - not both.
     ///
     /// Deliberately **not** `self_cue`, which the two used to share. `self_cue` says who a
     /// battery listens to; sharing one flag let it take the missile protection of going
@@ -97,7 +97,7 @@ impl Sim {
     /// Where the ground asset called `id` is, if it is still alive.
     ///
     /// Searches units, then air-defence batteries, then C2 posts. Ids are unique within a
-    /// scenario, so one namespace is enough — and it means naming a SAM or a command post
+    /// scenario, so one namespace is enough - and it means naming a SAM or a command post
     /// as a strike target simply works, which is what makes SEAD expressible in a
     /// scenario file rather than needing new syntax (`docs/DESIGN.md` §12).
     fn named_ground_asset(&self, id: &str) -> Option<Vec2> {

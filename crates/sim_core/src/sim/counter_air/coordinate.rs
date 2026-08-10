@@ -16,7 +16,7 @@ impl Sim {
     ///
     /// **Each free channel is a row.** A two-channel CIWS contributes two rows, so
     /// `channels` falls out of the assignment structure rather than needing a special
-    /// case — and a battery with none contributes nothing, which is exactly right.
+    /// case - and a battery with none contributes nothing, which is exactly right.
     ///
     /// **One side per call.** The side is passed in rather than read off the first battery:
     /// coordination is a relationship between a post and *its own* batteries, so a group
@@ -71,7 +71,7 @@ impl Sim {
         }
         all_targets.sort_unstable();
 
-        // Doctrine (§13.2). Without one this is a single group at weight 1 — exactly the
+        // Doctrine (§13.2). Without one this is a single group at weight 1 - exactly the
         // pre-doctrine solve. Strict runs the assignment once per tier, highest first, so
         // a free channel that can reach a priority airframe spends itself there before it
         // is offered anything lower.
@@ -106,7 +106,7 @@ impl Sim {
     /// group carries (`docs/DESIGN.md` §13.2).
     ///
     /// One group at weight 1 when the side has no doctrine, or when its mode is
-    /// `Weighted` — in the weighted case the multipliers ride on the per-target value
+    /// `Weighted` - in the weighted case the multipliers ride on the per-target value
     /// instead, so the solve stays a single problem and the payoff still decides.
     fn air_target_groups(&self, side: Side, targets: &[usize]) -> (Vec<Vec<usize>>, Vec<f32>) {
         let doc = self.doctrine_of(side);
@@ -239,7 +239,7 @@ impl Sim {
         used
     }
 
-    /// Probability this battery destroys this airframe **before it releases** — the
+    /// Probability this battery destroys this airframe **before it releases** - the
     /// payoff air-defence allocation maximises (`docs/DESIGN.md` §11.2).
     ///
     /// The deadline that matters is the release point, not the envelope edge: a drone
@@ -265,7 +265,7 @@ impl Sim {
             _ => ((range_m - ad.stats.min_range_m) / speed).max(0.0),
         }
         // Capped at a planning horizon, for two reasons. Beyond about a minute, "how long
-        // this target will linger" stops discriminating usefully — the defence will have
+        // this target will linger" stops discriminating usefully - the defence will have
         // reconsidered many times. More concretely, an uncapped window runs to hundreds of
         // seconds for a distant loiterer, which drives `p_kill` to 1 for *every* pairing;
         // the diminishing-return discount `(1 - p)^k` then collapses to 1 and stops

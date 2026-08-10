@@ -21,11 +21,11 @@ pub enum TerrainType {
 }
 
 /// The tweakable dials for one terrain type. Abstract placeholders, loaded from
-/// `scenarios/terrain_types.toml` — the models are the product, these are the knobs.
+/// `scenarios/terrain_types.toml` - the models are the product, these are the knobs.
 #[derive(Clone, Copy, Debug, serde::Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct TerrainParams {
-    /// Canopy / building height above ground, metres — the blocking surface is `z + f`.
+    /// Canopy / building height above ground, metres - the blocking surface is `z + f`.
     pub feature_height_m: f32,
     /// κ: sight attenuation per metre of canopy; transmittance `τ = exp(−κ·L)`.
     pub extinction_per_m: f32,
@@ -156,7 +156,7 @@ impl TerrainGrid {
     /// layers from `params`.
     ///
     /// # Panics
-    /// If the two layers have different shapes — that is a construction bug, not user
+    /// If the two layers have different shapes - that is a construction bug, not user
     /// input (sources and the loader always produce matching shapes).
     #[must_use]
     pub fn from_layers(
@@ -173,7 +173,7 @@ impl TerrainGrid {
         let (h, w) = elevation_m.dim();
         let transform = GridTransform::new(cell_size_m, w, h);
 
-        // `from_shape_fn` fills each cell from a closure — idiomatic ndarray, and it
+        // `from_shape_fn` fills each cell from a closure - idiomatic ndarray, and it
         // keeps the derived layers provably in lock-step with the type layer.
         let feature_height_m = Array2::from_shape_fn((h, w), |(iy, ix)| {
             params.get(terrain_type[[iy, ix]]).feature_height_m
@@ -274,7 +274,7 @@ impl TerrainGrid {
     /// Movement cost along one grid edge, from cell `from` to 8-neighbour cell `to`.
     ///
     /// Cost = horizontal distance × the mean terrain mobility multiplier of the two
-    /// cells × a slope factor that penalises uphill grades harder than downhill —
+    /// cells × a slope factor that penalises uphill grades harder than downhill -
     /// Phase 5's DP paths over cell *edges* so slope direction matters.
     /// `INFINITY` where either cell is impassable.
     ///
@@ -282,7 +282,7 @@ impl TerrainGrid {
     /// TOML when Phase 5 formalises the movement model.
     ///
     /// # Panics
-    /// If the cells are not distinct 8-neighbours — callers iterate neighbourhoods, so
+    /// If the cells are not distinct 8-neighbours - callers iterate neighbourhoods, so
     /// a non-adjacent pair is a bug, not data.
     #[must_use]
     pub fn move_cost(&self, from: (usize, usize), to: (usize, usize)) -> f32 {
@@ -353,7 +353,7 @@ fn lerp(a: f32, b: f32, t: f32) -> f32 {
 #[derive(Clone, Debug, serde::Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum TerrainSource {
-    /// Constant elevation, all [`TerrainType::Open`] — the simplest fixture.
+    /// Constant elevation, all [`TerrainType::Open`] - the simplest fixture.
     Flat {
         /// The elevation, metres.
         elevation_m: f32,
@@ -378,7 +378,7 @@ pub enum TerrainSource {
     /// A composable recipe: a base surface plus ordered feature layers, which is how a
     /// map is *described* rather than picked from a menu (`docs/DESIGN.md` §1.3).
     Layers(TerrainRecipe),
-    /// A named recipe — `{ preset = "mountain_pass" }` — expanded via
+    /// A named recipe - `{ preset = "mountain_pass" }` - expanded via
     /// [`TerrainPreset::recipe`].
     Preset(TerrainPreset),
 }
@@ -445,7 +445,7 @@ impl TerrainSource {
                     }
                 }
 
-                // Urban: rectangular blocks (~200–500 m across), overriding woods.
+                // Urban: rectangular blocks (~200-500 m across), overriding woods.
                 let extent_x = width as f32 * cell_size_m;
                 let extent_y = height as f32 * cell_size_m;
                 for _ in 0..urban_blocks {
@@ -476,8 +476,8 @@ impl TerrainSource {
 /// A composable terrain recipe: a base surface, then ordered feature layers
 /// (`docs/DESIGN.md` §1.3).
 ///
-/// This is what lets a map be *described* — "rolling hills, a ridge through the middle,
-/// light urban" — rather than picked from a fixed menu. Layers are applied **in the order
+/// This is what lets a map be *described* - "rolling hills, a ridge through the middle,
+/// light urban" - rather than picked from a fixed menu. Layers are applied **in the order
 /// written**, each drawing from the one seeded RNG, so the listed order is part of the
 /// determinism contract: the same recipe and seed always give the same map, and swapping
 /// two layers is a different map (urban over woodland leaves urban).
@@ -500,7 +500,7 @@ pub enum BaseRelief {
         /// The elevation, metres.
         elevation_m: f32,
     },
-    /// A sum of seeded Gaussian hills — the rolling-relief base.
+    /// A sum of seeded Gaussian hills - the rolling-relief base.
     Hills {
         /// Number of hills.
         count: u32,
@@ -515,7 +515,7 @@ pub enum BaseRelief {
 #[derive(Clone, Copy, Debug, serde::Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum TerrainLayer {
-    /// A linear ridge across the whole map — "a mountain running through the middle".
+    /// A linear ridge across the whole map - "a mountain running through the middle".
     ///
     /// A Gaussian cross-section about a line through the map centre, so the crest is a
     /// smooth barrier rather than a wall: elevation gains
@@ -535,7 +535,7 @@ pub enum TerrainLayer {
     Woodland {
         /// Fraction of the map to paint as `Trees`, `[0, 1)`.
         fraction: f32,
-        /// Characteristic patch size, metres — small means many copses, large means
+        /// Characteristic patch size, metres - small means many copses, large means
         /// a few big forests at the same total coverage.
         #[serde(default = "default_patch_scale")]
         patch_scale_m: f32,
@@ -572,14 +572,14 @@ fn default_block_max() -> f32 {
 
 /// A named recipe, so the common maps can be asked for by name.
 ///
-/// Each expands to a [`TerrainRecipe`] — sugar, not a separate mechanism, so a preset can
+/// Each expands to a [`TerrainRecipe`] - sugar, not a separate mechanism, so a preset can
 /// always be copied out and adjusted.
 #[derive(Clone, Copy, Debug, serde::Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum TerrainPreset {
     /// A featureless plain: the fixture for isolating a model from terrain.
     FlatPlain,
-    /// Gentle relief and scattered copses — the default battlegroup map.
+    /// Gentle relief and scattered copses - the default battlegroup map.
     RollingHills,
     /// Rolling relief under heavy forest: concealment everywhere, few sightlines.
     WoodedHills,
@@ -588,7 +588,7 @@ pub enum TerrainPreset {
     /// A dense built-up belt: hard LOS blocking and short engagement ranges.
     DenseUrban,
     /// A high ridge across the middle of an otherwise rolling map, with a wooded valley
-    /// either side — the map that makes defilade and masking the whole problem.
+    /// either side - the map that makes defilade and masking the whole problem.
     MountainPass,
 }
 
@@ -751,7 +751,7 @@ impl TerrainLayer {
                 patch_scale_m,
             } => {
                 // A second hill-sum field thresholded at the quantile that paints the
-                // requested fraction — patch_scale sets how clumped the result is.
+                // requested fraction - patch_scale sets how clumped the result is.
                 let frac = fraction.clamp(0.0, 0.95);
                 if frac <= 0.0 {
                     return;
@@ -759,7 +759,7 @@ impl TerrainLayer {
                 // One field hill per patch-sized area, **capped**: the count scales with
                 // map area, so a 10 km map at a 300 m patch scale would ask for 1111
                 // hills and the O(cells x hills) evaluation becomes a billion operations.
-                // Past a few hundred the extra hills only average each other out — the
+                // Past a few hundred the extra hills only average each other out - the
                 // coverage is set by the quantile below, not by the count.
                 let wanted = ((extent_x * extent_y) / (patch_scale_m * patch_scale_m)).max(1.0);
                 let count = (wanted as u32).min(MAX_FIELD_HILLS);
@@ -796,7 +796,7 @@ impl TerrainLayer {
 /// Paint one rectangular urban block, centred on `(cx, cy)` with the given half-extents.
 ///
 /// Walks only the block's **own cell range**. Scanning the whole grid per block is
-/// `O(blocks × cells)` — five blocks on a 1000×1000 map is five million visits to paint a
+/// `O(blocks × cells)` - five blocks on a 1000×1000 map is five million visits to paint a
 /// few thousand cells. The bounds are clamped to the grid and the membership test is
 /// unchanged, so the painted set is identical to the full scan's.
 ///
@@ -833,7 +833,7 @@ fn paint_urban_block(
 /// This is the dominant cost of terrain generation: `O(cells x hills)`, and both the
 /// relief and the woodland field pay it. The hills are *placed* sequentially from the
 /// seeded RNG before this runs, and each cell writes only its own slot, so the result is
-/// bit-identical to the serial version — the same reasoning that makes `los::viewshed`
+/// bit-identical to the serial version - the same reasoning that makes `los::viewshed`
 /// parallel and deterministic.
 fn hill_sum_field(hills: &[Hill], transform: &GridTransform, w: usize, h: usize) -> Array2<f32> {
     let mut out = Array2::<f32>::zeros((h, w));

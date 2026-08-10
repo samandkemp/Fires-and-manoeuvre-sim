@@ -4,7 +4,7 @@ members = ["crates/sim_core", "crates/app", "crates/experiments", "crates/valida
 
 # Fast iterative builds (SETUP.md step 4): our code compiles unoptimised (fast),
 # dependencies compile optimised (so the sim runs at usable speed while iterating).
-# Dependencies also skip debug symbols — we debug our own code, not Bevy's, and the
+# Dependencies also skip debug symbols - we debug our own code, not Bevy's, and the
 # symbols roughly double the size of target/ (which filled the disk once already).
 [profile.dev]
 opt-level = 1
@@ -22,6 +22,6 @@ opt-level = 2
 
 # The validation gates are Monte Carlo over thousands of trials (V14/V15, V30, V48-V50).
 # The sim_core code they call is already optimised by the entry above, but the harness
-# around it — the trial loops and accumulators — would run at the workspace opt-level 1.
+# around it - the trial loops and accumulators - would run at the workspace opt-level 1.
 [profile.dev.package.validation]
 opt-level = 2

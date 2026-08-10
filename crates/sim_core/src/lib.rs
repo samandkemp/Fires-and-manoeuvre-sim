@@ -1,4 +1,4 @@
-//! `sim_core` — the headless OR engine.
+//! `sim_core` - the headless OR engine.
 //!
 //! Pure Rust, no Bevy, no I/O beyond scenario loading. Deterministic given
 //! `(scenario, seed)`: every random draw comes from a seeded [`SimRng`] the caller
@@ -7,7 +7,7 @@
 
 // A pure OR engine has no need for `unsafe`; forbidding it documents that and is free.
 #![forbid(unsafe_code)]
-// Force a doc comment on every public item — the single best habit while learning, and
+// Force a doc comment on every public item - the single best habit while learning, and
 // it makes `cargo doc --open` a real reference.
 #![warn(missing_docs)]
 

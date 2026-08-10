@@ -24,7 +24,7 @@ pub struct SimRes {
 /// mixed group and the same commands apply to all of it.
 ///
 /// Batteries and posts are here because they are placeable, and anything placeable has to
-/// be removable — an asset you can put on the map but never take off is a trap. They are
+/// be removable - an asset you can put on the map but never take off is a trap. They are
 /// *emplaced*, so the only command they answer is "be somewhere else"; a right-click drags
 /// them rather than routing them, which is the decision an emplacement represents anyway.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -42,7 +42,7 @@ pub enum Selected {
 /// What a right-click on the map does.
 ///
 /// Only *placement* is modal. Selecting, moving, routing and deleting are driven by
-/// left-click, modifiers and keys, so the common loop — pick a unit, give it a route —
+/// left-click, modifiers and keys, so the common loop - pick a unit, give it a route -
 /// no longer means toggling a radio button between every step.
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum ClickMode {
@@ -82,7 +82,7 @@ pub enum ResetKind {
 /// What stops the clock the instant it happens.
 ///
 /// A battle resolves in a couple of hundred seconds of sim time, and the moments worth
-/// watching — first contact, the round that kills, the missile leaving the rail — each
+/// watching - first contact, the round that kills, the missile leaving the rail - each
 /// last a single tick. Slowing playback down is not enough on its own: you still have to
 /// be looking at the right pixel at the right moment. A breakpoint pauses *on* the tick
 /// that produced the event, leaving the map showing the instant it happened.
@@ -168,8 +168,8 @@ pub struct UiState {
     pub running: bool,
     /// Sim seconds per real second while running.
     ///
-    /// The sim still advances only in whole `dt_s` ticks — the wall clock decides *when*
-    /// a tick happens, never how big it is — so playback speed changes nothing about the
+    /// The sim still advances only in whole `dt_s` ticks - the wall clock decides *when*
+    /// a tick happens, never how big it is - so playback speed changes nothing about the
     /// result. Below 1× the same run simply takes longer to watch.
     pub speed_x: f32,
     /// Fraction of a tick carried over from the previous frame, so a speed that does not
@@ -183,14 +183,14 @@ pub struct UiState {
     pub breakpoints: Breakpoints,
     /// Target for the "run to" button, in sim seconds.
     pub run_to_s: f32,
-    /// Everything currently selected — units and air together.
+    /// Everything currently selected - units and air together.
     pub selected: Vec<Selected>,
     /// Where a left-drag box-select started, in world metres.
     pub drag_start: Option<Vec2>,
-    /// Seed for "Re-run at seed" — reproducing a specific run is a first-class need for
+    /// Seed for "Re-run at seed" - reproducing a specific run is a first-class need for
     /// an OR tool, and was previously only reachable by editing the scenario file.
     pub seed: u64,
-    /// Exposure window (s) for the Pd coverage overlay — live-tweakable.
+    /// Exposure window (s) for the Pd coverage overlay - live-tweakable.
     pub coverage_exposure_s: f32,
     /// Dials applied to the next placed drone, and to the selected one live.
     pub air_altitude_m: f32,
@@ -240,7 +240,7 @@ pub type CameraQuery<'w, 's> =
 pub struct MapSprite;
 
 /// A scenario the panel has asked to load. Applied by `apply_scenario_load` rather than
-/// inline, because switching scenario re-textures the map and moves the camera — queries
+/// inline, because switching scenario re-textures the map and moves the camera - queries
 /// the egui panel cannot hold at the same time as the ones it already borrows.
 #[derive(Resource, Default)]
 pub struct PendingLoad(pub Option<String>);
@@ -252,8 +252,8 @@ pub const COVERAGE_EXPOSURE_S: f32 = 60.0;
 
 /// Playback speed the app starts at, in sim seconds per real second.
 ///
-/// 10× is roughly the fastest a battle can be followed by eye: at 60× — what one
-/// tick per frame used to give — a ten-minute engagement is over in ten seconds and the
+/// 10× is roughly the fastest a battle can be followed by eye: at 60× - what one
+/// tick per frame used to give - a ten-minute engagement is over in ten seconds and the
 /// detections that decide it flick past in one or two frames.
 pub const DEFAULT_SPEED_X: f32 = 10.0;
 /// Most ticks one frame may run, whatever the speed. A frame that stalls (a scenario

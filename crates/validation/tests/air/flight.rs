@@ -47,7 +47,7 @@ fn v44_altitude_and_masking() {
     );
 
     // AGL 120 m over the same spot: identical here (ground is at 0), so the
-    // distinction only bites where the airframe is *over* high ground — check that.
+    // distinction only bites where the airframe is *over* high ground - check that.
     let over_ridge = Vec2::new(420.0, 80.0);
     let agl = drone(over_ridge, 120.0, AltitudeRef::Agl, 180.0);
     let amsl = drone(over_ridge, 120.0, AltitudeRef::Amsl, 180.0);
@@ -88,7 +88,7 @@ fn v44_altitude_and_masking() {
     assert!((r - 898.0).abs() < 1e-2);
 }
 
-// V46: orbit kinematics — the radius holds and a lap takes exactly 2πR/v.
+// V46: orbit kinematics - the radius holds and a lap takes exactly 2πR/v.
 #[test]
 fn v46_orbit_kinematics() {
     let centre = Vec2::new(3000.0, 3000.0);
@@ -190,7 +190,7 @@ fn v47_transit_and_turn_rate() {
     // The invariant to check is the *chord*: a turn through Φ at radius r displaces
     // the airframe by `2r·sin(Φ/2)`, here `r√2`. (The east/north split is *not* a
     // clean (r, r): the integrator turns then flies, so the polygon it traces sits
-    // half a turn-step — 5° — ahead in phase. That biases the components while
+    // half a turn-step - 5° - ahead in phase. That biases the components while
     // leaving the chord length correct to ~0.1%, which is why the chord is the gate.)
     let delta = d.pos - start;
     let chord = 2.0 * r_min * (std::f32::consts::FRAC_PI_4).sin();
@@ -227,5 +227,5 @@ fn endurance_and_determinism() {
         }
         (d.pos, d.heading_deg, d.orbit_phase)
     };
-    assert_eq!(fly(), fly(), "flight is pure — identical every time");
+    assert_eq!(fly(), fly(), "flight is pure - identical every time");
 }

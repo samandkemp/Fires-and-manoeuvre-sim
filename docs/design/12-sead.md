@@ -2,7 +2,7 @@
 
 ---
 
-## 12. SEAD: air defence as a target *(Phase 12)*
+## 12. SEAD: air defence as a target
 
 §9.7 listed "air-defence sites are not attritable" as a deliberate v1 limitation, and §11
 then made it awkward: the model claimed a command post was the thing worth killing first,
@@ -17,7 +17,7 @@ sparing it. `alive()` is `elements > 0` on both.
 
 **Any ground asset can be named as a target.** `TargetSpec::Named(id)` resolves against
 units, then air-defence batteries, then C2 posts. Ids are unique within a scenario, so one
-namespace covers all three and SEAD needs no new syntax — `target = { unit = "sam-1" }`
+namespace covers all three and SEAD needs no new syntax - `target = { unit = "sam-1" }`
 simply works, with `asset` as the clearer alias. (The enum was `TargetSpec::Unit`; the
 rename is what the variant now means.)
 
@@ -31,7 +31,7 @@ The interesting part is not the destruction but its consequences, and the two di
 
 | Asset destroyed | Firepower lost | Second-order effect |
 |---|---|---|
-| **Battery** | its launchers | **its organic radar goes dark** — an emitter the rest of the network was cueing from (§9.5) |
+| **Battery** | its launchers | **its organic radar goes dark** - an emitter the rest of the network was cueing from (§9.5) |
 | **C2 post** | **none at all** | the group it coordinated **decoheres** and reverts to nearest-first (§11) |
 
 A destroyed battery also drops its open engagements, so its channels are not left occupied
@@ -39,8 +39,8 @@ by a corpse.
 
 The radar consequence is what makes SEAD worth more than the launchers it removes, and it
 falls out of existing structure rather than needing a special case: an organic radar is an
-ordinary entry in the sensor list, and `Sim::sensor_active` — which already knew a carried
-sensor dies with its airframe — now also knows a radar dies with its battery. Coverage and
+ordinary entry in the sensor list, and `Sim::sensor_active` - which already knew a carried
+sensor dies with its airframe - now also knows a radar dies with its battery. Coverage and
 belief rasters drop it automatically, because they were already asking that question.
 
 ### 12.3 Anti-radiation homing: the radar buys its own accuracy
@@ -59,14 +59,14 @@ silent_cep_m   = 400.0   # against a silent one
 ```
 
 `WeaponType::cep_against(emitting)` is the single place that decides, and for anything
-without the flag it returns `cep_m` whatever the emitter is doing — a dumb shell's accuracy
+without the flag it returns `cep_m` whatever the emitter is doing - a dumb shell's accuracy
 does not depend on what its target is transmitting. So every existing munition is an exact
 identity (§7.4), and an ARM with no `silent_cep_m` stated falls back to `cep_m`, meaning
 declaring the flag alone changes nothing until the degradation is given a number.
 
 **A dispersion, not a veto.** The munition still arrives; with nothing to home on it flies
 to where the emitter was last known to be. "An ARM cannot engage a silent radar at all" is
-this with the value set very large — reachable as a scenario's choice, rather than baked in
+this with the value set very large - reachable as a scenario's choice, rather than baked in
 as the model's opinion. The veto version would also flatter the counter: switching a radar
 off would become a free and total defence.
 
@@ -77,8 +77,8 @@ ride, so an ARM sent at one is flying blind by definition rather than by omissio
 **The trade this poses, and why it is a real one.** `emitting = false` is the counter, and
 it is not free: the radar is **off**, so the battery detects nothing through it, cues nothing
 with it and contributes no coverage. It can still be handed a track by some *other* sensor
-over the net — that is what `self_cue` governs, and the two are separate flags for exactly
-this reason (§12.5) — but a battery whose radar was its only sensor is simply blind. So the
+over the net - that is what `self_cue` governs, and the two are separate flags for exactly
+this reason (§12.5) - but a battery whose radar was its only sensor is simply blind. So the
 defender chooses: *survive the missile, or see the raid coming.* Not both.
 
 Measured on `scenarios/sead_arm.toml`, 500 paired seeds: EMCON takes batteries killed from
@@ -90,8 +90,8 @@ drones downed to 0.000.
 Air-delivered SEAD was the only kind, because ground fires iterated the unit list. Every
 asset class already had elements and already took §2.3 area damage identically, so the only
 thing missing was *which lists are searched*. `FireTarget` now names the list, and
-`TargetState` gathers the four facts a shell depends on — where, how big, how many left, is
-it locatable — so counter-battery arrived by widening a list rather than by writing a second
+`TargetState` gathers the four facts a shell depends on - where, how big, how many left, is
+it locatable - so counter-battery arrived by widening a list rather than by writing a second
 fires model.
 
 Units come first in `engageable_targets`, batteries and posts are appended. A scenario with
@@ -101,7 +101,7 @@ no enemy emplacements therefore produces exactly the list it always did (§7.4).
 through the §3.2 glimpse loop, so neither has a track, and indirect fire needs one. Inventing
 a stochastic acquisition here would have inserted draws into every scenario fielding air
 defence and shifted the stream under V50, V51, V59 and V60 for no modelling gain. So
-`Sim::emplacement_is_located` asks the question counter-battery acquisition actually asks —
+`Sim::emplacement_is_located` asks the question counter-battery acquisition actually asks -
 **has it given itself away?**
 
 | Asset | Located when |
@@ -110,12 +110,12 @@ defence and shifted the stream under V50, V51, V59 and V60 for no modelling gain
 | post | it is coordinating at least one live battery |
 
 Those are the two real ways a site is fixed: ESM on its emissions, or a counter-battery
-track back along its rounds. A command post is found because it is *talking* — the same
+track back along its rounds. A command post is found because it is *talking* - the same
 argument in a different band. All three are deterministic and draw no randomness.
 
 "Has fired" is read from `AirDefenceState::last_fired_s`, set when an engagement resolves.
 It used to be recovered by scanning the whole air-defence event log, inside a test that runs
-once per (shooter, target) pair per epoch — so the cost of an epoch grew with how long the
+once per (shooter, target) pair per epoch - so the cost of an epoch grew with how long the
 battle had already lasted rather than with its size.
 
 Two things about that flag are **open questions rather than settled model**, and are worth
@@ -127,11 +127,11 @@ knowing before a result leans on them:
   lasts, and nothing yet says why.
 - **It records a resolution, not a trigger pull.** For a missile battery those coincide. For
   a gun, `resolve_due` logs only a tick that *killed*, so a gun that has been firing steadily
-  and hitting nothing has not "fired" for this purpose — which is not what the prose above
+  and hitting nothing has not "fired" for this purpose - which is not what the prose above
   claims.
 
 This joins the two halves of §12.3. Switching a radar off already made an ARM miss; it now
-also hides the battery from artillery. **One decision, three consequences** — and the cost
+also hides the battery from artillery. **One decision, three consequences** - and the cost
 stays what §12.3 said it was: a radar that is not transmitting is not detecting either.
 
 Direct fire is unchanged: line of sight and range, no track (§2.1). So going silent hides a
@@ -142,7 +142,7 @@ with threat `rof × lethality × reach`. A battery's danger is to *aircraft* and
 firepower at all, so neither has an output measurable on that scale, and a conversion would
 be arithmetic dressed as doctrine. Both fall back to 1.0 per element, and a scenario that
 wants artillery to prefer the SAM over the tanks says so with `value`. That is what the dial
-is for — "kill the radar first" is a judgement, not a derivation.
+is for - "kill the radar first" is a judgement, not a derivation.
 
 ### 12.5 Deliberate limitations (v1)
 
@@ -153,13 +153,11 @@ is for — "kill the radar first" is a judgement, not a derivation.
 - **Emissions are binary.** A radar is on or off; there is no intermittent emission, no
   blinking to reduce exposure, and no memory of a position after the emitter goes quiet
   beyond the aim point itself.
-- ~~**`self_cue` carries two meanings.**~~ **Resolved by splitting the flag** (gate V69).
-
-  §9.5 introduced `self_cue` as the *cueing timeline* — does this battery act on its own
-  radar, or wait for a track over the net and pay `cue_latency_s`? §12.3 then reused it as
-  the *emission* test here. One flag, two decisions, and they disagreed: a battery with
-  `self_cue = false` counted as silent to an anti-radiation missile while its radar kept
-  detecting perfectly well. Measured on `scenarios/sead_arm.toml` at **1.000 detections**,
+- **Emission and cueing are separate flags.** `self_cue` decides the cueing timeline
+  (§9.5) and `emitting` decides whether a radar is detectable here. They are deliberately
+  independent, because a battery may act on its own radar while under emission control, or
+  wait for a track over the net while transmitting. Measured on `scenarios/sead_arm.toml`
+  at **1.000 detections**,
   first contact 9.3 s, statistically indistinguishable from the emitting arm. It bought the
   survivability of EMCON without the blindness that is supposed to pay for it.
 

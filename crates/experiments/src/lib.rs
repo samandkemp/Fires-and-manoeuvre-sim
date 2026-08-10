@@ -1,7 +1,7 @@
 //! The batch harness: run a scenario many thousands of times and report what happened,
 //! with error bars.
 //!
-//! The app shows one battle. A study needs the distribution — a mean is worthless without
+//! The app shows one battle. A study needs the distribution - a mean is worthless without
 //! knowing whether the difference you are looking at is bigger than the noise. This module
 //! is the shared machinery every headless binary in this crate draws on, so a new
 //! experiment is a CLI and a question, not another copy of the plumbing.

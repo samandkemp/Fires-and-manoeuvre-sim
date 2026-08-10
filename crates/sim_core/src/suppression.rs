@@ -1,6 +1,6 @@
 //! A per-unit Markov chain `Free → Suppressed → Pinned`, driven by near-miss volume and
 //! decaying over time. Spec: `docs/DESIGN.md` §4.3.
-//! Gates: V28–V29 for the chain, V31 for how it gates fire.
+//! Gates: V28-V29 for the chain, V31 for how it gates fire.
 
 /// A unit's suppression state. Near-misses step it up; time steps it down.
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]

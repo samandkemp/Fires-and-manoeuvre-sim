@@ -6,7 +6,7 @@
 use glam::Vec2;
 use sim_core::ew::*;
 
-// V40: EW-off is the identity — no jammers ⇒ factor exactly 1.
+// V40: EW-off is the identity - no jammers ⇒ factor exactly 1.
 #[test]
 fn v40_no_jammers_is_identity() {
     assert_eq!(jamming_factor(Vec2::new(500.0, 500.0), &[]), 1.0);
@@ -67,7 +67,7 @@ use validation::flat;
 
 // ---- V41-V43: the POMDP belief layer -------------------------------------
 
-// V41: the Tiger problem — Bayes updates reproduce the exact posteriors.
+// V41: the Tiger problem - Bayes updates reproduce the exact posteriors.
 #[test]
 fn v41_tiger_problem() {
     // States: tiger-left (0), tiger-right (1). "Listen" hears the correct side with
@@ -124,7 +124,7 @@ fn v42_belief_is_proper_and_concentrates() {
     let mut belief = SpatialBelief::uniform(w, h);
     assert!((belief.belief().sum() - 1.0).abs() < 1e-4);
 
-    // A sharp likelihood peaked at cell (20, 8) — a detection there.
+    // A sharp likelihood peaked at cell (20, 8) - a detection there.
     let mut like = Array2::from_elem((h, w), 0.001f32);
     like[[8, 20]] = 1.0;
     belief.update(&like);
@@ -145,7 +145,7 @@ fn v42_belief_is_proper_and_concentrates() {
     );
 }
 
-// V43: negative information — repeatedly *not* detecting from a sensor shifts belief
+// V43: negative information - repeatedly *not* detecting from a sensor shifts belief
 // out of its coverage into dead ground; the motion model raises uncertainty.
 #[test]
 fn v43_negative_information_and_diffusion() {
@@ -162,7 +162,7 @@ fn v43_negative_information_and_diffusion() {
         belief.update(&like);
     }
     // "West" = within the sensor's reach (ix < 20 ≈ 200 m... actually within 1200 m,
-    // ix < 120 — but map is 600 m wide, so split at mid). Compare covered vs far.
+    // ix < 120 - but map is 600 m wide, so split at mid). Compare covered vs far.
     let west = belief.mass_where(|ix, _| ix < w / 3);
     let east = belief.mass_where(|ix, _| ix >= 2 * w / 3);
     assert!(

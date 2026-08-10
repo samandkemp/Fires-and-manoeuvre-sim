@@ -1,17 +1,17 @@
 # Validation
 
 Every model in this project ships with a **gate**: a test that checks it against a
-closed-form result or a stated invariant. There are 74 of them, V1–V74, and they are the
+closed-form result or a stated invariant. There are 74 of them, V1-V74, and they are the
 backbone of the whole thing.
 
 ## Why a gate is not a regression test
 
 A regression test records what the code did yesterday and complains when that changes. It
-is useful, and it is not what is wanted here. It cannot tell you the answer was wrong
-yesterday, and it turns every deliberate improvement into a failure you have to bless.
+is useful, and it is not what is wanted here. It cannot say the answer was wrong
+yesterday, and it turns every deliberate improvement into a failure that has to be blessed.
 
-A gate names an **external reference** — an analytical result, a limiting case, an identity
-the model must satisfy — and checks against that. So:
+A gate names an **external reference** - an analytical result, a limiting case, an identity
+the model must satisfy - and checks against that. So:
 
 - a regression test says *the answer changed*;
 - a gate says *the answer is wrong*.
@@ -21,8 +21,8 @@ That is the difference the project cares about, and it is why
 thing it is checked against** rather than as a list of green names. The useful question is
 never "are the tests passing" but *is the maths still right, and right against what*.
 
-The corollary is a working rule: **if you change a model and a gate fails, understand why
-before you re-baseline it.** That gate is the only thing standing between a model and a
+The corollary is a working rule: **if a model changes and a gate fails, understand why
+before re-baselining it.** That gate is the only thing standing between a model and a
 plausible-looking number that is quietly wrong.
 
 ## The four kinds of reference
@@ -33,15 +33,15 @@ when reading the table.
 
 | Kind | What it proves | Example |
 |---|---|---|
-| **Closed form** | The sampler converges on the analytic answer | V22: Monte Carlo area damage against the Carleton–Gaussian convolution `R²/(σ²+R²)·exp(−d²/2(σ²+R²))` |
-| **Independent implementation** | Two unrelated algorithms agree | V27: Dijkstra's path cost against Bellman–Ford; V11: DDA line of sight against a fixed-step oracle |
+| **Closed form** | The sampler converges on the analytic answer | V22: Monte Carlo area damage against the Carleton-Gaussian convolution `R²/(σ²+R²)·exp(−d²/2(σ²+R²))` |
+| **Independent implementation** | Two unrelated algorithms agree | V27: Dijkstra's path cost against Bellman-Ford; V11: DDA line of sight against a fixed-step oracle |
 | **Structural invariant** | A property that must hold whatever the numbers | V7: LOS symmetry; V42: belief stays a normalised distribution; V26: raising `risk_weight` never increases exposure |
-| **Identity** | A subsystem switched off leaves the rest bit-identical | V40 (EW), V52 (air), V58 (decisions), V62–V66. See [§7.4](design/07-the-simulation-loop.md) |
+| **Identity** | A subsystem switched off leaves the rest bit-identical | V40 (EW), V52 (air), V58 (decisions), V62-V66. See [§7.4](design/07-the-simulation-loop.md) |
 
 **The identity discipline is the one to understand**, because it is what has made eight
 phases of additions safe. Every phase added since Phase 8 is *appended* to the loop and
 draws **zero** random numbers when its inputs are empty. So a scenario with no aircraft
-produces the same event log, byte for byte, that it did before the air model existed —
+produces the same event log, byte for byte, that it did before the air model existed -
 not approximately, exactly. Adding a subsystem cannot silently perturb an existing result,
 and if it did, a gate fails immediately rather than a finding quietly rotting.
 
@@ -50,7 +50,7 @@ and if it did, a gate fails immediately rather than a finding quietly rotting.
 Grouped by the subsystem they constrain. The `Reference` column is abbreviated;
 `validation_report` prints each one in full.
 
-### Terrain and line of sight — [§1](design/01-terrain-and-los.md)
+### Terrain and line of sight - [§1](design/01-terrain-and-los.md)
 
 | Gate | Property | Reference |
 |---|---|---|
@@ -69,7 +69,7 @@ Grouped by the subsystem they constrain. The `Reference` column is abbreviated;
 | V13 | Ridge shadow | Per-column shadow matches the V6 closed form |
 | V53 | Terrain recipes | Recipe + seed reproduces bit-identically; each layer meets its own invariant; layer order is significant |
 
-### Sensing — [§3](design/03-sensing.md)
+### Sensing - [§3](design/03-sensing.md)
 
 | Gate | Property | Reference |
 |---|---|---|
@@ -84,7 +84,7 @@ probability is what makes the answer independent of the integrator; a per-tick p
 would make the physics a function of `dt`, which is a very hard bug to see and a very easy
 one to ship.
 
-### Fires — [§2](design/02-fires.md)
+### Fires - [§2](design/02-fires.md)
 
 | Gate | Property | Reference |
 |---|---|---|
@@ -94,41 +94,41 @@ one to ship.
 | V22 | Area-damage closed form | MC Carleton damage against the Gaussian convolution |
 | V23 | Damage monotonicity | Falls with offset and cover, rises with lethal radius |
 | V24 | Fires determinism | Same `(scenario, seed, mission)` → identical rounds and strengths |
-| V70 | Indirect eligibility is a **track**, not a sightline | A howitzer engages a target masked from it by a ridge; a direct-fire gun in the same position holds its fire. Conversely, jamming the observer lapses the track and releases the indirect shooter's lock — while the target is still alive, so the release is the lapse and not the kill |
+| V70 | Indirect eligibility is a **track**, not a sightline | A howitzer engages a target masked from it by a ridge; a direct-fire gun in the same position holds its fire. Conversely, jamming the observer lapses the track and releases the indirect shooter's lock - while the target is still alive, so the release is the lapse and not the kill |
 
-### The measurement machinery — [`docs/EXPERIMENTS.md`](EXPERIMENTS.md)
-
-| Gate | Property | Reference |
-|---|---|---|
-| V71 | The **sensitivity estimator** against a closed form | Sobol indices from Saltelli sampling match the analytic indices of the Ishigami function. Its third input has a first-order index of *exactly zero* — it does nothing alone, so a one-dial sweep finds nothing — and a large total index, because it acts entirely through another input. That gap is what the estimator exists to expose |
-
-### Suppression and attrition — [§4](design/04-suppression-and-attrition.md)
+### The measurement machinery - [`docs/EXPERIMENTS.md`](EXPERIMENTS.md)
 
 | Gate | Property | Reference |
 |---|---|---|
-| V28 | Stationary distribution | Birth–death occupancy `π_k ∝ (β/μ)^k` |
+| V71 | The **sensitivity estimator** against a closed form | Sobol indices from Saltelli sampling match the analytic indices of the Ishigami function. Its third input has a first-order index of *exactly zero* - it does nothing alone, so a one-dial sweep finds nothing - and a large total index, because it acts entirely through another input. That gap is what the estimator exists to expose |
+
+### Suppression and attrition - [§4](design/04-suppression-and-attrition.md)
+
+| Gate | Property | Reference |
+|---|---|---|
+| V28 | Stationary distribution | Birth-death occupancy `π_k ∝ (β/μ)^k` |
 | V29 | Recovery time | Mean time Pinned→Free = `2/recover_per_s` (two exponential steps) |
 | V30 | **Lanchester square law** | An aimed-fire duel conserves `A² − B²` in the mean |
 | V31 | Suppression gates fire | Pinned emits nothing; Suppressed output = factor × Free |
 
 V30 is the strongest single check in the suite, because the square law is an *emergent*
-property of the whole loop — element counts, rate of fire, hit probability, removal — and
+property of the whole loop - element counts, rate of fire, hit probability, removal - and
 not of any one function. Nothing was written to produce it.
 
-### Movement — [§5](design/05-movement-as-dp.md)
+### Movement - [§5](design/05-movement-as-dp.md)
 
 | Gate | Property | Reference |
 |---|---|---|
 | V25 | Zero risk = shortest path | Closed-form 8-connected distance |
 | V26 | Risk avoidance monotone | Raising `risk_weight` never increases exposure along the optimum |
-| V27 | Path optimality | Dijkstra cost matches an independent Bellman–Ford reference |
+| V27 | Path optimality | Dijkstra cost matches an independent Bellman-Ford reference |
 
-### Game theory and movement in-loop — [§6](design/06-game-theory.md)
+### Game theory and movement in-loop - [§6](design/06-game-theory.md)
 
 | Gate | Property | Reference |
 |---|---|---|
 | V32 | Matching pennies | Value → 0, both strategies → (½, ½) |
-| V33 | Rock–paper–scissors | Value → 0, both strategies → uniform |
+| V33 | Rock-paper-scissors | Value → 0, both strategies → uniform |
 | V34 | Saddle point | A game with a pure equilibrium converges to that value |
 | V35 | Strict dominance | A strictly dominated strategy converges to ~0 weight |
 | V36 | Skew-symmetric fairness | `A = −Aᵀ` ⟹ value 0; the value bracket closes |
@@ -136,7 +136,7 @@ not of any one function. Nothing was written to produce it.
 | V38 | Pinned unit halts | A Pinned unit does not advance |
 | V39 | Interdiction sanity | An unwatched route is safe, so Red weights it and the value falls |
 
-### EW and partial observability — [§8](design/08-ew-and-partial-observability.md)
+### EW and partial observability - [§8](design/08-ew-and-partial-observability.md)
 
 | Gate | Property | Reference |
 |---|---|---|
@@ -145,7 +145,7 @@ not of any one function. Nothing was written to produce it.
 | V42 | Belief well-formed | Stays a normalised distribution; a peaked likelihood lowers entropy |
 | V43 | Negative information | Repeated non-detection shifts belief into dead ground |
 
-### Air and counter-air — [§9](design/09-air-and-counter-air.md)
+### Air and counter-air - [§9](design/09-air-and-counter-air.md)
 
 | Gate | Property | Reference |
 |---|---|---|
@@ -157,32 +157,32 @@ not of any one function. Nothing was written to produce it.
 | V49 | Missile time-to-kill | Shots ~ Geometric(p); `E[TTK] = t_f/p + (1/p − 1)·t_r` |
 | V50 | Cue latency and leakage | Leakage = `exp(−λW_eff)`; critical latency `L* = W + D − R` |
 | V51 | Envelope and magazine gating | Exactly zero engagements outside band/LOS/cue/magazine |
-| V52 | Air-off **identity** | Empty air phases draw no randomness — the log is bit-identical |
+| V52 | Air-off **identity** | Empty air phases draw no randomness - the log is bit-identical |
 
-### The decision layer — [§10](design/10-the-decision-layer.md)
+### The decision layer - [§10](design/10-the-decision-layer.md)
 
 | Gate | Property | Reference |
 |---|---|---|
 | V54 | Removal preserves history | Removal tombstones rather than shifting, so logged indices stay valid |
-| V55 | Track lifecycle and EW | A track lapses `track_hold_s` after its last look — so jamming can **break** one, which permanent detection made impossible |
+| V55 | Track lifecycle and EW | A track lapses `track_hold_s` after its last look - so jamming can **break** one, which permanent detection made impossible |
 | V56 | Fire allocation | Hungarian matches an exhaustive optimum for `n,m ≤ 6`, is never below greedy, and never picks a forbidden pairing |
 | V57 | Belief-driven tasking | A tasked sensor detects where a fixed stare never does, with a shorter mean time-to-detect |
 | V58 | Decision-layer **identity** | A scenario with no allocation choice and no taskable sensor reproduces the pre-Phase-10 log bit-identically |
 | V61 | Carried-sensor coverage | A recce drone that finds nothing drains its side's belief out of that ground |
-| V72 | Movement decisions are a **structural identity** | A scenario where no unit declares an `objective` reproduces exactly and its scripted units follow their routes to the metre — no planner is built at all, so there is nothing to switch off. Declaring both `route` and `objective` is a load error naming the unit |
-| V73 | A planned route **avoids what watches it** | With an enemy sensor on the straight line to its objective, a planning unit leaves that line by hundreds of metres; with `risk_weight = 0` — same map, same sensor — it goes straight. V25's zero-risk-is-shortest-path, arriving inside the loop |
+| V72 | Movement decisions are a **structural identity** | A scenario where no unit declares an `objective` reproduces exactly and its scripted units follow their routes to the metre - no planner is built at all, so there is nothing to switch off. Declaring both `route` and `objective` is a load error naming the unit |
+| V73 | A planned route **avoids what watches it** | With an enemy sensor on the straight line to its objective, a planning unit leaves that line by hundreds of metres; with `risk_weight = 0` - same map, same sensor - it goes straight. V25's zero-risk-is-shortest-path, arriving inside the loop |
 | V74 | A planner does not dither | A watcher on the line makes north and south cost almost the same, which is what makes a fresh solve wobble. The committed direction must not flip, and the unit must arrive. Deliberately *not* monotone progress: a detour increases straight-line distance before it decreases it |
 
-### Command and control — [§11](design/11-command-and-control.md)
+### Command and control - [§11](design/11-command-and-control.md)
 
 | Gate | Property | Reference |
 |---|---|---|
-| V59 | C2-coordinated air defence | A post makes batteries cover one drone each where nearest-first sends them all at one; a dead post costs no battery, only the coordination; and a post coordinates its **own side only** — with both sides coordinated each still follows its own doctrine and chooses as it would with the enemy's post removed |
+| V59 | C2-coordinated air defence | A post makes batteries cover one drone each where nearest-first sends them all at one; a dead post costs no battery, only the coordination; and a post coordinates its **own side only** - with both sides coordinated each still follows its own doctrine and chooses as it would with the enemy's post removed |
 | V62 | The link degrades, not only dies | An enemy jammer scales the post's radius, decohering the defence with nothing destroyed; a zero-power jammer is an exact **identity** |
 | V63 | Fires can be made to need C2 | With `fires_need_c2` on, guns under a post coordinate and guns outside do not; with it off, the fire log is bit-identical |
 | V68 | The overkill **discount** replaces the overkill cap | Three guns and one target: all three engage, where the old hard cap `max_shooters_per_target` assigned the surplus nothing and they fired nothing at all. With a target each they still take one each, so the geometric discount delivers the spread the cap was credited with |
 
-### SEAD — [§12](design/12-sead.md)
+### SEAD - [§12](design/12-sead.md)
 
 | Gate | Property | Reference |
 |---|---|---|
@@ -191,31 +191,31 @@ not of any one function. Nothing was written to produce it.
 | V65 | Ground counter-battery | Artillery kills an emitting battery; a silent one cannot be found by indirect fire, though direct fire needs no track |
 | V69 | Emission and cueing are separate decisions | `emitting = false` records **zero** detections, cannot self-cue and gives an ARM nothing to home on; `self_cue = false` keeps the radar running and detects exactly as much, differing only in whether the battery may act on its own track. Both default `true`, so an ordinary battery is unchanged |
 
-### The kill chain — [§13](design/13-the-kill-chain.md)
+### The kill chain - [§13](design/13-the-kill-chain.md)
 
 | Gate | Property | Reference |
 |---|---|---|
-| V66 | Directed targeting | Strict doctrine is *followed*, not weighed — a gun takes a 3% shot at a priority SAM over a 46% shot at a tank; weighted mode does not overturn it; a priority naming nothing is a load error; LOS and range **block** a pairing so a masked priority falls through; and a shooter holds its target until it is dead or unengageable, the held lock still consuming a slot |
+| V66 | Directed targeting | Strict doctrine is *followed*, not weighed - a gun takes a 3% shot at a priority SAM over a 46% shot at a tank; weighted mode does not overturn it; a priority naming nothing is a load error; LOS and range **block** a pairing so a masked priority falls through; and a shooter holds its target until it is dead or unengageable, the held lock still consuming a slot |
 
-### The input contract — [§7.6](design/07-the-simulation-loop.md)
+### The input contract - [§7.6](design/07-the-simulation-loop.md)
 
 | Gate | Property | Reference |
 |---|---|---|
-| V67 | A dial the model cannot run on is refused at load | `dt_s = 0` never advances the clock and `epoch_s = 0` makes `time_s/epoch_s` infinite — where `as u64` **saturates**, handing the epoch loop `u64::MAX` boundaries — so both fail to *terminate*; probabilities outside `[0,1]`, negative durations and radii, and `belief_cells = 0` are refused too, as are the stat-block dials that reach a divisor (`range_half_m`, an indirect weapon's `lethal_radius_m`) where a zero yields `NaN` and `NaN` loses every comparison it is in. Legitimate zeros still load, and every shipped scenario and library satisfies the contract |
+| V67 | A dial the model cannot run on is refused at load | `dt_s = 0` never advances the clock and `epoch_s = 0` makes `time_s/epoch_s` infinite - where `as u64` **saturates**, handing the epoch loop `u64::MAX` boundaries - so both fail to *terminate*; probabilities outside `[0,1]`, negative durations and radii, and `belief_cells = 0` are refused too, as are the stat-block dials that reach a divisor (`range_half_m`, an indirect weapon's `lethal_radius_m`) where a zero yields `NaN` and `NaN` loses every comparison it is in. Legitimate zeros still load, and every shipped scenario and library satisfies the contract |
 
 This is the value-level twin of `deny_unknown_fields`. A misspelt *key* takes its default
 and answers a different question; a *value* outside its domain does the same thing, and
 until V67 nothing checked one. The failure mode that motivated it is reachable from an
 ordinary `sweep --param sim.epoch_s --from 0`, whose first arm hangs with no diagnostic.
 
-The list is deliberately short — see §7.6 for why refusing every zero would be enforcing
+The list is deliberately short - see §7.6 for why refusing every zero would be enforcing
 taste rather than tractability.
 
-### The input contract — [§7.6](design/07-the-simulation-loop.md)
+### The input contract - [§7.6](design/07-the-simulation-loop.md)
 
 | Gate | Property | Reference |
 |---|---|---|
-| V67 | The input contract | A dial the model cannot run on is refused **at load**, naming it. `dt_s = 0` never advances the clock and `epoch_s = 0` makes `time_s/epoch_s` infinite — where `as u64` *saturates*, so the epoch loop is handed `u64::MAX` boundaries and hangs. Probabilities must lie in `[0,1]`, durations and radii must not be negative, and the two stat-block dials that reach a **divisor** (a sensor's `range_half_m`, an indirect weapon's `lethal_radius_m`) must be positive, because a zero there gives `NaN` and `NaN` loses every comparison it is in — the subsystem goes silently *inert* rather than visibly wrong. Legitimate zeros still load, and every shipped scenario satisfies the contract |
+| V67 | The input contract | A dial the model cannot run on is refused **at load**, naming it. `dt_s = 0` never advances the clock and `epoch_s = 0` makes `time_s/epoch_s` infinite - where `as u64` *saturates*, so the epoch loop is handed `u64::MAX` boundaries and hangs. Probabilities must lie in `[0,1]`, durations and radii must not be negative, and the two stat-block dials that reach a **divisor** (a sensor's `range_half_m`, an indirect weapon's `lethal_radius_m`) must be positive, because a zero there gives `NaN` and `NaN` loses every comparison it is in - the subsystem goes silently *inert* rather than visibly wrong. Legitimate zeros still load, and every shipped scenario satisfies the contract |
 
 ## Running them
 
@@ -226,7 +226,7 @@ cargo run -p validation --release --bin validation_report     # the table, with 
 ```
 
 `validation_report` is the one to reach for. It prints every gate beside the closed form
-it is checked against — which is the artefact worth showing someone who asks whether the
+it is checked against - which is the artefact worth showing someone who asks whether the
 model is any good.
 
 ## Where they live, and why there
@@ -241,17 +241,17 @@ Two reasons:
    the models; 133 test functions interleaved with it would bury that.
 
 There is exactly one exception. V52's zero-draw half asserts a property of the **RNG
-stream** — that empty air phases consume no random numbers — which is genuinely internal,
+stream** - that empty air phases consume no random numbers - which is genuinely internal,
 so it stays a unit test inside `sim_core`.
 
 ## Adding one
 
 1. Write the model, and with it the reference: the closed form, the independent
-   implementation, the invariant, or the identity it must satisfy. If you cannot name one,
-   that is worth pausing over — it usually means the model is not yet specified.
+   implementation, the invariant, or the identity it must satisfy. If none can be named,
+   that is worth pausing over - it usually means the model is not yet specified.
 2. State the gate in its design section, in the `Validation gates` table at the end.
 3. Add the test to `crates/validation/tests/`, named `vNN_what_it_checks`. Suites are
-   grouped by design area — `sead/arm.rs`, `c2/link.rs` — with one `tests/<group>.rs` per
+   grouped by design area - `sead/arm.rs`, `c2/link.rs` - with one `tests/<group>.rs` per
    group declaring them via `#[path]`. Cargo builds every `tests/*.rs` as its own binary
    linking `sim_core` afresh, so the grouping keeps a new suite from adding another link
    unit. Put a new suite in the group its § belongs to; a genuinely new area gets its own.
@@ -259,7 +259,7 @@ so it stays a unit test inside `sim_core`.
    with the reference written out.
 
 Step 4 is not optional and cannot be forgotten: `tests/catalogue.rs` asserts the
-correspondence **in both directions** — every gate in the catalogue names a test that
+correspondence **in both directions** - every gate in the catalogue names a test that
 exists, and every `vNN_*` test in the suite appears in the catalogue. So the printed table
 cannot drift out of step with the suite.
 
@@ -271,7 +271,7 @@ not worth the cost for a single-user research tool. Float comparisons use explic
 tolerances, chosen per gate and stated in it.
 
 Performance is measured (`bench`, `fires_bench`) but not gated. A timing assertion on a
-laptop is a flaky test, not a guarantee — so optimisations are instead pinned by
+laptop is a flaky test, not a guarantee - so optimisations are instead pinned by
 **bit-identity**: the LOS memo and the parallel rasters are checked to produce exactly what
 the serial path produced, which is a stronger claim than "still fast" and does not depend
 on the machine.

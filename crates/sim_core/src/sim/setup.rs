@@ -113,7 +113,7 @@ impl Sim {
     ///
     /// Batch Monte-Carlo needs this to be honest as well as fast. [`Sim::new`] derives
     /// both the terrain and the RNG stream from one seed, so looping it over seeds varies
-    /// the map and the dice together — two sources of variance averaged at once, when the
+    /// the map and the dice together - two sources of variance averaged at once, when the
     /// question is usually "what happens on *this* map, on average". Building terrain once
     /// and resetting per trial separates them, and skips regenerating a 1000x1000 raster
     /// every run.
@@ -130,7 +130,7 @@ impl Sim {
         self.place_from_scenario(scenario, libs)
     }
 
-    /// Clear all placed assets, events, and the clock, and reseed the RNG — keeping the
+    /// Clear all placed assets, events, and the clock, and reseed the RNG - keeping the
     /// (expensively generated) terrain.
     pub fn reset(&mut self, seed: u64) {
         self.time_s = 0.0;
@@ -179,7 +179,7 @@ impl Sim {
                 self.add_unit(&u.id, side, Vec2::from(u.pos), stats.clone(), weapon);
                 if let Some(objective) = u.objective {
                     // A unit that plans its own route (§10.5). Its first route is computed
-                    // at the first decision epoch, not here — placement should not depend on
+                    // at the first decision epoch, not here - placement should not depend on
                     // where the enemy's sensors happen to be at t = 0.
                     let idx = self.units.len() - 1;
                     self.units[idx].objective = Some(Vec2::from(objective));
@@ -253,7 +253,7 @@ impl Sim {
     /// Every priority entry and every order must name something on the field
     /// (`docs/DESIGN.md` §13.1).
     ///
-    /// A tier that matches nothing is not an empty tier — it is a doctrine nobody is
+    /// A tier that matches nothing is not an empty tier - it is a doctrine nobody is
     /// following, and it fails silently: the run succeeds and simply answers a different
     /// question. Same reasoning as the schema's `deny_unknown_fields`, and the error names
     /// what *would* have worked, because the usual cause is a typo or a role never declared.
@@ -351,7 +351,7 @@ impl Sim {
     }
 
     /// Place an air asset, returning its index in `Sim::air`. A carried sensor is
-    /// registered in the ordinary sensor list, bound to this airframe — so a recce drone
+    /// registered in the ordinary sensor list, bound to this airframe - so a recce drone
     /// needs no special case anywhere in the detection loop.
     #[allow(clippy::too_many_arguments)]
     pub fn add_air(

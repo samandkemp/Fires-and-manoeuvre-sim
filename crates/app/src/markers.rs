@@ -72,7 +72,7 @@ pub fn draw_markers(
 
     // C2 posts: the coordination radius, drawn under everything else because it is the
     // largest ring on the map and would otherwise bury the envelopes inside it. Every
-    // battery within it allocates as one group (docs/DESIGN.md §11) — so this circle is
+    // battery within it allocates as one group (docs/DESIGN.md §11) - so this circle is
     // literally the boundary of who is cooperating with whom.
     for post in sim.sim.c2() {
         let alive = post.alive();
@@ -85,7 +85,7 @@ pub fn draw_markers(
         // Faint: the nominal `coordination_range_m`. Solid: the radius the model actually
         // tests, `coordination_range_m × link_quality`, which an enemy jammer pulls in
         // (DESIGN §11.2, V62). Drawing only the nominal ring made EW's whole effect on
-        // coordination invisible on the map — a battery would silently drop out of the net
+        // coordination invisible on the map - a battery would silently drop out of the net
         // while still sitting well inside the circle.
         let quality = sim.sim.link_quality_at(post.pos, post.side);
         gizmos.circle_2d(
@@ -115,7 +115,7 @@ pub fn draw_markers(
     }
 
     // Air defence: the engagement envelope as a ring, plus a live line to whatever it is
-    // currently engaging — the counter-air fight made visible.
+    // currently engaging - the counter-air fight made visible.
     for ad in sim.sim.air_defence() {
         // A destroyed battery keeps its marker (greyed) but loses its envelope: the ring
         // means "this ground is covered", and once the battery is dead it is not.
@@ -206,7 +206,7 @@ pub fn draw_markers(
         gizmos.circle_2d(Isometry2d::from_translation(s.pos), 3.0 * px, c);
 
         // Field of regard: the wedge the sensor is actually watching. Only drawn for a
-        // sensor that has one — an all-round sensor would just be a circle, and the
+        // sensor that has one - an all-round sensor would just be a circle, and the
         // whole point of the wedge is to show what is *not* being watched. With
         // `[sim] sensor_tasking` on, this is where the belief-driven search is visible:
         // the wedges swing about between epochs (docs/DESIGN.md §10.3).
@@ -326,7 +326,7 @@ pub fn draw_probe(
 
 /// The universal "this is destroyed" mark: a dim grey cross.
 ///
-/// One helper rather than four copies — units, airframes, batteries and posts all die,
+/// One helper rather than four copies - units, airframes, batteries and posts all die,
 /// and a reader should not have to check whether they die *differently* on the map.
 fn cross(gizmos: &mut Gizmos, pos: Vec2, half: f32) {
     let g = Color::srgb(0.45, 0.45, 0.45);

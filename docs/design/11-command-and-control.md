@@ -2,15 +2,15 @@
 
 ---
 
-## 11. Command and control *(Phase 11)*
+## 11. Command and control
 
-Ground fires coordinate side-wide for free (§10.2) — defensible for a battlegroup sharing
+Ground fires coordinate side-wide for free (§10.2) - defensible for a battlegroup sharing
 one fire-control net. Air defence should not, and did not: each battery independently
 engaged whatever was nearest.
 
 Decision (user, 2026-08-05): **coordination is an asset you field, not a switch you set.**
 A dial would have made "the batteries cooperate" free and permanent. Making it a placed
-**C2 post** makes it something that must be paid for, positioned, and can be taken away —
+**C2 post** makes it something that must be paid for, positioned, and can be taken away -
 which is the behaviour worth modelling, and the seam SEAD hangs off.
 
 ### 11.1 The C2 post
@@ -23,7 +23,7 @@ problem.
 Range is **horizontal**, not slant (§9.1). A coordination link is a communications
 relationship, not a sightline; using slant range would make a post on a hill mysteriously
 worse at talking to the battery beneath it. A terrain-aware comms model is a clean later
-refinement — the §9.5 cue-latency machinery is the natural seam.
+refinement - the §9.5 cue-latency machinery is the natural seam.
 
 Destroying a post costs no battery, no magazine and no envelope. What is lost is the
 coordination: from the next tick the group **decoheres** and every battery reverts to
@@ -39,21 +39,21 @@ r_{\text{eff}} = r_{\text{coord}} \cdot g(\text{post})
 $$
 
 where `r_coord` is `coordination_range_m` and `g` is `ew::jamming_factor` evaluated at the
-post. So an enemy jammer near the post does not flip the link off — it shrinks it, and the
+post. So an enemy jammer near the post does not flip the link off - it shrinks it, and the
 batteries on the flanks fall out of the net while the one sitting on top of the post keeps
 talking. That is the right shape: a link degrades with range against a noise floor, and
 raising the floor is what a jammer does. It also gives the raid a **soft** counter beside
-SEAD's hard one — same effect on the defence, no ordnance spent, and nothing on the map to
+SEAD's hard one - same effect on the defence, no ordnance spent, and nothing on the map to
 show it happened.
 
 Note the sign. `Sim::jamming_at` folds a side's **own** jammers, because a jammer protecting
 Red degrades *Blue's sensing of Red*. `Sim::link_quality_at` folds the **enemy's**, because
 a jammer degrades *Blue's own communications*. Same asset, same dials, opposite side of the
-argument — so one Red jammer both hides Red units and cuts the Blue net.
+argument - so one Red jammer both hides Red units and cuts the Blue net.
 
 *Joining costs time.* `link_latency_s` (default **0**) is how long a battery must have been
 inside the radius before it is in the net. Defaulting to zero recovers the pre-latency
-behaviour exactly, and — the reason it matters for study design — lets a sweep turn either
+behaviour exactly, and - the reason it matters for study design - lets a sweep turn either
 effect on **alone**, without the other confounding it. The consequence worth noting is that
 a battery not yet in the net falls back to nearest-first and commits its channel: a link
 that arrives late cannot retrospectively undo the duplicated engagements already made.
@@ -80,12 +80,12 @@ swept. Against a cap of 1:
 
 | cap | drones downed | rounds left |
 |---|---|---|
-| 2 | +0.013 ± 0.011 (t = 1.2) — **not significant** | −0.233 ± 0.064 (t = −3.6) |
-| 3 | −0.020 ± 0.012 (t = −1.6) — **not significant** | −0.584 ± 0.067 (t = −8.7) |
+| 2 | +0.013 ± 0.011 (t = 1.2) - **not significant** | −0.233 ± 0.064 (t = −3.6) |
+| 3 | −0.020 ± 0.012 (t = −1.6) - **not significant** | −0.584 ± 0.067 (t = −8.7) |
 
 So on this scenario the second battery buys **nothing measurable** and costs about a
 quarter of a round; the third buys nothing and costs more than half a round. Neither is a
-disaster and neither is an argument for the default — it is defensible but unearned here.
+disaster and neither is an argument for the default - it is defensible but unearned here.
 Whether a cap above 1 earns its keep when batteries are scarce relative to the raid is the
 open question, and it is a question this scenario cannot answer because it has three
 batteries and ten drones.
@@ -97,7 +97,7 @@ sweep ad_c2 --param sim.max_batteries_per_air_target --values 1,2,3 --seeds 1000
       --until 240 --metric ad_rounds_left
 ```
 
-Rows of the assignment are **free engagement channels**, not batteries — a two-channel
+Rows of the assignment are **free engagement channels**, not batteries - a two-channel
 battery contributes two rows, so `channels` falls out of the structure rather than needing
 a special case. Columns are slots on each engageable airframe, discounted geometrically as
 in §10.2.
@@ -107,7 +107,7 @@ when both sides are coordinated there are two problems, not one. This is not a r
 solving them together has no well-defined answer, because a pooled group has no single
 doctrine to be scored under and no single `max_batteries_per_air_target` budget to spend.
 The implementation originally pooled them and took the side from the first battery in the
-list, which meant a side that fielded a post could inherit the *enemy's* fire plan — and,
+list, which meant a side that fielded a post could inherit the *enemy's* fire plan - and,
 because the list is built in placement order, which side that happened to be depended on
 nothing more than who was written first in the scenario file. V59 now fields a mirrored
 two-sided engagement and requires each side to make the same choice it would make with the
@@ -121,7 +121,7 @@ $$
 **The deadline is the release point, not the envelope edge.** A drone that leaves the
 envelope having already dropped its munition has won, so the window is the time to reach
 `release_range_m` of its aim point, and the battery best placed to stop the airframe
-*closest to doing damage* wins it — not the one that happens to be nearest. An airframe
+*closest to doing damage* wins it - not the one that happens to be nearest. An airframe
 with nothing left to drop has no such deadline and is scored over the time to cross the
 envelope instead: still worth shooting, just not urgently.
 
@@ -130,20 +130,20 @@ beyond about a minute, "how long this target will linger" stops discriminating u
 since the defence will have reconsidered many times; and an uncapped window runs to
 hundreds of seconds for a distant loiterer, which drives `p_kill` to 1 for *every* pairing.
 The diminishing-return discount `(1 − p)^k` then collapses to 1 and stops separating
-"cover another drone" from "pile onto this one" — which is the entire job it is there to
+"cover another drone" from "pile onto this one" - which is the entire job it is there to
 do. That degeneracy was observed while building V59, not theorised.
 
 One consequence is worth stating plainly rather than hiding, because it reads as
 counter-intuitive: a bomber seconds from release has a *short* window and therefore a
 *low* `P(kill before release)`, so it scores below a recce drone the battery can
-comfortably catch. That is the formulation being self-consistent, not a bug — maximising
+comfortably catch. That is the formulation being self-consistent, not a bug - maximising
 expected value destroyed says shoot what you can still stop, and a bomber past the point
 of interception is a lost cause. Whether it is the *right* objective is a separate
 question: making `value` reflect imminent harm, rather than only what an airframe carries,
 is the natural way to change the answer.
 
 `P(kill | window)` is `air_defence::p_kill_in_window`, which is the same §9.4 pair of laws
-V48 and V49 gate — exponential for a gun, geometric for a missile — evaluated forward over
+V48 and V49 gate - exponential for a gun, geometric for a missile - evaluated forward over
 a window rather than sampled, so the two cannot drift apart. `value(air)` is the optional
 `value` dial on `AirType`, or a derivation from remaining munitions and whether the
 airframe carries a sensor, so an unscored stat block still ranks a loaded bomber above a
@@ -151,7 +151,7 @@ spent one.
 
 #### Measured: coordination is about *ammunition*, not kills *(2026-08-05)*
 
-`scenarios/ad_c2.toml` — three SAM batteries against a tight packet of ten drones, 500
+`scenarios/ad_c2.toml` - three SAM batteries against a tight packet of ten drones, 500
 seeds, compared **paired**:
 
 | | Downed (of 10) | Rounds left (of 24) | Leakers |
@@ -162,7 +162,7 @@ seeds, compared **paired**:
 
 The kill count barely moves. What moves is the **magazine**: the coordinated defence ends
 with four and a half times the reserve, having achieved slightly *more*. Uncoordinated, it
-very nearly shot itself dry against a raid it was otherwise winning — and a defence out of
+very nearly shot itself dry against a raid it was otherwise winning - and a defence out of
 rounds is a defence that loses the next raid.
 
 **Why this scenario uses missiles, and why that is the whole point.** A gun is a Poisson
@@ -170,14 +170,14 @@ process, so two batteries on one target simply add their kill rates: `λ + λ`, 
 is lost. **Stacking guns is not wasteful.** A missile launch is a discrete round out of a
 finite magazine, so three interceptors at a drone one would have killed is two rounds that
 will not be there for the next one. Coordination pays exactly where the shot is a
-*countable resource* — which is a sharper statement than "coordination is good", and it
+*countable resource* - which is a sharper statement than "coordination is good", and it
 falls out of the two engagement models rather than being asserted.
 
 ### 11.3 Ground fires and the net
 
 §10.2 let a side coordinate its ground fires for free while §11 made air defence pay for a
-post. That asymmetry was reasoned, not arbitrary — a battlegroup does share one fire-control
-net, where point-defence batteries genuinely are independent sites — but it was an
+post. That asymmetry was reasoned, not arbitrary - a battlegroup does share one fire-control
+net, where point-defence batteries genuinely are independent sites - but it was an
 *argument*, and an argument is not something you can measure.
 
 `[sim] fires_need_c2` makes it a modelled thing. With it on, `Sim::allocate_side` splits a
@@ -185,8 +185,8 @@ side in two and solves **two** problems:
 
 | Shooter | Solver |
 |---|---|
-| inside a live friendly post's (jammed) radius | the scenario's `allocation` — the side-wide assignment |
-| outside it | `Independent` — picks for itself, the pre-Phase-10 rule |
+| inside a live friendly post's (jammed) radius | the scenario's `allocation` - the side-wide assignment |
+| outside it | `Independent` - picks for itself, the pre-Phase-10 rule |
 
 Two separate problems rather than one problem with constraints, deliberately. "Not in the
 net" means precisely "does not know what anyone else is doing", so an unnetted shooter must
@@ -194,7 +194,7 @@ not be allowed to *avoid* a target because a netted one took it. Solving them to
 would leak exactly that information.
 
 Being outside the net costs coordination, not the ability to fight: a loose gun still
-engages, on its own judgement. What it loses is shown by V63's three-gun case — it opens on
+engages, on its own judgement. What it loses is shown by V63's three-gun case - it opens on
 a target one of the netted guns has already destroyed, and its whole volley leaves no trace
 in the log. That wasted volley is what the net buys back.
 
@@ -207,21 +207,19 @@ number instead:
 sweep <scn> --param sim.fires_need_c2 --values false,true --seeds 1000 --metric red_cleared_s
 ```
 
-### 11.4 Deliberate limitations (v1)
+### 11.4 Ground fires have no overkill cap
 
-- ~~**The post is not attritable yet.**~~ Lifted by §12: posts and batteries carry
-  `element_count`, take §2.3 area damage, and `TargetSpec::Named` resolves across all three
-  asset lists. V60.
-- ~~**The overkill cap is scoped to a fire-control problem, not to a side.**~~ **Resolved by
-  removing the cap** (gate V68).
+A target's slots are priced by the $(1-\bar q)^k$ discount alone (§10.2), with no hard limit
+on how many shooters may be assigned to it. A multi-element ground unit genuinely absorbs
+several shooters, and a hard cap *idles* the surplus: a target offering `min(elements, cap)`
+slots leaves shooters beyond that assigned nothing and firing nothing, which is a worse
+error than overkill whenever there is nothing else to shoot.
 
-  `max_shooters_per_target` was a *hard* cap: a target offered `min(elements, cap)` slots,
-  so once targets were scarcer than shooters the surplus shooters were assigned nothing and
-  fired nothing. Because it was applied once per fire-control problem, a side split by
-  `fires_need_c2` got two of them and could put more guns to work than a coordinated side
-  was allowed to — so **being split up made a side fight better**, measured on
-  `scenarios/fires_c2.toml` at −24.5 s of clear time (t = −10.0), monotone in the net's
-  radius.
+The discount already prices piling on, so it is the whole story here. Air defence keeps a
+cap (§11.2) because an airframe is a single object and a missile is a discrete round, so
+there is a real quantity to be wasted.
+
+### 11.5 Deliberate limitations
 
   §10.2 already prices piling on at $(1-\bar q)^k$. Truncating that as well said "rather
   than overkill, do nothing", which is the wrong trade whenever there is nothing else to
@@ -229,7 +227,7 @@ sweep <scn> --param sim.fires_need_c2 --values false,true --seeds 1000 --metric 
   discount decides what the marginal one is worth.
 
   Re-measured after the change: the coordinated baseline improves from 103.40 s to
-  **66.80 s** — that gap is the fire the cap was throwing away — and the inversion is gone.
+  **66.80 s** - that gap is the fire the cap was throwing away - and the inversion is gone.
   Coordination is now worth about **−2.2 s** (t = −2.1), in the direction it should be, and
   netting a third gun adds nothing beyond the second.
 
@@ -241,9 +239,9 @@ sweep <scn> --param sim.fires_need_c2 --values false,true --seeds 1000 --metric 
 - **A post cannot be handed off.** There is no notion of a deputy taking over, so killing
   the only post decoheres the defence permanently rather than for a reorganisation delay.
 
-### 11.5 Validation gates (V59, V62, V63)
+### 11.6 Validation gates (V59, V62, V63)
 
 | # | Property | Reference |
 |---|----------|-----------|
-| V59 | C2-coordinated air defence | with one drone nearest to every battery, nearest-first sends them all at it while a C2 post makes them cover one drone each; a scenario with **no** post is unchanged from the pre-C2 engine (the §7.4 identity discipline, so V50–V52 cannot move); a **dead** post coordinates nothing, costing no battery, magazine or envelope — only the coordination; and a post coordinates its **own side only**, so with both sides coordinated each battery still follows its own doctrine and makes the same choice it would make with the enemy's post removed |
+| V59 | C2-coordinated air defence | with one drone nearest to every battery, nearest-first sends them all at it while a C2 post makes them cover one drone each; a scenario with **no** post is unchanged from the pre-C2 engine (the §7.4 identity discipline, so V50-V52 cannot move); a **dead** post coordinates nothing, costing no battery, magazine or envelope - only the coordination; and a post coordinates its **own side only**, so with both sides coordinated each battery still follows its own doctrine and makes the same choice it would make with the enemy's post removed |
 | V62 | the link degrades, not only dies | an enemy jammer on the post scales its radius by the EW factor, so the flanking batteries drop out and the defence decoheres with nothing destroyed; a *friendly* jammer does not cut its own net; a **zero-power** jammer runs the whole arithmetic and changes nothing (§7.4); `link_latency_s` delays joining, and a battery not yet in the net commits its channel nearest-first, so a late link cannot undo it |
