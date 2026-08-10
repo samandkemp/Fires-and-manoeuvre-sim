@@ -128,34 +128,51 @@ scored identically.
 `sweep --param sim.allocation --values optimal,greedy,independent` runs all three rules on the same seeds,
 and compares **paired** — the per-seed difference cancels the map and the dice, leaving
 only the effect of the rule. On `scenarios/fire_allocation.toml` (four shooters that can
-all reach all four targets), 500 seeds:
+all reach all four targets), 2,000 seeds:
 
-| Rule | Time to destroy Red | vs `independent`, paired | Targets engaged per epoch |
-|---|---|---|---|
-| `independent` (the old rule) | 75.1 ± 0.4 s | baseline | 1.00 |
-| `greedy` | 63.8 ± 0.4 s | **−11.30 ± 0.47 s** (significant) | 3.02 |
-| `optimal` | 63.9 ± 0.4 s | **−11.18 ± 0.49 s** (significant) | 3.02 |
+| Rule | Time to destroy Red | vs `independent`, paired |
+|---|---|---|
+| `independent` (the old rule) | 75.4 ± 0.2 s | baseline |
+| `greedy` | 62.5 ± 0.2 s | **−12.84 ± 0.22 s** (significant) |
+| `optimal` | 62.9 ± 0.2 s | **−12.43 ± 0.23 s** (significant) |
 
-**Coordinating is worth ~15%**, unambiguously, and the mechanism is visible in the spread
-column: the old rule sent every gun at the nearest target while three others stood
-untouched.
+**Coordinating is worth ~17%**, unambiguously, and the mechanism is the spread: the old rule
+sent every gun at the nearest target while three others stood untouched.
 
-**Optimality is worth nothing measurable.** Greedy and Hungarian differ by 0.12 s against
-a standard error of ~0.5, and produce *identical* outcomes on the large majority of seeds
-(they diverge at all on well under a fifth). On instances this size — a handful of
-shooters against a handful of similar targets — greedy's myopia costs it essentially
-nothing, because there is rarely a case where taking the locally best pairing forecloses
-a better global one. The optimal solver is kept because it is the reference V56 checks
-against and because the gap should be re-measured as scenarios grow, not because it is
-currently earning its extra complexity.
+**Solving the assignment optimally is measurably *worse* than greedy** — by
+**0.405 ± 0.051 s** (t = 8.0) when the two are compared directly against each other rather
+than each against `independent`. They agree outright on 96% of seeds; the cost is
+concentrated in the 4% where they diverge.
 
-> **A methodological correction worth recording.** This section previously claimed greedy
-> *beat* the optimal solver "consistently and outside the noise". It did not. That came
-> from comparing two unpaired means (30 and 200 seeds) whose difference sat inside the
-> sampling error, with no standard error reported to make that visible. A paired test over
-> 500 seeds gives a mean difference of −0.12 s with SE 0.22 (t = −0.55): no effect.
-> the harness reports a standard error on every figure and pairs every
-> comparison, because a bare mean is precisely what invited the wrong conclusion.
+That is not a defect in the solver, and V56 still holds: the Hungarian result *is* the
+optimum of the objective it is given. The objective is the problem. §10.2 scores a **single
+epoch** — expected value destroyed now — so an exact solution to it is myopically right and
+can be worse across a whole engagement than a greedy rule that happens to spread fire and
+keep more targets under pressure. Optimising a surrogate harder does not improve the thing
+the surrogate stands for.
+
+This is the strongest argument yet for the multi-epoch objective on the roadmap: the gap it
+would close is no longer hypothetical but measured.
+
+> **This finding has been wrong twice, in opposite directions, and the history is the
+> lesson.**
+>
+> *First*, it claimed greedy beat optimal "consistently and outside the noise", from two
+> unpaired means (30 and 200 seeds) with no standard error to show the difference sat inside
+> the sampling error. *Then* it claimed no effect: −0.12 s with SE 0.22 (t = −0.55), which
+> was correct for the model **as it stood**.
+>
+> §11.4 then removed the hard ground overkill cap. That changed how many shooters may pile
+> onto one target, which is exactly the freedom the assignment objective is exercised over —
+> and the difference resolved into the significant one above. The old number was not
+> mismeasured; it was **invalidated by a model change**, and nothing re-ran it for two
+> phases.
+>
+> Two habits come out of this. Report a standard error on every figure and pair every
+> comparison, because a bare mean invited the first error. And compare two arms **against
+> each other**, not by eye against a shared baseline: greedy and optimal differ by 0.405 with
+> SE 0.051, but read off their separate `independent` baselines the gap looks like 0.4
+> against SEs of ~0.23 — five times noisier, and the reason the effect hid for so long.
 
 On the other shipped scenarios the difference is exactly zero on every seed: with one or
 two shooters that can each reach one enemy, all three rules agree. Allocation only matters

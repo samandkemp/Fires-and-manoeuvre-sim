@@ -4,7 +4,7 @@ An operational-research simulation of land warfare direct and indirect fires. A 
 Red force — composed from artillery, manoeuvre units, sensors, drones and air defence —
 fight over featured terrain: line of sight, cover, concealment, mobility.
 
-**Sensing is central.** User places sensors and try to detect the enemy before being
+**Sensing is central.** You place sensors and try to detect the enemy before being
 detected, then watch fires suppress and attrit manoeuvre. Detection is mutual and
 asymmetric, so positioning to see without being seen is a real decision rather than a
 scoring bonus.
@@ -33,8 +33,8 @@ tweakable — not to ship as a game.
 
 One structural discipline underpins all of it: **every subsystem added reduces to an exact
 identity when switched off.** A scenario with no aircraft produces the event log it did
-before the air model existed — byte for byte, not approximately. Eight phases of additions
-have been made safe that way.
+before the air model existed — byte for byte, not approximately. Every phase of additions
+has been made safe that way.
 
 ## Six strands of theory
 
@@ -79,8 +79,10 @@ set: a post lets nearby batteries allocate as a group, and it can be jammed or k
 
 **The decision layer** closes the loop sensing → belief → decision → action. Fire is
 allocated side-wide by solving an assignment problem; steerable sensors point themselves by
-expected information gain; and a **kill chain** lets a side declare what it has been *told*
-to shoot first, so directive control can be measured against optimal control.
+expected information gain; **movement** is re-planned each epoch against the live risk
+raster, so a sensor placed across a route changes where a unit goes; and a **kill chain**
+lets a side declare what it has been *told* to shoot first, so directive control can be
+measured against optimal control.
 
 ## Documentation
 
@@ -156,29 +158,34 @@ cargo run -p experiments --release --bin sweep -- fire_allocation \
 
 ```
 --- red_cleared_s, paired against sim.allocation = independent ---
-  sim.allocation = independent  baseline 75.080
-  sim.allocation = greedy      -11.300 +- 0.473 (t = -23.9, n = 500, 93 tied) significant
-  sim.allocation = optimal     -11.180 +- 0.487 (t = -23.0, n = 500, 90 tied) significant
+  sim.allocation = independent  baseline 75.355
+  sim.allocation = greedy      -12.835 +- 0.224 (t = -57.2, n = 2000, 311 tied) significant
+  sim.allocation = optimal     -12.430 +- 0.231 (t = -53.8, n = 2000, 323 tied) significant
 ```
 
-Coordinating clears the enemy 11.3 s sooner, far outside the noise. Solving the assignment
-*optimally* rather than greedily is worth 0.12 s — a quarter of one standard error, i.e.
-nothing. That is the useful kind of negative result, and it only exists because the greedy
-baseline was kept rather than deleted once the optimal solver worked.
+Coordinating clears the enemy ~12.8 s sooner, far outside the noise. Solving the assignment
+*optimally* rather than greedily is **worse** — by 0.405 ± 0.051 s when the two are compared
+against each other directly (t = 8.0). Not a bug: the allocation objective scores a single
+epoch, so solving it exactly is myopically right and can be worse over a whole engagement
+than a greedy rule that happens to spread fire. That is the useful kind of negative result,
+and it only exists because the greedy baseline was kept rather than deleted once the optimal
+solver worked.
 
 The first build compiles the Bevy engine and takes several minutes; iterative rebuilds are
 seconds. See [docs/OPERATIONS.md](docs/OPERATIONS.md) for everything else.
 
 ## Status
 
-Roadmap phases 1–14 are complete: terrain and LOS, sensing, fires, suppression and
+Roadmap phases 1–17 are complete: terrain and LOS, sensing, fires, suppression and
 attrition, movement as DP, game-theoretic decisions, visualisation, electronic warfare with
 partial observability, air and counter-air, the decision layer, command and control, SEAD,
-and the kill chain. V1–V74 all hold.
+the kill chain, the measurement machinery (factorial designs and global sensitivity
+analysis), and movement decisions in the loop. V1–V74 all hold.
 
-Next: the allocation surrogate (a multi-epoch objective), air-to-air, acoustic detection of
-drones, real-world DEM ingestion, movement decisions in-loop, and a dynamic stochastic game
-using DP value functions as payoffs.
+Next: **the allocation surrogate** — a multi-epoch objective, now that the single-epoch one
+is measurably costing the optimal solver against greedy — then air-to-air, acoustic
+detection of drones, real-world DEM ingestion, and a dynamic stochastic game using DP value
+functions as payoffs.
 
 ## A note on scope
 

@@ -48,12 +48,12 @@ That last command prints:
 
 ```
 --- red_cleared_s, paired against sim.allocation = independent ---
-  sim.allocation = independent  baseline 75.080
-  sim.allocation = greedy      -11.300 +- 0.473 (t = -23.9, n = 500, 93 tied) significant
-  sim.allocation = optimal     -11.180 +- 0.487 (t = -23.0, n = 500, 90 tied) significant
+  sim.allocation = independent  baseline 75.355
+  sim.allocation = greedy      -12.835 +- 0.224 (t = -57.2, n = 2000, 311 tied) significant
+  sim.allocation = optimal     -12.430 +- 0.231 (t = -53.8, n = 2000, 323 tied) significant
 ```
 
-Read it as: coordinating fires clears the enemy 11.3 s sooner, and that is far outside the
+Read it as: coordinating fires clears the enemy 12.8 s sooner, and that is far outside the
 noise. Solving the assignment *optimally* rather than greedily is worth 0.12 s, which is a
 quarter of one standard error — nothing. Both arms gave literally the same answer on about
 90 of the 500 seeds.
@@ -385,14 +385,20 @@ countable resource — and that is invisible without this column.
 ## Reading the output
 
 ```
-sim.allocation = greedy      -11.300 +- 0.473 (t = -23.9, n = 500, 93 tied) significant
+sim.allocation = greedy      -12.835 +- 0.224 (t = -57.2, n = 2000, 311 tied) significant
 ```
 
-- **`-11.300`** — the mean paired difference against the *first* arm, in the metric's units.
-- **`+- 0.473`** — its standard error. Roughly: the true value is within about 2 of these.
-- **`t = -23.9`** — `mean / SE`. `|t| > 2` is the line this harness calls significant
-  (two-sided, ~5%). At 23.9 there is nothing to argue about.
-- **`93 tied`** — seeds where the two arms gave *exactly* the same number.
+- **`-12.835`** — the mean paired difference against the *first* arm, in the metric's units.
+- **`+- 0.224`** — its standard error. Roughly: the true value is within about 2 of these.
+- **`t = -57.2`** — `mean / SE`. `|t| > 2` is the line this harness calls significant
+  (two-sided, ~5%). At 57 there is nothing to argue about.
+- **`311 tied`** — seeds where the two arms gave *exactly* the same number.
+
+> **Every figure is against the first arm.** To compare two *other* arms, re-run with one of
+> them first — do not eyeball the difference between two rows. Their separate errors do not
+> combine the way the paired one does, and on this very example that mistake hid a real
+> effect for two phases: greedy and optimal differ by 0.405 ± 0.051 measured directly, but
+> read off their shared baseline the gap looks like 0.4 against SEs of ~0.23.
 - **`significant`** / **`NOT significant`**.
 
 **The tie count is the part people skip, and it is the most informative field.** A small

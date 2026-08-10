@@ -6,6 +6,7 @@
 /docs/PLAN.md
 /docs/PROGRESS.md
 /docs/QUESTIONS.md
+/docs/ROADMAP.md
 
 # Experiment outputs (headless runs regenerate these; don't commit them)
 /out/

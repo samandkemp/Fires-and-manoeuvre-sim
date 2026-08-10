@@ -315,11 +315,12 @@ a plain linear assignment — solved optimally by Kuhn–Munkres — instead of 
 problem needing a bespoke solver.
 
 A greedy allocator ships alongside, and it earns its place by settling what the optimal
-solver is actually worth. On a scenario built to present a real choice, 500 seeds compared
-paired: **coordinating is worth −11.3 ± 0.5 s (~15%)** off the time to destroy the enemy,
-unambiguously. **Optimality is worth nothing measurable** — greedy and Hungarian differ by
-0.12 s against a standard error of ~0.5, and agree outright on most seeds. At this scale
-greedy's myopia costs it essentially nothing.
+solver is actually worth. On a scenario built to present a real choice, 2,000 seeds compared
+paired: **coordinating is worth −12.8 ± 0.2 s (~17%)** off the time to destroy the enemy,
+unambiguously. **Optimality is measurably worse than greedy** — by 0.405 ± 0.051 s (t = 8.0)
+— because the objective scores a single epoch, so solving it exactly is myopically right and
+can cost over a whole engagement. Optimising a surrogate harder does not improve what the
+surrogate stands for.
 
 NOTE: This is a useful kind of negative result, and it only exists because the baseline was
 kept. (An earlier version of this claimed greedy *beat* the optimal solver; it did not -

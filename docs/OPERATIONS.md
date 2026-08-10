@@ -153,9 +153,9 @@ cargo run -p experiments --release --bin sweep -- fire_allocation \
 
 ```
 --- red_cleared_s, paired against sim.allocation = independent ---
-  sim.allocation = independent  baseline 75.080
-  sim.allocation = greedy      -11.300 +- 0.473 (t = -23.9, n = 500, 93 tied) significant
-  sim.allocation = optimal     -11.180 +- 0.487 (t = -23.0, n = 500, 90 tied) significant
+  sim.allocation = independent  baseline 75.355
+  sim.allocation = greedy      -12.835 +- 0.224 (t = -57.2, n = 2000, 311 tied) significant
+  sim.allocation = optimal     -12.430 +- 0.231 (t = -53.8, n = 2000, 323 tied) significant
 ```
 
 `--param` is a **dotted path**, patched into the TOML before it is parsed, so any dial is
