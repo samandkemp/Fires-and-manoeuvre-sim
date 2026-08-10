@@ -53,11 +53,14 @@ impl Sim {
         if let Some(a) = self.sensors[sensor_idx].carrier {
             return self.air.get(a).is_some_and(|air| air.alive);
         }
-        // A radar belonging to a destroyed battery stops emitting.
+        // A radar stops emitting when its battery is destroyed, and when the battery is
+        // under EMCON. Both are the same statement to everything downstream — coverage,
+        // belief, detection and the §12.3 emitter test all read this one predicate — which
+        // is what stops "silent" meaning one thing to a missile and another to a sensor.
         !self
             .air_defence
             .iter()
-            .any(|ad| ad.sensor_idx == Some(sensor_idx) && !ad.alive())
+            .any(|ad| ad.sensor_idx == Some(sensor_idx) && (!ad.alive() || !ad.emitting))
     }
 
     /// Copy each carried sensor's position and facing back from its airframe.

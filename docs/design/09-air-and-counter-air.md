@@ -167,9 +167,11 @@ actionable_at = min( own_sensor_seen,                  // organic: no comms hop
 ```
 
 `own_sensor_seen` is when **this battery's** organic sensor first saw the target, and is
-unavailable if it has no sensor, its per-instance `self_cue` switch is off, or it simply
-has not seen the target yet. Turning `self_cue` off therefore forces the asset onto the
-external cueing chain and makes it pay `cue_latency_s` — the comms Tx/Rx lever.
+unavailable if it has no sensor, its per-instance `self_cue` switch is off, its radar is not
+`emitting`, or it simply has not seen the target yet. Turning `self_cue` off forces the asset
+onto the external cueing chain and makes it pay `cue_latency_s` — the comms Tx/Rx lever. The
+two switches are distinct: `self_cue` is whose track the battery acts on, `emitting` is
+whether its radar is running at all (§12.5).
 
 Taking the **minimum** is what makes this exact rather than approximate. Every airframe
 records when each sensor first saw it (`AirState.seen_by`), so a self-cueing battery whose

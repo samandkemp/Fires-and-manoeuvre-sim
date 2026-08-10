@@ -7,7 +7,7 @@
 
 use super::{JammerState, SensorState, Side, Sim, UnitState};
 use crate::air::{AirState, AirType, FlightPlan, TargetSpec};
-use crate::air_defence::{AirDefenceState, AirDefenceType};
+use crate::air_defence::{AirDefenceState, AirDefenceType, RadarPosture};
 use crate::c2::{C2State, C2Type};
 use crate::doctrine::{Doctrine, Vocabulary};
 use crate::ew::Jammer;
@@ -218,7 +218,10 @@ impl Sim {
                     side,
                     Vec2::from(d.pos),
                     stats.clone(),
-                    d.self_cue,
+                    RadarPosture {
+                        self_cue: d.self_cue,
+                        emitting: d.emitting,
+                    },
                     sensor,
                 );
             }
@@ -390,7 +393,7 @@ impl Sim {
         side: Side,
         pos: Vec2,
         stats: AirDefenceType,
-        self_cue: bool,
+        radar: RadarPosture,
         sensor: Option<SensorType>,
     ) -> usize {
         let sensor_idx = sensor.map(|s| {
@@ -405,7 +408,7 @@ impl Sim {
             self.sensors.len() - 1
         });
         self.air_defence.push(AirDefenceState::new(
-            id, side, pos, stats, self_cue, sensor_idx,
+            id, side, pos, stats, radar, sensor_idx,
         ));
         self.air_defence.len() - 1
     }

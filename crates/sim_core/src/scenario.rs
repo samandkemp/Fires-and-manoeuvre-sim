@@ -347,14 +347,29 @@ pub struct AirDefenceInstance {
     pub type_id: String,
     /// World position, metres `[x, y]`.
     pub pos: [f32; 2],
-    /// Use the battery's organic sensor? Setting this `false` forces the battery onto
-    /// the external cueing chain, so it always pays `cue_latency_s` (§9.5) — the lever
-    /// for studying cued-from-elsewhere air defence.
-    #[serde(default = "default_self_cue")]
+    /// Does the battery act on its **own** radar, or wait for a track over the net?
+    ///
+    /// `false` forces it onto the external cueing chain, so it always pays
+    /// `cue_latency_s` (§9.5) — the lever for studying cued-from-elsewhere air defence.
+    /// The radar still runs: this is about who the battery listens to, not about
+    /// emission. For that, see `emitting`.
+    #[serde(default = "default_true")]
     pub self_cue: bool,
+    /// Is the organic radar **transmitting**?
+    ///
+    /// `false` is EMCON: the radar is off, so it detects nothing, cannot cue its own
+    /// battery, and gives an anti-radiation missile nothing to home on (§12.3) — it
+    /// lands with `silent_cep_m` instead of `cep_m`.
+    ///
+    /// Separate from `self_cue` because the two are separate decisions and were once the
+    /// same flag. Sharing one meant a battery could take the missile protection of going
+    /// dark while still seeing everything, which is the survivability of EMCON without
+    /// its cost. A battery with no organic sensor at all is silent regardless.
+    #[serde(default = "default_true")]
+    pub emitting: bool,
 }
 
-fn default_self_cue() -> bool {
+fn default_true() -> bool {
     true
 }
 

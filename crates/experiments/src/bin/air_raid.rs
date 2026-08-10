@@ -16,7 +16,7 @@
 use glam::Vec2;
 use sim_core::air::{AirType, AltitudeRef, FlightPlan};
 use sim_core::air_defence::{
-    critical_latency_s, effective_window_s, p_leak_gun, AdEngagement, AirDefenceType,
+    critical_latency_s, effective_window_s, p_leak_gun, AdEngagement, AirDefenceType, RadarPosture,
 };
 use sim_core::scenario::{Libraries, Scenario};
 use sim_core::sensing::{Modality, SensorType, UnitType};
@@ -130,7 +130,12 @@ fn main() {
             Side::Blue,
             TARGET,
             gun(magazine, channels, cue_latency_s),
-            self_cue,
+            // The radar transmits either way here: this probe varies the *cueing* route
+            // (§9.5), not emission control (§12.3). They are separate flags now.
+            RadarPosture {
+                self_cue,
+                emitting: true,
+            },
             Some(radar(radar_range_m)),
         );
         for i in 0..raid_size {

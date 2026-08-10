@@ -187,7 +187,7 @@ impl Sim {
     /// track in the ordinary sense. Rather than invent one, this asks the question
     /// counter-battery acquisition actually asks: **has it given itself away?**
     ///
-    /// - A **battery** has, if it is transmitting (`self_cue` with a live radar) or has
+    /// - A **battery** has, if it is transmitting (`emitting` with a live radar) or has
     ///   fired. Those are the two real ways a site is located: ESM on its emissions, or a
     ///   counter-battery track back along its rounds.
     /// - A **post** has, if it is coordinating anything — a command post is found because
@@ -209,7 +209,7 @@ impl Sim {
             FireTarget::Unit(_) => false,
             FireTarget::AirDefence(i) => {
                 let d = &self.air_defence[i];
-                let emitting = d.self_cue && d.sensor_idx.is_some_and(|s| self.sensor_active(s));
+                let emitting = d.emitting && d.sensor_idx.is_some_and(|s| self.sensor_active(s));
                 // `last_fired_s`, not a scan of the event log: this test runs once per
                 // (shooter, target) pair per epoch, and the log grows for the whole run, so
                 // the scan made the cost of an epoch depend on how long the battle had

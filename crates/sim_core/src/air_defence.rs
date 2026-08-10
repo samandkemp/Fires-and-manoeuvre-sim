@@ -179,9 +179,13 @@ pub struct AirDefenceState {
     pub pos: Vec2,
     /// Resolved stat block.
     pub stats: AirDefenceType,
-    /// Is the organic sensor in use? Turning this off forces the battery onto the
-    /// external cueing chain, so it always pays `cue_latency_s` (§9.5).
+    /// Does the battery act on its own radar, or wait for a track over the net? `false`
+    /// forces it onto the external cueing chain, so it always pays `cue_latency_s`
+    /// (§9.5). The radar still transmits — that is `emitting`.
     pub self_cue: bool,
+    /// Is the organic radar transmitting? `false` is EMCON: no detections, no self-cue,
+    /// and nothing for an anti-radiation missile to home on (§12.3).
+    pub emitting: bool,
     /// Index into [`crate::sim::Sim::sensors`] of the organic sensor, if any — what
     /// makes "my own radar saw it" distinguishable from "it came over the net".
     pub sensor_idx: Option<usize>,
@@ -223,6 +227,31 @@ pub struct AirDefenceState {
     pub carrier: Option<usize>,
 }
 
+/// How a battery is using its radar.
+///
+/// One struct rather than two adjacent `bool` parameters: the call site would otherwise
+/// read `add_air_defence(.., true, true, ..)`, and the two flags mean opposite kinds of
+/// thing. `emitting` is about the radar; `self_cue` is about whose track the battery acts
+/// on. They were one flag once, and conflating them cost a gate (§12.5, V69).
+#[derive(Debug, Clone, Copy)]
+pub struct RadarPosture {
+    /// Act on this battery's own radar, rather than waiting for a track over the net and
+    /// paying `cue_latency_s` (§9.5).
+    pub self_cue: bool,
+    /// Is the radar transmitting? `false` is EMCON (§12.3).
+    pub emitting: bool,
+}
+
+impl Default for RadarPosture {
+    /// Radar on, cueing itself — the ordinary battery.
+    fn default() -> Self {
+        Self {
+            self_cue: true,
+            emitting: true,
+        }
+    }
+}
+
 impl AirDefenceState {
     /// Place a battery. `sensor_idx` is the index of its organic sensor in the sim's
     /// sensor list, if it was given one.
@@ -232,7 +261,7 @@ impl AirDefenceState {
         side: Side,
         pos: Vec2,
         stats: AirDefenceType,
-        self_cue: bool,
+        radar: RadarPosture,
         sensor_idx: Option<usize>,
     ) -> Self {
         let magazine_left = if stats.magazine == 0 {
@@ -246,7 +275,8 @@ impl AirDefenceState {
             side,
             pos,
             stats,
-            self_cue,
+            self_cue: radar.self_cue,
+            emitting: radar.emitting,
             sensor_idx,
             magazine_left,
             elements,
@@ -291,11 +321,16 @@ impl AirDefenceState {
     }
 
     /// When this battery's own sensor first saw a target, given that target's per-sensor
-    /// detection times. `None` unless the battery has an organic sensor, that sensor is
-    /// switched on (`self_cue`), and it has actually seen the target.
+    /// detection times.
+    ///
+    /// `None` unless the battery has an organic radar, that radar is **transmitting**, the
+    /// battery is **listening to it**, and it has actually seen the target. Both flags are
+    /// required and they fail differently: `emitting = false` means there was nothing to
+    /// see with, `self_cue = false` means the battery is taking its cue from the net
+    /// instead.
     #[must_use]
     pub fn own_sensor_seen(&self, seen_by: &BTreeMap<usize, f64>) -> Option<f64> {
-        if !self.self_cue {
+        if !self.self_cue || !self.emitting {
             return None;
         }
         seen_by.get(&self.sensor_idx?).copied()

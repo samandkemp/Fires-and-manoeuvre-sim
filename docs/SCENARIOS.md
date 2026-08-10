@@ -412,6 +412,7 @@ id = "ciws-1"
 type = "ciws"
 pos = [5200.0, 1500.0]
 self_cue = true                                # false forces it onto the net
+emitting = true                                # false is EMCON: the radar is off
 
 [[red.c2]]
 id = "red-cp"
@@ -423,6 +424,14 @@ pos = [5400.0, 1500.0]
 one namespace — so sending a strike drone at a SAM needs no special syntax
 ([§12.1](design/12-sead.md)). The key stayed `unit` for compatibility; `asset` is the
 clearer alias and means the same.
+
+**`self_cue` and `emitting` are two different decisions**, and they were once one flag.
+`self_cue = false` means the battery waits for a track over the net and pays `cue_latency_s`
+— its radar still runs, still detects, and can still be homed on by an anti-radiation
+missile. `emitting = false` is EMCON: the radar is off, so the battery detects nothing
+through it and an ARM has nothing to ride. Measured, going dark costs a battery its whole
+contribution — 0.000 detections, 0.000 shots — in exchange for surviving the missile
+([§12.5](design/12-sead.md)).
 
 **`altitude_ref` is the decision that decides whether terrain can mask a drone.** `agl`
 follows the ground and rides over ridges; `amsl` holds a constant height above sea level

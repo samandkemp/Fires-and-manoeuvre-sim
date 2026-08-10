@@ -5,9 +5,16 @@
 //! radar's own signal down, so its accuracy is *bought with the target's emissions*, and
 //! switching the radar off is a counter.
 //!
-//! That is the trade this gate pins, and it is a genuine one in both directions. `self_cue`
-//! off is not free: the battery drops onto the network cueing chain and pays `cue_latency_s`
-//! for every track (§9.5). **Survive the missile, or see the raid coming — not both.**
+//! That is the trade this gate pins, and it is a genuine one in both directions. `emitting`
+//! off is not free: the radar is *off*, so the battery detects nothing at all through it.
+//! **Survive the missile, or see the raid coming — not both.**
+//!
+//! `emitting` is a separate flag from `self_cue` for exactly this reason. They were once the
+//! same one, and sharing it meant a battery could take the missile protection of going dark
+//! while its radar carried on seeing everything — the survivability of EMCON without its
+//! cost, which made this gate pass while measuring the wrong thing (§12.5, gate V69).
+//! `self_cue` now means only "who does this battery listen to"; `emitting` means "is the
+//! radar on".
 //!
 //! Modelled as a dispersion, not a veto. The munition still arrives; with nothing to home on
 //! it flies to where the emitter was last known to be and lands with `silent_cep_m` instead
@@ -92,8 +99,8 @@ fn libraries(anti_radiation: bool) -> Libraries {
     }
 }
 
-/// A SEAD drone flying at a SAM whose radar is on or off.
-fn sead(self_cue: bool, seed: u64) -> Sim {
+/// A SEAD drone flying at a SAM whose radar is transmitting or shut down.
+fn sead(emitting: bool, seed: u64) -> Sim {
     let scn = Scenario::from_toml_str(&format!(
         r#"
         name = "arm"
@@ -111,7 +118,7 @@ fn sead(self_cue: bool, seed: u64) -> Sim {
         id = "sam-1"
         type = "sam"
         pos = [{SAM_X}, {SAM_Y}]
-        self_cue = {self_cue}
+        emitting = {emitting}
         [[red.air]]
         id = "sead-1"
         type = "sead"
@@ -176,23 +183,23 @@ fn v64_a_silent_radar_degrades_the_missile() {
 }
 
 // V64 (counter half): switching the radar off is a real counter — it is what makes the
-// missile miss — but the model must not let it be free. The battery that goes silent is on
-// the network cueing chain from then on (§9.5), which is the cost the trade rests on.
+// missile miss — but the model must not let it be free. A battery under EMCON still *has* a
+// radar; it is simply not transmitting, so it sees nothing through it.
 #[test]
 fn v64_going_silent_is_the_counter_and_it_costs_the_radar() {
     let quiet = sead(false, 1);
     let battery = &quiet.air_defence()[0];
     assert!(
-        !battery.self_cue,
-        "the fixture's counter is the battery not using its own radar"
+        !battery.emitting,
+        "the fixture's counter is the battery shutting its radar down"
     );
     assert!(
         battery.sensor_idx.is_some(),
-        "it still HAS a radar — it has chosen not to use it, which is the whole point"
+        "it still HAS a radar — it has chosen not to run it, which is the whole point"
     );
 
     let loud = sead(true, 1);
-    assert!(loud.air_defence()[0].self_cue);
+    assert!(loud.air_defence()[0].emitting);
 }
 
 // V64 (identity half, §7.4): a weapon that is not an ARM ignores the emitter entirely, so
@@ -223,7 +230,7 @@ fn v64_an_ordinary_munition_ignores_the_emitter() {
     assert_eq!(undeclared.cep_against(false), 40.0);
 }
 
-// V64 (targeting half): only a named, live, self-cueing battery counts as emitting.
+// V64 (targeting half): only a named, live, transmitting battery counts as emitting.
 // A command post, a unit or a map point radiates nothing an ARM could ride, so an ARM sent
 // at one is flying blind by definition rather than by omission.
 #[test]

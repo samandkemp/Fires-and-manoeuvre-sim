@@ -75,9 +75,13 @@ impl Sim {
     /// a permissive one: a unit, a command post or a bare map point emits nothing an ARM
     /// could ride, so an ARM aimed at one is flying blind by definition.
     ///
-    /// `self_cue` is therefore the counter, and it costs something to use: a battery that
-    /// switches its radar off drops onto the network cueing chain and pays `cue_latency_s`
-    /// for every track (§9.5). Survive the missile, or see the raid coming — not both.
+    /// `emitting` is therefore the counter, and it costs the radar: a battery under EMCON
+    /// detects nothing through it, so it cannot cue itself and contributes no coverage.
+    /// Survive the missile, or see the raid coming — not both.
+    ///
+    /// Deliberately **not** `self_cue`, which the two used to share. `self_cue` says who a
+    /// battery listens to; sharing one flag let it take the missile protection of going
+    /// dark while its radar carried on seeing everything (§12.5, V69).
     fn target_is_emitting(&self, air_idx: usize) -> bool {
         let Some(TargetSpec::Named(id)) = &self.air[air_idx].target else {
             return false;
@@ -86,7 +90,7 @@ impl Sim {
             .iter()
             .find(|d| d.id == *id)
             .is_some_and(|d| {
-                d.alive() && d.self_cue && d.sensor_idx.is_some_and(|s| self.sensor_active(s))
+                d.alive() && d.emitting && d.sensor_idx.is_some_and(|s| self.sensor_active(s))
             })
     }
 

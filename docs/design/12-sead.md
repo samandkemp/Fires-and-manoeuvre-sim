@@ -70,14 +70,20 @@ this with the value set very large — reachable as a scenario's choice, rather 
 as the model's opinion. The veto version would also flatter the counter: switching a radar
 off would become a free and total defence.
 
-**What counts as an emitter.** Only a *named*, live, `self_cue` battery with a working
+**What counts as an emitter.** Only a *named*, live, `emitting` battery with a working
 organic radar. A command post, a unit or a bare map point radiates nothing an ARM could
 ride, so an ARM sent at one is flying blind by definition rather than by omission.
 
-**The trade this poses, and why it is a real one.** `self_cue = false` is the counter, and
-it is not free: the battery drops onto the network cueing chain and pays `cue_latency_s` on
-every track (§9.5) — the same delay V50 shows deciding whether a SAM gets to fire at all.
-So the defender chooses: *survive the missile, or see the raid coming.* Not both.
+**The trade this poses, and why it is a real one.** `emitting = false` is the counter, and
+it is not free: the radar is **off**, so the battery detects nothing through it, cues nothing
+with it and contributes no coverage. It can still be handed a track by some *other* sensor
+over the net — that is what `self_cue` governs, and the two are separate flags for exactly
+this reason (§12.5) — but a battery whose radar was its only sensor is simply blind. So the
+defender chooses: *survive the missile, or see the raid coming.* Not both.
+
+Measured on `scenarios/sead_arm.toml`, 500 paired seeds: EMCON takes batteries killed from
+0.980 to 0.096, and in the same breath takes detections to **0.000**, shots to 0.000 and
+drones downed to 0.000.
 
 ### 12.4 Ground counter-battery
 
@@ -100,7 +106,7 @@ defence and shifted the stream under V50, V51, V59 and V60 for no modelling gain
 
 | Asset | Located when |
 |---|---|
-| battery | it is transmitting (`self_cue` with a live radar) **or** it has fired |
+| battery | it is transmitting (`emitting` with a live radar) **or** it has fired |
 | post | it is coordinating at least one live battery |
 
 Those are the two real ways a site is fixed: ESM on its emissions, or a counter-battery
@@ -125,8 +131,8 @@ knowing before a result leans on them:
   claims.
 
 This joins the two halves of §12.3. Switching a radar off already made an ARM miss; it now
-also hides the battery from artillery. **One decision, two consequences** — and the cost
-stays what §12.3 said it was, a battery on the network cueing chain paying `cue_latency_s`.
+also hides the battery from artillery. **One decision, three consequences** — and the cost
+stays what §12.3 said it was: a radar that is not transmitting is not detecting either.
 
 Direct fire is unchanged: line of sight and range, no track (§2.1). So going silent hides a
 battery from the guns behind the hill, not from the tank looking at it.
@@ -147,22 +153,23 @@ is for — "kill the radar first" is a judgement, not a derivation.
 - **Emissions are binary.** A radar is on or off; there is no intermittent emission, no
   blinking to reduce exposure, and no memory of a position after the emitter goes quiet
   beyond the aim point itself.
-- **`self_cue` carries two meanings, and they are not the same thing.** §9.5 introduced it
-  as the *cueing-timeline* lever — "this battery is cued from elsewhere and pays
-  `cue_latency_s`" — and §12.3 reused it as the *emission* test in `target_is_emitting`.
-  A battery with `self_cue = false` therefore counts as silent to an anti-radiation missile
-  while its organic radar keeps detecting perfectly well.
+- ~~**`self_cue` carries two meanings.**~~ **Resolved by splitting the flag** (gate V69).
 
-  Measured on `scenarios/sead_arm.toml`: the "silent" battery records 1.000 (detections) with
-  first contact at 9.3 s, statistically indistinguishable from the emitting arm's 0.996 at
-  10.1 s — so it gets the survivability of EMCON (0.10 vs 0.98 batteries killed) without the
-  blindness that should pay for it.
+  §9.5 introduced `self_cue` as the *cueing timeline* — does this battery act on its own
+  radar, or wait for a track over the net and pay `cue_latency_s`? §12.3 then reused it as
+  the *emission* test here. One flag, two decisions, and they disagreed: a battery with
+  `self_cue = false` counted as silent to an anti-radiation missile while its radar kept
+  detecting perfectly well. Measured on `scenarios/sead_arm.toml` at **1.000 detections**,
+  first contact 9.3 s, statistically indistinguishable from the emitting arm. It bought the
+  survivability of EMCON without the blindness that is supposed to pay for it.
 
-  The genuinely blind case is a battery with no organic sensor at all (`gun_truck`), which
-  gets the same protection (−0.877 ± 0.019 batteries killed, t = −46.1) *and* never fires a
-  shot. That is the trade §12.3 describes; `self_cue = false` is currently a cheaper version
-  of it. Splitting the flag in two — `emitting` for the seeker, `self_cue` for the timeline
-  — is the fix, and it moves V64's fixture, so it has not been done unilaterally.
+  Now two flags. `emitting` is whether the radar transmits: false means it detects nothing,
+  cannot cue its own battery, contributes no coverage, and gives a seeker nothing to ride.
+  `self_cue` is whose track the battery acts on, and the radar runs either way.
+
+  Re-measured, 500 paired seeds: a battery under EMCON survives the missile (0.096 vs 0.980
+  killed) and in exchange records **0.000 detections**, fires **0.000 shots** and downs
+  **0.000 drones**. That is the trade this section always claimed and the model now delivers.
 
 ### 12.6 Validation gates (V60, V64, V65)
 

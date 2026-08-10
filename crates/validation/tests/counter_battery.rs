@@ -127,7 +127,7 @@ fn libraries() -> Libraries {
 }
 
 /// Blue guns against a Red SAM, whose radar is on or off, with an optional Red post.
-fn counter_battery(shooter: &str, self_cue: bool, post: bool) -> Sim {
+fn counter_battery(shooter: &str, emitting: bool, post: bool) -> Sim {
     let post_toml = if post {
         format!(
             r#"
@@ -161,7 +161,7 @@ fn counter_battery(shooter: &str, self_cue: bool, post: bool) -> Sim {
         id = "sam-1"
         type = "sam"
         pos = [{SAM_X}, {GUN_Y}]
-        self_cue = {self_cue}
+        emitting = {emitting}
         {post_toml}
     "#
     ))

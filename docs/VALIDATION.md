@@ -1,7 +1,7 @@
 # Validation
 
 Every model in this project ships with a **gate**: a test that checks it against a
-closed-form result or a stated invariant. There are 68 of them, V1–V68, and they are the
+closed-form result or a stated invariant. There are 69 of them, V1–V69, and they are the
 backbone of the whole thing.
 
 ## Why a gate is not a regression test
@@ -179,6 +179,7 @@ not of any one function. Nothing was written to produce it.
 | V60 | Air defence is attritable | A strike drone kills a named post; a destroyed battery's organic radar stops emitting |
 | V64 | Anti-radiation homing | The same missile lands with `cep_m` against a transmitting radar and `silent_cep_m` against a silent one, the mean miss scaling as the ratio (`E\|miss\| = σ√(π/2)`) |
 | V65 | Ground counter-battery | Artillery kills an emitting battery; a silent one cannot be found by indirect fire, though direct fire needs no track |
+| V69 | Emission and cueing are separate decisions | `emitting = false` records **zero** detections, cannot self-cue and gives an ARM nothing to home on; `self_cue = false` keeps the radar running and detects exactly as much, differing only in whether the battery may act on its own track. Both default `true`, so an ordinary battery is unchanged |
 
 ### The kill chain — [§13](design/13-the-kill-chain.md)
 

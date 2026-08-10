@@ -43,7 +43,7 @@
 # The battery is a `ciws`, not a `sam`, because a CIWS carries its own radar and a SAM in
 # this library deliberately does not. Only an emplacement that **emits or has fired** can be
 # located by indirect fire (DESIGN §12.4), so a silent SAM is not in Blue's fire plan at all.
-# Set `self_cue = false` below and watch the `air_defence` tier go inert: that is the same
+# Set `emitting = false` below and watch the `air_defence` tier go inert: that is the same
 # trade §12.3 poses against an anti-radiation missile, now costing artillery cover too.
 #
 # The post is findable because it is *talking* — it coordinates the battery, and a post with

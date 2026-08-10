@@ -12,6 +12,7 @@
 use bevy::prelude::*;
 use bevy_egui::egui;
 use sim_core::air::{AltitudeRef, FlightPlan};
+use sim_core::air_defence::RadarPosture;
 use sim_core::sim::Side;
 
 use crate::selection::{
@@ -261,8 +262,13 @@ fn place_air_defence(sim: &mut SimRes, ui_state: &mut UiState, world: Vec2) {
         .sensor
         .as_ref()
         .and_then(|s| sim.data.libs.sensors.get(s).cloned());
-    let idx = sim
-        .sim
-        .add_air_defence(&id, Side::Blue, world, stats, true, sensor);
+    let idx = sim.sim.add_air_defence(
+        &id,
+        Side::Blue,
+        world,
+        stats,
+        RadarPosture::default(),
+        sensor,
+    );
     ui_state.selected = vec![Selected::AirDefence(idx)];
 }

@@ -12,7 +12,9 @@
 #                    and the battery can only fire on tracks handed to it over the net.
 #   cue_latency_s  — the comms Tx/Rx delay paid on any externally cued track. An
 #                    instance may also set `self_cue = false` to force this even on a
-#                    battery that has its own radar.
+#                    battery that has its own radar. That is about *who it listens to*;
+#                    `emitting = false` is EMCON — the radar is off, so it detects
+#                    nothing and an anti-radiation missile has nothing to home on.
 #   reaction_time_s— system/crew delay once a track is actionable.
 #   magazine       — interceptors (missile) or burst allocations (gun); 0 = unlimited.
 #   channels       — simultaneous engagements: what a raid saturates.

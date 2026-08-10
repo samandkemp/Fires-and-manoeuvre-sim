@@ -45,7 +45,14 @@ fn time_to_kill(
     seed: u64,
     limit_s: f64,
 ) -> Option<f64> {
-    let mut ad = AirDefenceState::new("ad", Side::Blue, Vec2::ZERO, stats, true, None);
+    let mut ad = AirDefenceState::new(
+        "ad",
+        Side::Blue,
+        Vec2::ZERO,
+        stats,
+        RadarPosture::default(),
+        None,
+    );
     let mut rng = SimRng::seed_from_u64(seed);
     let mut now = 0.0f64;
     let mut out = Vec::new();
@@ -127,7 +134,7 @@ fn v49_missile_time_to_kill_is_geometric() {
             Side::Blue,
             Vec2::ZERO,
             missile(p, speed, reload),
-            true,
+            RadarPosture::default(),
             None,
         );
         let mut rng = SimRng::seed_from_u64(10_000 + seed);
@@ -321,7 +328,14 @@ fn v51_envelope_and_magazine_gating() {
 
     // Cueing (§9.5): no track ⇒ never actionable; otherwise the battery acts on
     // whichever route reaches it first — its own radar, or the net plus the delay.
-    let mut ad = AirDefenceState::new("ad", Side::Blue, ad_pos, stats.clone(), true, Some(7));
+    let mut ad = AirDefenceState::new(
+        "ad",
+        Side::Blue,
+        ad_pos,
+        stats.clone(),
+        RadarPosture::default(),
+        Some(7),
+    );
     ad.stats.cue_latency_s = 12.0;
     ad.stats.reaction_time_s = 3.0;
     assert_eq!(
@@ -379,7 +393,14 @@ fn v51_envelope_and_magazine_gating() {
     );
 
     // Channels cap concurrency; the magazine caps total commitments.
-    let mut ad = AirDefenceState::new("ad", Side::Blue, ad_pos, stats, true, None);
+    let mut ad = AirDefenceState::new(
+        "ad",
+        Side::Blue,
+        ad_pos,
+        stats,
+        RadarPosture::default(),
+        None,
+    );
     assert!(ad.can_open(0.0));
     ad.open(0, 0.0, 1000.0);
     ad.open(1, 0.0, 1000.0);
@@ -403,7 +424,14 @@ fn v51_envelope_and_magazine_gating() {
         magazine: 0,
         ..gun(1.0)
     };
-    let mut ad = AirDefenceState::new("ad", Side::Blue, ad_pos, unlimited, true, None);
+    let mut ad = AirDefenceState::new(
+        "ad",
+        Side::Blue,
+        ad_pos,
+        unlimited,
+        RadarPosture::default(),
+        None,
+    );
     for i in 0..1000 {
         if ad.can_open(0.0) {
             ad.open(i, 0.0, 500.0);
