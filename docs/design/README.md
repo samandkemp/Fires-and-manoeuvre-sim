@@ -20,7 +20,7 @@ phase.
 |---|---|---|---|
 | 0 | [The strand index](00-strand-index.md) | Each body of theory, its canonical object, and where that object is worked out | — |
 | 1 | [Terrain & LOS](01-terrain-and-los.md) | Coordinate and height conventions, the derived layers, the LOS query contract, viewsheds | V1–V13, V53 |
-| 2 | [Fires](02-fires.md) | Direct-fire hit probability; indirect dispersion, the Carleton kernel and its closed form | V19–V24 |
+| 2 | [Fires](02-fires.md) | Direct-fire hit probability; indirect dispersion, the Carleton kernel and its closed form | V19–V24, V70 |
 | 3 | [Sensing & detection](03-sensing.md) | The glimpse-rate model, and the first statement of the two-clock loop | V14–V18 |
 | 4 | [Suppression & attrition](04-suppression-and-attrition.md) | Units as N elements; the Free/Suppressed/Pinned chain; Lanchester | V28–V31 |
 | 5 | [Movement as DP](05-movement-as-dp.md) | Least-risk pathing as Bellman over the grid; the risk raster; the exchange rate `w` | V25–V27 |

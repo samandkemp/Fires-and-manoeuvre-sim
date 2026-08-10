@@ -82,7 +82,19 @@ order). Direct rounds sample hit/kill; indirect rounds sample a burst point and 
 `strength ≤ 0` ⇒ killed (removed from sensing/among live targets). This is the attrition
 state Phase 4 validates against Lanchester.
 
-### 2.5 Validation gates (V19–V24)
+### 2.5 Deliberate limitations (v1)
+
+- **No crest clearance.** An indirect round is eligible on range and a track; nothing checks
+  that its trajectory would actually clear the ground between gun and target. A howitzer
+  sited immediately behind a high mask therefore fires over it regardless of how high it is,
+  where a real minimum-ordinate calculation would refuse the mission or demand a different
+  charge. Deliberate: the arc is not simulated, only its endpoints, so there is no ordinate
+  to compare against. It matters only for a gun sited very close to very steep ground.
+- **Eligibility is a track, not a sightline** — which is correct, and worth stating because
+  it is the mirror of direct fire and easy to assume the other way round. Gate V70 pins both
+  directions; §13.4 covers what that means for a fire plan.
+
+### 2.6 Validation gates (V19–V24, V70)
 
 | # | Property | Reference |
 |---|----------|-----------|

@@ -1,7 +1,7 @@
 # Validation
 
 Every model in this project ships with a **gate**: a test that checks it against a
-closed-form result or a stated invariant. There are 69 of them, V1–V69, and they are the
+closed-form result or a stated invariant. There are 70 of them, V1–V70, and they are the
 backbone of the whole thing.
 
 ## Why a gate is not a regression test
@@ -94,6 +94,7 @@ one to ship.
 | V22 | Area-damage closed form | MC Carleton damage against the Gaussian convolution |
 | V23 | Damage monotonicity | Falls with offset and cover, rises with lethal radius |
 | V24 | Fires determinism | Same `(scenario, seed, mission)` → identical rounds and strengths |
+| V70 | Indirect eligibility is a **track**, not a sightline | A howitzer engages a target masked from it by a ridge; a direct-fire gun in the same position holds its fire. Conversely, jamming the observer lapses the track and releases the indirect shooter's lock — while the target is still alive, so the release is the lapse and not the kill |
 
 ### Suppression and attrition — [§4](design/04-suppression-and-attrition.md)
 

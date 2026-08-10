@@ -9,7 +9,7 @@ with a gate against a closed form or a stated invariant.
 
 | Phase | What | Why it is in this position |
 |---|---|---|
-| **15 (A)** | Close the open model questions | Two are correctness issues for findings already published in these docs |
+| ~~15 (A)~~ | ~~Close the open model questions~~ | **Done.** Gates V68–V70; the two findings it corrected are re-measured in place |
 | **16 (D)** | Measurement machinery | The project has more model than it has measurement; interactions are where the findings turned out to be |
 | **17 (B)** | Movement decisions in-loop | The largest genuine gap — dynamic programming currently sits beside the model, not inside it |
 | **18 (C)** | The dynamic game | The capstone. Needs 17 first: value functions must exist in-loop before they can be payoffs |
@@ -17,7 +17,7 @@ with a gate against a closed form or a stated invariant.
 
 ---
 
-## Phase 15 (A) — Close the open questions
+## Phase 15 (A) — Close the open questions *(complete)*
 
 ### A1. The overkill cap becomes soft *(decided: soft cap)*
 
