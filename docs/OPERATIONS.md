@@ -178,6 +178,25 @@ Trials run in parallel, one sim per worker: **10,000 trials in under 20 seconds*
 byte-identical to a serial run — pinned by a test, because "we parallelised it and the
 answer changed" is otherwise discovered months later by a confusing result.
 
+### `factorial` — several dials at once
+
+```
+factorial <scenario> --factor PATH=v1,v2 [--factor PATH=v1,v2]...
+                     [--seeds N] [--until SECONDS] [--metric NAME] [--set PATH=VALUE]...
+```
+
+```
+cargo run -p experiments --release --bin factorial -- fires_c2 \
+    --factor sim.fires_need_c2=false,true \
+    --factor blue.sensors.0.type=mast_optical,ciws_radar \
+    --seeds 500 --until 300 --metric red_cleared_s
+```
+
+Runs every combination of levels over one shared seed set and reports main effects plus
+two-way **interactions** — whether one dial's effect depends on another's level. A `sweep`
+cannot see that, and where two dials interact, a main effect quoted on its own is misleading.
+Cost is the product of the level counts. See [`docs/EXPERIMENTS.md`](EXPERIMENTS.md).
+
 ### The bespoke probes
 
 Each answers one question and prints a table. They pre-date the general harness and are

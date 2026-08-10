@@ -70,6 +70,44 @@ impl Override {
     }
 }
 
+/// Split a comma-separated value list on commas that are **outside** brackets and quotes.
+///
+/// Shared by `sweep --values` and `factorial --factor`, so the two cannot disagree about
+/// what a list of arms is.
+///
+/// A plain `10,20,45` splits as you would expect. A list-valued dial does not:
+/// `["c2","air_defence"],["armour"]` is two arms, not four, and a naive `split(',')` would
+/// hand the loader `["c2"` and fail with a parse error about a fragment nobody wrote.
+pub fn split_values(list: &str) -> Vec<String> {
+    let (mut out, mut current) = (Vec::new(), String::new());
+    let (mut depth, mut in_quotes) = (0i32, false);
+    for c in list.chars() {
+        match c {
+            '"' => {
+                in_quotes = !in_quotes;
+                current.push(c);
+            }
+            '[' | '{' if !in_quotes => {
+                depth += 1;
+                current.push(c);
+            }
+            ']' | '}' if !in_quotes => {
+                depth -= 1;
+                current.push(c);
+            }
+            ',' if depth == 0 && !in_quotes => {
+                out.push(std::mem::take(&mut current));
+            }
+            _ => current.push(c),
+        }
+    }
+    out.push(current);
+    out.into_iter()
+        .map(|s| s.trim().to_owned())
+        .filter(|s| !s.is_empty())
+        .collect()
+}
+
 /// Turn a command-line word into the TOML type it most obviously is.
 ///
 /// Integer **before** float, deliberately: `max_batteries_per_air_target` is a `u32` and

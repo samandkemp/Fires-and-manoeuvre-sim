@@ -87,6 +87,26 @@ impl Paired {
     }
 }
 
+/// Summarise a difference that has **already been formed** per seed.
+///
+/// [`paired`] subtracts two columns and calls this. A factorial contrast cannot: a main
+/// effect is a difference of *marginal means* over several cells, and an interaction is a
+/// difference of differences, both computed seed by seed before there is anything to
+/// compare. They arrive here instead, so the t statistic, the tie count and the
+/// significance line mean exactly what they mean everywhere else.
+#[must_use]
+pub fn from_diffs(diffs: &[f64]) -> Paired {
+    let ties = diffs.iter().filter(|d| **d == 0.0).count();
+    let (mean, se) = mean_and_se(diffs);
+    Paired {
+        mean,
+        se,
+        t: if se > 0.0 { mean / se } else { 0.0 },
+        n: diffs.len(),
+        ties,
+    }
+}
+
 /// Paired difference `a - b`, seed by seed.
 ///
 /// # Panics
@@ -100,15 +120,7 @@ pub fn paired(a: &[f64], b: &[f64]) -> Paired {
         "paired comparison needs the same seeds in both arms"
     );
     let diffs: Vec<f64> = a.iter().zip(b).map(|(x, y)| x - y).collect();
-    let ties = diffs.iter().filter(|d| **d == 0.0).count();
-    let (mean, se) = mean_and_se(&diffs);
-    Paired {
-        mean,
-        se,
-        t: if se > 0.0 { mean / se } else { 0.0 },
-        n: diffs.len(),
-        ties,
-    }
+    from_diffs(&diffs)
 }
 
 /// A metric summarised over a study arm: what it averaged, and how sure that is.

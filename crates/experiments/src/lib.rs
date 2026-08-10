@@ -32,6 +32,7 @@
 //! it, and [`stats::paired`] is the only comparison function this crate offers.
 
 pub mod csv;
+pub mod design;
 pub mod outcome;
 pub mod patch;
 pub mod stats;

@@ -16,6 +16,7 @@ output, and what the harness cannot yet do. For the bare command syntax see
 - [The two rules](#the-two-rules)
 - [`batch` — a folder of scenarios](#batch--a-folder-of-scenarios)
 - [`sweep` — one dial, many values](#sweep--one-dial-many-values)
+- [`factorial` — several dials at once](#factorial--several-dials-at-once-and-whether-they-interact)
 - [What the columns mean](#what-the-columns-mean)
 - [Reading the output](#reading-the-output)
 - [How fast, and why](#how-fast-and-why)
@@ -189,6 +190,78 @@ scenario's own setting while varying another.
 CSV. Output goes to `out/<scenario>_<param>.csv` and `..._summary.csv`.
 
 ---
+
+## `factorial` — several dials at once, and whether they interact
+
+`sweep` answers *what does this dial do*. `factorial` answers *what do these dials do, and
+does either one's answer depend on the other* — which is a different question, and on this
+model it has more than once been the more important one.
+
+```
+factorial <scenario> --factor PATH=v1,v2 [--factor PATH=v1,v2]...
+                     [--seeds N] [--until SECONDS] [--metric NAME] [--set PATH=VALUE]...
+                     [--dir DIR] [--out DIR] [--quiet]
+```
+
+Every combination of levels is a **cell**, and every cell runs the same seed set. Cost is
+the product of the level counts: three two-level factors is eight cells.
+
+```
+cargo run -p experiments --release --bin factorial -- fires_c2 \
+    --factor sim.fires_need_c2=false,true \
+    --factor blue.sensors.0.type=mast_optical,ciws_radar \
+    --seeds 500 --until 300 --metric red_cleared_s
+```
+
+### What it reports
+
+**Main effects** first, each averaged over every level of the other factors — so a factor is
+described by what it does across the design, not at one corner of it.
+
+**Interactions** second, as the classic difference of differences, formed per seed:
+
+$$
+(y_{11} - y_{01}) - (y_{10} - y_{00})
+$$
+
+for factors at their first and last levels, with any other factors averaged out. Zero means
+the two dials are additive and can be reasoned about separately. Non-zero means they cannot.
+
+The closing line says whether any interaction is significant, because **that decides whether
+the main effects above may be read on their own**. If two dials interact, "this one is worth
+−11 s" is a sentence with a missing clause.
+
+### Why this exists
+
+The `fires_c2` investigation needed a 2×2 over the overkill cap and how fast targets were
+acquired. It was hand-stitched from four separate `sweep` runs, and the *interaction* turned
+out to be the dominant effect: the cap mattered enormously when targets were scarce and
+hardly at all when they were not. Two main effects would have described neither case.
+
+That investigation ended in the cap being removed (§11.4, gate V68), and the same 2×2 run
+through this tool is now the check that it worked:
+
+```
+--- red_cleared_s: main effects, averaged over the other factors ---
+  sim.fires_need_c2 (baseline false)
+      = true              +0.100 +- 0.604 (t = 0.2, n = 200, 101 tied) NOT significant
+  blue.sensors.0.type (baseline mast_optical)
+      = ciws_radar        -26.050 +- 2.156 (t = -12.1, n = 200, 18 tied) significant
+
+--- red_cleared_s: two-way interactions, across each factor's range ---
+  sim.fires_need_c2 x blue.sensors.0.type
+      +0.600 +- 1.065 (t = 0.6, n = 200, 103 tied) NOT significant
+```
+
+The interaction that used to dominate is gone. What remains is a large, clean, *additive*
+effect of seeing sooner — which is what one would expect of a model that no longer has an
+artefact in it.
+
+### Multi-level factors
+
+A factor may have more than two levels. Main effects are reported per level against the
+baseline; the interaction is the corner-to-corner contrast across each factor's **range**,
+which is a summary rather than the whole surface. The per-cell CSV holds the rest.
 
 ## What the columns mean
 
@@ -407,8 +480,9 @@ independently, which is a useful cross-check on both.
 
 ## What this harness cannot do yet
 
-- **One dial at a time.** No factorial designs; `--set` pins the others. A 2-D grid is a
-  shell loop over `sweep` for now.
+- **Two-way interactions only.** `factorial` reports every pair of factors; a three-way
+  interaction is in the per-cell CSV but not in the report. With more than two levels the
+  reported interaction is the corner-to-corner contrast rather than the whole surface.
 - **No confidence intervals on quantiles**, only on means. A bimodal outcome averaged into a
   middle that never happens will not announce itself — plot the per-trial CSV.
 - **`--seeds N` always means `0..N`**, so two studies at different `N` share a prefix rather
