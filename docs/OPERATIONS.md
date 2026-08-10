@@ -104,7 +104,7 @@ capture time is reproducible rather than dependent on how fast the machine drew.
 
 ```
 cargo test --workspace                 # all of it
-cargo test -p validation               # the V1-V70 gates
+cargo test -p validation               # the V1-V71 gates
 cargo test -p sim_core                 # engine unit tests (fast, headless)
 cargo test -p experiments              # harness: parallel-equals-serial, patching, statistics
 cargo test -p app                      # selection and picking
@@ -142,7 +142,7 @@ per scenario). `--seeds N` always means seeds `0..N`, so "run 1,000 more" is `--
 ```
 sweep <scenario> --param PATH (--values a,b,c | --from X --to Y [--steps N])
                  [--seeds N] [--until SECONDS] [--metric NAME] [--set PATH=VALUE]...
-                 [--dir DIR] [--out DIR] [--quiet]
+                 [--dir DIR] [--out DIR] [--quiet] [--quantiles 50,90,95]
 ```
 
 ```
@@ -196,6 +196,24 @@ Runs every combination of levels over one shared seed set and reports main effec
 two-way **interactions** — whether one dial's effect depends on another's level. A `sweep`
 cannot see that, and where two dials interact, a main effect quoted on its own is misleading.
 Cost is the product of the level counts. See [`docs/EXPERIMENTS.md`](EXPERIMENTS.md).
+
+### `sensitivity` — which dials drive the answer at all?
+
+```
+sensitivity <study.toml> [--seeds N] [--until SECONDS] [--dir DIR]
+```
+
+```
+cargo run -p experiments --release --bin sensitivity -- studies/sensing.toml --seeds 20
+```
+
+Explores a whole dial space rather than a slice of it, and reports Morris screening plus
+Sobol variance decomposition — `S1` (what a dial explains alone), `ST` (what it is involved
+in), and the gap between them, which is the influence a one-dial sweep cannot see. The dial
+space is a file: see [`studies/README.md`](../studies/README.md).
+
+Answers the question hanging over a model built entirely from placeholder numbers: **which
+conclusions survive the numbers being wrong?**
 
 ### The bespoke probes
 

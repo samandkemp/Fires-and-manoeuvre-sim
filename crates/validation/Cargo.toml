@@ -2,7 +2,7 @@
 name = "validation"
 version = "0.1.0"
 edition = "2021"
-description = "The V1-V52 validation gates: every sim_core model checked against a closed form or a documented invariant"
+description = "The V1-V71 validation gates: every sim_core model checked against a closed form or a documented invariant"
 publish = false
 
 # The project's contract, gathered in one place. Each gate in docs/DESIGN.md's validation
@@ -19,6 +19,14 @@ sim_core = { path = "../sim_core" }
 glam = "0.32"     # sim_core's public APIs take glam::Vec2
 ndarray = { version = "0.16" }  # payoff matrices and raster gates
 rand = "0.9"      # seeded Monte Carlo draws (same version as sim_core)
+
+# V71 gates a *measuring instrument* rather than a model: the Sobol estimator in
+# `experiments::sensitivity`, against the Ishigami function's analytic indices. A
+# dev-dependency rather than a real one, so the public dependency graph is unchanged and
+# `sim_core` still depends on nothing. `experiments` does not depend on this crate, so
+# there is no cycle.
+[dev-dependencies]
+experiments = { path = "../experiments" }
 
 # There is no `unsafe` anywhere in this workspace; this makes that enforced rather than
 # incidental. In the manifest rather than as a `#![forbid(unsafe_code)]` crate attribute

@@ -35,6 +35,7 @@ pub mod csv;
 pub mod design;
 pub mod outcome;
 pub mod patch;
+pub mod sensitivity;
 pub mod stats;
 pub mod study;
 

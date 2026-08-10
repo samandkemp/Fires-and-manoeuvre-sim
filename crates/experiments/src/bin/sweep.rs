@@ -32,7 +32,7 @@
 
 use experiments::outcome::{Outcome, COLUMNS};
 use experiments::patch::{self, scenario_with_overrides, Override};
-use experiments::stats::paired;
+use experiments::stats::{self, paired};
 use experiments::study::{column, run_study, StudyConfig};
 use experiments::{csv, flag, flag_or, flags, has_flag};
 use std::path::{Path, PathBuf};
@@ -166,7 +166,17 @@ fn main() {
         arms.push((value.clone(), outcomes));
     }
 
-    report(&param, &metric_name, metric, &arms);
+    // Accepts either 0.9 or 90; anything outside [0, 1] after that is dropped rather
+    // than clamped, because "p150" is a typo and silently reporting the maximum would
+    // answer a question nobody asked.
+    let quantiles: Vec<f64> = flag(&args, "--quantiles").map_or_else(Vec::new, |s| {
+        s.split(',')
+            .filter_map(|q| q.trim().parse::<f64>().ok())
+            .map(|q| if q > 1.0 { q / 100.0 } else { q })
+            .filter(|q| (0.0..=1.0).contains(q))
+            .collect()
+    });
+    report(&param, &metric_name, metric, &arms, &quantiles);
 
     let stem = format!("{name}_{}", param.replace('.', "_"));
     csv::write(&out_dir.join(format!("{stem}.csv")), &trials);
@@ -180,7 +190,13 @@ fn main() {
 }
 
 /// Print each arm against the first, paired seed by seed.
-fn report(param: &str, metric_name: &str, metric: usize, arms: &[(String, Vec<Outcome>)]) {
+fn report(
+    param: &str,
+    metric_name: &str,
+    metric: usize,
+    arms: &[(String, Vec<Outcome>)],
+    quantiles: &[f64],
+) {
     let Some((base_value, base)) = arms.first() else {
         return;
     };
@@ -209,6 +225,27 @@ fn report(param: &str, metric_name: &str, metric: usize, arms: &[(String, Vec<Ou
                  nothing for it to act on."
             );
         }
+    }
+
+    if quantiles.is_empty() {
+        return;
+    }
+    // The tail, for when the mean is not the question. A defence that usually holds and
+    // occasionally does not has a median of zero and a 95th percentile that matters; the
+    // mean sits between the two and describes neither.
+    println!("\n--- {metric_name}, quantiles with 95% bootstrap intervals ---");
+    for (value, outcomes) in arms {
+        let col = column(outcomes, metric);
+        let line: Vec<String> = quantiles
+            .iter()
+            .map(|&q| {
+                // Seeded from the quantile itself, so an interval is reproducible and two
+                // quantiles do not share one resampling.
+                let seed = (q * 1e6) as u64;
+                stats::quantile_ci(&col, q, 2000, 0.05, seed).to_string()
+            })
+            .collect();
+        println!("  {param:>28} = {value:<10}  {}", line.join("   "));
     }
 }
 
@@ -269,7 +306,7 @@ fn usage() -> String {
          \n\
          usage: sweep <scenario> --param PATH (--values a,b,c | --from X --to Y [--steps N])\n\
          \x20              [--seeds N] [--until SECONDS] [--metric NAME] [--set PATH=VALUE]...\n\
-         \x20              [--dir DIR] [--out DIR] [--quiet]\n\
+         \x20              [--dir DIR] [--out DIR] [--quiet] [--quantiles 50,90,95]\n\
          \n\
            <scenario>  bare name inside --dir, or a path to a .toml\n\
            --param     dotted path into the scenario, e.g. sim.track_hold_s\n\
@@ -279,6 +316,8 @@ fn usage() -> String {
            --until     sim seconds per trial (default: 600)\n\
            --metric    which column the paired report is about (default: red_losses)\n\
            --set       hold another dial fixed across every arm; repeatable\n\
+           --quantiles per-arm quantiles with bootstrap intervals, for when the\n\
+         \x20             tail is the question and the mean is not\n\
          \n\
          metrics: {}",
         COLUMNS.join(", ")

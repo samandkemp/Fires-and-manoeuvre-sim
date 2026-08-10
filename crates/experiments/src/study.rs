@@ -100,6 +100,81 @@ pub fn run_study(
     Ok(outcomes)
 }
 
+/// Evaluate **many** scenarios over one shared seed set, building terrain once for all of
+/// them.
+///
+/// A sensitivity design is thousands of scenarios that differ only in dials.
+/// [`run_study`] builds terrain once per worker *per call*, which is right for a handful of
+/// arms and catastrophic for a design: 1,600 design points on a 1000x1000 map is ~19,000
+/// terrain builds and the trials themselves become a rounding error. Measured on
+/// `air_raid`, that was the difference between a study finishing and a study being
+/// abandoned.
+///
+/// So terrain is built once per worker from `base`, and every design point is placed into it
+/// with [`Sim::reset_to_scenario`]. That is exactly the "fix the map, vary the dice" rule
+/// the rest of this module follows, applied one level further out — and it means a design
+/// **must not** vary a terrain dial, because the map it would ask for is not the map it
+/// would get. `sensitivity` refuses those paths for that reason.
+///
+/// Returns one outcome vector per point, in point order.
+///
+/// # Errors
+/// [`ScenarioError`] if `base` or any point fails to resolve, reported once rather than
+/// once per trial.
+pub fn run_design(
+    base: &Scenario,
+    base_libs: &Libraries,
+    points: &[(Scenario, Libraries)],
+    cfg: StudyConfig,
+) -> Result<Vec<Vec<Outcome>>, ScenarioError> {
+    // Resolve everything up front, so a bad point fails here with one clear message rather
+    // than inside a worker.
+    Sim::new(base, base_libs, base.default_seed)?;
+    for (scn, libs) in points {
+        Sim::new(scn, libs, scn.default_seed)?;
+    }
+    if points.is_empty() || cfg.seeds == 0 {
+        return Ok(vec![Vec::new(); points.len()]);
+    }
+
+    let indices: Vec<usize> = (0..points.len()).collect();
+    let threads = rayon::current_num_threads().max(1);
+    let chunk = indices.len().div_ceil(threads);
+    let done = AtomicUsize::new(0);
+    let total = points.len();
+
+    let mut results: Vec<(usize, Vec<Outcome>)> = indices
+        .par_chunks(chunk)
+        .flat_map_iter(|chunk| {
+            // The one expensive thing, once per worker for the whole design.
+            let mut sim = Sim::new(base, base_libs, base.default_seed)
+                .expect("base resolved above, so it resolves here");
+            let mut out = Vec::with_capacity(chunk.len());
+            for &i in chunk {
+                let (scn, libs) = &points[i];
+                let mut trials = Vec::with_capacity(cfg.seeds as usize);
+                for seed in 0..cfg.seeds {
+                    sim.reset_to_scenario(scn, libs, seed)
+                        .expect("point resolved above, so it resolves here");
+                    trials.push(run_one(&mut sim, cfg.until_s));
+                }
+                if cfg.progress {
+                    report(done.fetch_add(1, Ordering::Relaxed) + 1, total);
+                }
+                out.push((i, trials));
+            }
+            out
+        })
+        .collect();
+
+    if cfg.progress && std::io::IsTerminal::is_terminal(&std::io::stderr()) {
+        eprintln!();
+    }
+    // Chunked collection preserves order, but sorting says so rather than relying on it.
+    results.sort_by_key(|(i, _)| *i);
+    Ok(results.into_iter().map(|(_, o)| o).collect())
+}
+
 /// Run the same arm serially. Kept because it is the reference the parallel path is
 /// checked against, and because a profiler reads a single-threaded run far more easily.
 ///

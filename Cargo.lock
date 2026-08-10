@@ -2677,6 +2677,7 @@ dependencies = [
  "glam",
  "ndarray",
  "rand 0.9.5",
+ "rand_chacha",
  "rayon",
  "sim_core",
  "toml",
@@ -5703,6 +5704,7 @@ dependencies = [
 name = "validation"
 version = "0.1.0"
 dependencies = [
+ "experiments",
  "glam",
  "ndarray",
  "rand 0.9.5",

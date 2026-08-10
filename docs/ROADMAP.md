@@ -10,7 +10,7 @@ with a gate against a closed form or a stated invariant.
 | Phase | What | Why it is in this position |
 |---|---|---|
 | ~~15 (A)~~ | ~~Close the open model questions~~ | **Done.** Gates V68–V70; the two findings it corrected are re-measured in place |
-| **16 (D)** | Measurement machinery | The project has more model than it has measurement; interactions are where the findings turned out to be |
+| ~~16 (D)~~ | ~~Measurement machinery~~ | **Done.** `factorial`, `sensitivity` (gate V71) and quantile intervals |
 | **17 (B)** | Movement decisions in-loop | The largest genuine gap — dynamic programming currently sits beside the model, not inside it |
 | **18 (C)** | The dynamic game | The capstone. Needs 17 first: value functions must exist in-loop before they can be payoffs |
 | — | Fidelity breadth | **Paused.** See the note at the end |
@@ -77,7 +77,7 @@ being discovered.
 
 ---
 
-## Phase 16 (D) — Measurement machinery
+## Phase 16 (D) — Measurement machinery *(complete)*
 
 ### D1. Factorial designs
 

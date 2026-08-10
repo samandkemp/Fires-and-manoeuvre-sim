@@ -149,6 +149,96 @@ impl std::fmt::Display for Summary {
     }
 }
 
+/// A quantile with a bootstrap confidence interval.
+///
+/// Means come with a standard error everywhere in this crate. Tails did not, and the tail
+/// is often the question: *how bad is a bad day* is a different question from *what happens
+/// on average*, and for a saturating raid it is the more useful one. A median leakage of
+/// zero with a 95th percentile of four is a defence that usually holds and occasionally
+/// does not — which a mean of 0.4 describes to nobody.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct Quantile {
+    /// Which quantile, in `[0, 1]`.
+    pub p: f64,
+    /// The sample quantile itself.
+    pub value: f64,
+    /// Lower end of the interval.
+    pub lo: f64,
+    /// Upper end of the interval.
+    pub hi: f64,
+    /// Sample size it was estimated from.
+    pub n: usize,
+}
+
+impl std::fmt::Display for Quantile {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "p{:.0} = {:.3} [{:.3}, {:.3}]",
+            self.p * 100.0,
+            self.value,
+            self.lo,
+            self.hi
+        )
+    }
+}
+
+/// The `p`-quantile of a sample, by linear interpolation between order statistics.
+///
+/// # Panics
+/// If `xs` is empty — there is no quantile of nothing, and returning zero would be a
+/// number that looks like an answer.
+#[must_use]
+pub fn quantile(xs: &[f64], p: f64) -> f64 {
+    assert!(!xs.is_empty(), "no quantile of an empty sample");
+    let mut s: Vec<f64> = xs.to_vec();
+    s.sort_by(f64::total_cmp);
+    if s.len() == 1 {
+        return s[0];
+    }
+    let h = p.clamp(0.0, 1.0) * (s.len() - 1) as f64;
+    let lo = h.floor() as usize;
+    let hi = h.ceil() as usize;
+    let frac = h - lo as f64;
+    s[lo] + frac * (s[hi] - s[lo])
+}
+
+/// A quantile with a percentile-bootstrap interval at `1 - alpha`.
+///
+/// Resampling rather than a formula because a simulation outcome is rarely anything a
+/// closed-form quantile interval would apply to: leakage is bounded below at zero and often
+/// discrete, clear-time is censored at the run length. The bootstrap asks the sample what
+/// its own sampling distribution looks like, and makes no shape assumption at all.
+///
+/// Deterministic given `seed`, like everything else here — a confidence interval that moved
+/// between runs of the same data would be worse than none.
+///
+/// # Panics
+/// If `xs` is empty, or `resamples` is zero.
+#[must_use]
+pub fn quantile_ci(xs: &[f64], p: f64, resamples: usize, alpha: f64, seed: u64) -> Quantile {
+    assert!(!xs.is_empty(), "no quantile of an empty sample");
+    assert!(resamples > 0, "a bootstrap needs resamples");
+    use rand::{Rng, SeedableRng};
+    let mut rng = rand_chacha::ChaCha8Rng::seed_from_u64(seed);
+
+    let mut boot = Vec::with_capacity(resamples);
+    let mut draw = vec![0.0; xs.len()];
+    for _ in 0..resamples {
+        for slot in &mut draw {
+            *slot = xs[rng.random_range(0..xs.len())];
+        }
+        boot.push(quantile(&draw, p));
+    }
+    Quantile {
+        p,
+        value: quantile(xs, p),
+        lo: quantile(&boot, alpha / 2.0),
+        hi: quantile(&boot, 1.0 - alpha / 2.0),
+        n: xs.len(),
+    }
+}
+
 /// Collapse `-0.0` to `0.0` for output.
 ///
 /// Rust's `f64` sum folds from `-0.0`, not `0.0`, because `-0.0 + x == x` for every `x`
@@ -166,6 +256,85 @@ pub fn tidy(v: f64) -> f64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // ---- quantiles and their bootstrap intervals ---------------------------------------
+
+    /// `U(0, 1)` has quantile `p` at exactly `p`, which is the simplest closed form there
+    /// is to check an estimator against.
+    fn uniform_sample(n: usize, seed: u64) -> Vec<f64> {
+        use rand::{Rng, SeedableRng};
+        let mut rng = rand_chacha::ChaCha8Rng::seed_from_u64(seed);
+        (0..n).map(|_| rng.random::<f64>()).collect()
+    }
+
+    #[test]
+    fn a_quantile_of_a_known_sample_is_the_order_statistic() {
+        let xs = [1.0, 2.0, 3.0, 4.0, 5.0];
+        assert!((quantile(&xs, 0.0) - 1.0).abs() < 1e-12);
+        assert!((quantile(&xs, 0.5) - 3.0).abs() < 1e-12);
+        assert!((quantile(&xs, 1.0) - 5.0).abs() < 1e-12);
+        // Interpolated between order statistics, not rounded to one.
+        assert!((quantile(&xs, 0.125) - 1.5).abs() < 1e-12);
+    }
+
+    #[test]
+    fn quantiles_of_a_uniform_sample_land_near_p() {
+        let xs = uniform_sample(4000, 7);
+        for p in [0.1, 0.5, 0.9, 0.95] {
+            let q = quantile(&xs, p);
+            assert!((q - p).abs() < 0.03, "p{p}: got {q}, U(0,1) says {p}");
+        }
+    }
+
+    /// The property a confidence interval is *for*: it must cover the truth about
+    /// `1 - alpha` of the time. Checked by repetition rather than asserted once, because a
+    /// single interval containing the answer says nothing about the method.
+    #[test]
+    fn the_bootstrap_interval_covers_the_truth_about_as_often_as_it_claims() {
+        let (p, alpha, reps) = (0.9, 0.10, 200);
+        let covered = (0..reps)
+            .filter(|&r| {
+                let xs = uniform_sample(300, 1000 + r as u64);
+                let q = quantile_ci(&xs, p, 400, alpha, 55 + r as u64);
+                q.lo <= p && p <= q.hi
+            })
+            .count();
+        let rate = covered as f64 / reps as f64;
+        // Nominal 90%. The percentile bootstrap is approximate for a quantile, so the band
+        // is generous — but an interval that covered 50% or 100% of the time would be
+        // useless in opposite ways, and both are excluded.
+        assert!(
+            (0.80..=0.99).contains(&rate),
+            "nominal 90% interval covered {:.0}% of the time",
+            rate * 100.0
+        );
+    }
+
+    #[test]
+    fn a_bootstrap_interval_brackets_its_own_estimate_and_is_reproducible() {
+        let xs = uniform_sample(500, 3);
+        let a = quantile_ci(&xs, 0.95, 500, 0.05, 9);
+        assert!(a.lo <= a.value && a.value <= a.hi, "{a}");
+        let b = quantile_ci(&xs, 0.95, 500, 0.05, 9);
+        assert!(
+            (a.lo - b.lo).abs() < 1e-12 && (a.hi - b.hi).abs() < 1e-12,
+            "same data and seed must give the same interval"
+        );
+    }
+
+    /// More data must not make the interval wider. The check that the estimator is
+    /// converging on something rather than wandering.
+    #[test]
+    fn more_data_narrows_the_interval() {
+        let wide = quantile_ci(&uniform_sample(100, 21), 0.5, 400, 0.05, 1);
+        let tight = quantile_ci(&uniform_sample(4000, 21), 0.5, 400, 0.05, 1);
+        assert!(
+            tight.hi - tight.lo < wide.hi - wide.lo,
+            "40x the data should narrow the interval ({:.4} vs {:.4})",
+            tight.hi - tight.lo,
+            wide.hi - wide.lo
+        );
+    }
 
     #[test]
     fn mean_and_se_match_the_closed_form() {

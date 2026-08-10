@@ -1,0 +1,73 @@
+# What actually decides whether a drone raid gets through?
+#
+# `air_raid` fields a self-cued CIWS and a net-cued SAM against ten drones, so raid leakage
+# could plausibly turn on how well the early-warning sensor sees, how long a track survives,
+# how quickly a cue crosses the net, or how fast the drones are. Four dials, four plausible
+# stories, and no way to tell from one-at-a-time sweeps which of them the answer rests on.
+#
+#   cargo run -p experiments --release --bin sensitivity -- studies/sensing.toml --seeds 20
+#
+# Measured (32,720 trials, ~13 min):
+#
+#   dial                                   S1       ST    ST - S1
+#   air.strike_uas.cruise_speed_m_s      0.653    0.801     0.148
+#   air_defence.sam.cue_latency_s        0.339    0.374     0.035
+#   sensors.mast_optical.lambda0_per_s  -0.001    0.057     0.058
+#   sim.track_hold_s                     0.000    0.000     0.000
+#
+#   first-order total 0.990
+#
+# Four things worth taking from it.
+#
+# **Raid speed dominates.** How fast the drones cross the envelope explains 65% of the
+# variance on its own and is involved in 80% — more than the defence's cue latency. The
+# timeline is set by the attacker before the defender's dials get a say, which is §9.5's
+# argument arriving from the other direction.
+#
+# **The sensor barely matters here.** `lambda0_per_s` has a first-order index of
+# essentially zero over a 20x range. That is not a surprise so much as an explanation: the
+# documented sweep of this dial found only -0.176 +- 0.031 leakers for a 20x better sensor,
+# and it now has a reason rather than a shrug. The sensor is not the binding constraint on
+# this scenario.
+#
+# **`track_hold_s` is completely inert** — exactly zero on both estimators. The engagement
+# resolves faster than the shortest hold time in the range (10 s), so the dial never binds.
+# A dial that cannot reach the outcome is worth knowing about before it is swept.
+#
+# **The first-order indices sum to 0.990**, so the dials are close to additive and
+# one-at-a-time sweeps are sound *on this scenario*. That is a licence for every earlier
+# `air_raid` sweep, and it is the kind of reassurance that can only come from exploring the
+# space rather than a slice of it.
+#
+# A small negative S1 (here -0.001) means "indistinguishable from zero" — the Saltelli
+# estimator is unbiased, not non-negative, and clamping it would hide how noisy a
+# near-zero index is.
+#
+# The ranges are deliberately wide, an order of magnitude on two of them. A sensitivity
+# result is only ever a statement about the range explored, so a narrow one would flatter
+# every dial in it.
+
+scenario = "air_raid"
+metric = "air_leakers"
+
+# 20 trajectories x 5 points + 256 x 6 = 1636 design points.
+trajectories = 20
+levels = 4
+sobol_n = 256
+design_seed = 1
+
+[dials]
+# How well the early-warning radar sees. The SAM has no organic sensor, so this is the only
+# thing standing between it and being blind (docs/design/09-air-and-counter-air.md §9.5).
+"sensors.mast_optical.lambda0_per_s" = [0.05, 1.0]
+
+# How long a track survives unobserved. Short enough and the cueing chain never completes.
+"sim.track_hold_s" = [10.0, 120.0]
+
+# The comms Tx/Rx delay on an externally cued track — the dial V50's critical-latency
+# closed form is about.
+"air_defence.sam.cue_latency_s" = [0.0, 30.0]
+
+# How fast the raid crosses the envelope, which sets how much of the timeline there is to
+# spend in the first place.
+"air.strike_uas.cruise_speed_m_s" = [25.0, 80.0]

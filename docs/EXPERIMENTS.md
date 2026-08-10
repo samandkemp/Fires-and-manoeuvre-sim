@@ -17,6 +17,7 @@ output, and what the harness cannot yet do. For the bare command syntax see
 - [`batch` — a folder of scenarios](#batch--a-folder-of-scenarios)
 - [`sweep` — one dial, many values](#sweep--one-dial-many-values)
 - [`factorial` — several dials at once](#factorial--several-dials-at-once-and-whether-they-interact)
+- [`sensitivity` — which dials drive the answer at all?](#sensitivity--which-dials-drive-the-answer-at-all)
 - [What the columns mean](#what-the-columns-mean)
 - [Reading the output](#reading-the-output)
 - [How fast, and why](#how-fast-and-why)
@@ -263,6 +264,81 @@ A factor may have more than two levels. Main effects are reported per level agai
 baseline; the interaction is the corner-to-corner contrast across each factor's **range**,
 which is a summary rather than the whole surface. The per-cell CSV holds the rest.
 
+## `sensitivity` — which dials drive the answer at all?
+
+Every number in this repository is an **abstract placeholder**. That is deliberate and said
+everywhere, but it leaves one question over every finding: *does it matter that the numbers
+are invented?*
+
+Neither `sweep` nor `factorial` can answer it. Both vary a few dials with the rest pinned
+wherever the scenario happened to leave them, so both measure a slice through a space they
+never explore. Global sensitivity analysis explores the space and reports what share of the
+outcome's variance each dial is responsible for.
+
+```
+cargo run -p experiments --release --bin sensitivity -- studies/sensing.toml --seeds 20
+```
+
+The dial space is a **file**, not a pile of flags, because it is a design — something to
+commit, review and re-run. See [`studies/README.md`](../studies/README.md) for the format.
+
+### What comes back
+
+**Morris** first, because it is cheap: `mu*` ranks dials by how much they move the answer,
+`sigma` flags one whose effect depends on where the others are. Its job is to say what can be
+ignored before the expensive pass runs.
+
+**Sobol** second, as a variance decomposition:
+
+| Column | Meaning |
+|---|---|
+| `S1` | the share of variance this dial explains **alone** |
+| `ST` | the share it is involved in altogether, interactions included |
+| `ST − S1` | the share running **through** interactions — invisible to a one-dial sweep |
+
+The closing line adds the first-order indices up. Near 1 means the dials are additive and
+one-at-a-time sweeps are sound. Well below 1 means most of the variance lives in
+interactions, and a sweep will mislead.
+
+### A worked result
+
+`studies/sensing.toml` asks what decides whether a drone raid gets through — 32,720 trials
+over four dials:
+
+| dial | S1 | ST | ST − S1 |
+|---|---|---|---|
+| `air.strike_uas.cruise_speed_m_s` | 0.653 | 0.801 | 0.148 |
+| `air_defence.sam.cue_latency_s` | 0.339 | 0.374 | 0.035 |
+| `sensors.mast_optical.lambda0_per_s` | −0.001 | 0.057 | 0.058 |
+| `sim.track_hold_s` | 0.000 | 0.000 | 0.000 |
+
+**Raid speed dominates** — how fast the attacker crosses the envelope explains more than the
+defender's cue latency does. **The sensor barely matters**, which retrospectively explains
+why sweeping its glimpse rate over a 20× range moved leakage by only 0.176: it is not the
+binding constraint here. **`track_hold_s` is exactly inert**, because the engagement resolves
+faster than the shortest hold time in the range. And the first-order total of **0.990** says
+the dials are additive on this scenario, which is a licence for every earlier `air_raid`
+sweep.
+
+A slightly negative `S1` means "indistinguishable from zero" — the Saltelli estimator is
+unbiased rather than non-negative, and clamping it would hide how noisy a near-zero index is.
+
+### Cost
+
+`(morris points + sobol points) × seeds`, and `--seeds` is deliberately modest: a design
+point is an **average over seeds**, and the variance being decomposed is the one across the
+*dial space*, not across the dice. The study above is ~13 minutes.
+
+Terrain is built once for the whole design rather than once per point — `study::run_design`
+exists for exactly that, and without it the study above spends its entire runtime generating
+1000×1000 rasters.
+
+### The estimator is gated
+
+**V71** checks the Sobol implementation against the analytic indices of the Ishigami
+function, whose third input has a first-order index of *exactly zero* and a large total one.
+An instrument that cannot recover a known answer cannot be trusted with an unknown one.
+
 ## What the columns mean
 
 Every metric is read back from the sim's own event logs and final state — never accumulated
@@ -483,8 +559,10 @@ independently, which is a useful cross-check on both.
 - **Two-way interactions only.** `factorial` reports every pair of factors; a three-way
   interaction is in the per-cell CSV but not in the report. With more than two levels the
   reported interaction is the corner-to-corner contrast rather than the whole surface.
-- **No confidence intervals on quantiles**, only on means. A bimodal outcome averaged into a
-  middle that never happens will not announce itself — plot the per-trial CSV.
+- **Sensitivity dials are continuous only.** A range is a pair of numbers, so a categorical
+  dial like `sim.allocation` has no place in a study file — use `factorial` for those.
+- **A sensitivity study may not vary terrain.** Terrain is built once for the whole design,
+  so a terrain dial would ask for a map it does not get.
 - **`--seeds N` always means `0..N`**, so two studies at different `N` share a prefix rather
   than being independent. That is deliberate (it is what makes arms pairable), but it means
   "run 1,000 more seeds" is `--seeds 2000`, not a second run.

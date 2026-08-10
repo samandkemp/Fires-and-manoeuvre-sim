@@ -1,7 +1,7 @@
 # Validation
 
 Every model in this project ships with a **gate**: a test that checks it against a
-closed-form result or a stated invariant. There are 70 of them, V1–V70, and they are the
+closed-form result or a stated invariant. There are 71 of them, V1–V71, and they are the
 backbone of the whole thing.
 
 ## Why a gate is not a regression test
@@ -95,6 +95,12 @@ one to ship.
 | V23 | Damage monotonicity | Falls with offset and cover, rises with lethal radius |
 | V24 | Fires determinism | Same `(scenario, seed, mission)` → identical rounds and strengths |
 | V70 | Indirect eligibility is a **track**, not a sightline | A howitzer engages a target masked from it by a ridge; a direct-fire gun in the same position holds its fire. Conversely, jamming the observer lapses the track and releases the indirect shooter's lock — while the target is still alive, so the release is the lapse and not the kill |
+
+### The measurement machinery — [`docs/EXPERIMENTS.md`](EXPERIMENTS.md)
+
+| Gate | Property | Reference |
+|---|---|---|
+| V71 | The **sensitivity estimator** against a closed form | Sobol indices from Saltelli sampling match the analytic indices of the Ishigami function. Its third input has a first-order index of *exactly zero* — it does nothing alone, so a one-dial sweep finds nothing — and a large total index, because it acts entirely through another input. That gap is what the estimator exists to expose |
 
 ### Suppression and attrition — [§4](design/04-suppression-and-attrition.md)
 
