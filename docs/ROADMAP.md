@@ -11,7 +11,7 @@ with a gate against a closed form or a stated invariant.
 |---|---|---|
 | ~~15 (A)~~ | ~~Close the open model questions~~ | **Done.** Gates V68–V70; the two findings it corrected are re-measured in place |
 | ~~16 (D)~~ | ~~Measurement machinery~~ | **Done.** `factorial`, `sensitivity` (gate V71) and quantile intervals |
-| **17 (B)** | Movement decisions in-loop | The largest genuine gap — dynamic programming currently sits beside the model, not inside it |
+| ~~17 (B)~~ | ~~Movement decisions in-loop~~ | **Done.** Gates V72–V74; a demonstration scenario is still outstanding (§10.6) |
 | **18 (C)** | The dynamic game | The capstone. Needs 17 first: value functions must exist in-loop before they can be payoffs |
 | — | Fidelity breadth | **Paused.** See the note at the end |
 
@@ -115,7 +115,7 @@ CIs, tested against a distribution with known quantiles.
 
 ---
 
-## Phase 17 (B) — Movement decisions in-loop
+## Phase 17 (B) — Movement decisions in-loop *(complete)*
 
 `least_risk_path` is called only from `experiments/` and `validation/`. The dynamic
 programming strand sits *beside* the model rather than inside it, and movement is the one

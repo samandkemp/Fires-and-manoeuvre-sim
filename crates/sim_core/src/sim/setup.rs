@@ -79,6 +79,9 @@ impl Sim {
             allocation: cfg.allocation,
             max_batteries_per_air_target: cfg.max_batteries_per_air_target,
             fires_need_c2: cfg.fires_need_c2,
+            risk_weight: cfg.risk_weight,
+            repath_margin: cfg.repath_margin,
+            planner: None,
             doctrine: [Doctrine::default(), Doctrine::default()],
             orders: [Vec::new(), Vec::new()],
             sensor_tasking: cfg.sensor_tasking,
@@ -174,6 +177,14 @@ impl Sim {
                 })?;
                 let weapon = resolve_weapon(stats.weapon.as_deref(), libs)?;
                 self.add_unit(&u.id, side, Vec2::from(u.pos), stats.clone(), weapon);
+                if let Some(objective) = u.objective {
+                    // A unit that plans its own route (§10.5). Its first route is computed
+                    // at the first decision epoch, not here — placement should not depend on
+                    // where the enemy's sensors happen to be at t = 0.
+                    let idx = self.units.len() - 1;
+                    self.units[idx].objective = Some(Vec2::from(objective));
+                    self.units[idx].risk_weight = u.risk_weight;
+                }
                 if !u.route.is_empty() {
                     let idx = self.units.len() - 1;
                     self.set_route(idx, u.route.iter().map(|&p| Vec2::from(p)).collect());
@@ -321,6 +332,8 @@ impl Sim {
             speed_m_s,
             route: Vec::new(),
             route_idx: 0,
+            objective: None,
+            risk_weight: None,
             engaging: None,
         });
     }

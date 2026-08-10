@@ -15,6 +15,7 @@
 //! | [`detection`] | the glimpse process, EW, and the track lifecycle |
 //! | [`engagement`] | ground fires: target selection and round resolution |
 //! | [`counter_air`] | the air phases — air detection, air defence, strike release |
+//! | [`planning`] | movement decisions: a unit with an objective plans its own route |
 //!
 //! Those are all child modules of `sim`, which is what lets them reach [`Sim`]'s private
 //! fields while the rest of the crate cannot. Splitting the file cost no encapsulation.
@@ -35,6 +36,7 @@ mod detection;
 mod engagement;
 mod events;
 mod los_cache;
+mod planning;
 mod setup;
 mod state;
 mod tasking;
@@ -65,6 +67,11 @@ pub struct Sim {
     max_batteries_per_air_target: u32,
     // Does a ground shooter need a C2 post to join the side-wide plan (§11.3)?
     fires_need_c2: bool,
+    // Movement decisions (§10.5). The planner is built lazily: a scenario with no unit
+    // objective never allocates it, which is what makes V72 structural.
+    risk_weight: f32,
+    repath_margin: f32,
+    planner: Option<planning::Planner>,
     // Each side's target priority and its directly ordered engagements (§13). Indexed
     // Blue, Red — an array rather than two fields so every lookup goes through `Side`.
     doctrine: [crate::doctrine::Doctrine; 2],
@@ -134,14 +141,16 @@ impl Sim {
         self.resolve_strikes();
 
         // 8. Decision epoch, in dependency order: refresh what is known, decide where to
-        // look next, then decide what to shoot. Track maintenance leads because fires are
-        // gated on tracks; tasking follows it because it reasons about what was *not*
-        // seen this epoch.
+        // look next, then decide where to go and what to shoot. Track maintenance leads
+        // because fires are gated on tracks; tasking follows it because it reasons about
+        // what was *not* seen this epoch; movement follows both because a route is planned
+        // against what is currently known about the enemy's sensors.
         let epochs_due = (self.time_s / f64::from(self.epoch_s)).floor() as u64;
         while self.epochs_run < epochs_due {
             self.epochs_run += 1;
             self.maintain_tracks();
             self.task_sensors();
+            self.replan_movement();
             self.resolve_fires();
         }
     }

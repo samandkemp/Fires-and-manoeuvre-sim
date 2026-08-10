@@ -80,9 +80,21 @@ pub struct UnitState {
     /// Movement speed along the route, metres/second (`0` = static).
     pub speed_m_s: f32,
     /// Route waypoints (world metres); empty = no route.
+    ///
+    /// Either scripted by the scenario, or planned by the unit itself each epoch when it has
+    /// an `objective` (`docs/DESIGN.md` §10.5). Movement reads it the same way either way.
     pub route: Vec<Vec2>,
     /// Index of the next waypoint to head for.
     pub route_idx: usize,
+    /// Where this unit is trying to get to, if it plans its own route (§10.5).
+    ///
+    /// Mutually exclusive with a scripted `route` at load. `None` is a unit that either
+    /// follows the route it was given or stands still — which is every unit in every
+    /// scenario written before this existed, and is why the identity is structural.
+    pub objective: Option<Vec2>,
+    /// This unit's own exchange rate between movement cost and exposure; `None` takes
+    /// `[sim] risk_weight`.
+    pub risk_weight: Option<f32>,
     /// What this unit is currently engaging, if anything (`docs/DESIGN.md` §13.4).
     ///
     /// A **lock**, not a preference: once a shooter takes a target it stays on it until the

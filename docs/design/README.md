@@ -28,7 +28,7 @@ phase.
 | 7 | [The simulation loop](07-the-simulation-loop.md) | Two clocks and why; phase order; **the determinism contract and the identity discipline**; the input contract | V67 |
 | 8 | [EW & partial observability](08-ew-and-partial-observability.md) | Jamming as a modifier on the rate; the belief filter and negative information | V40–V43 |
 | 9 | [Air & counter-air](09-air-and-counter-air.md) | Altitude and the slant-range convention; flight kinematics; strike; two AD models; the cueing timeline | V44–V52 |
-| 10 | [The decision layer](10-the-decision-layer.md) | Track lifecycle; side-wide fire allocation; belief-driven sensor tasking | V54–V58, V61 |
+| 10 | [The decision layer](10-the-decision-layer.md) | Track lifecycle; side-wide fire allocation; belief-driven sensor tasking; movement decisions | V54–V58, V61, V72–V74 |
 | 11 | [Command and control](11-command-and-control.md) | The C2 post, the air-defence payoff, ground fires and the net | V59, V62, V63, V68 |
 | 12 | [SEAD](12-sead.md) | Air defence as a target; what death costs; anti-radiation homing; counter-battery | V60, V64, V65, V69 |
 | 13 | [The kill chain](13-the-kill-chain.md) | Directed targeting: priority tiers, orders, eligibility, and the target lock | V66 |

@@ -248,8 +248,75 @@ a strategy at all, and the "unwatched lane" stopped being unwatched. That is wha
 `sensor_tasking` defaulting to off rather than on. The gate was doing its job: it caught a
 model change that would otherwise have quietly invalidated the Phase 6 game.
 
-### 10.5 Deferred
+### 10.5 Movement decisions in the loop *(Phase 17)*
 
-**Movement decisions in-loop** — re-pathing with `least_risk_path` against a live risk
-raster. Out of scope for this phase: it needs a per-epoch risk raster, and the coarse-grid
-machinery built for §10.3 is what makes that affordable later.
+Fires are allocated (§10.2) and sensors are tasked (§10.3), but movement stayed scripted:
+`movement::least_risk_path` was called only from `experiments/` and `validation/`, so the
+dynamic-programming strand sat *beside* the model rather than inside it.
+
+A unit now declares **either** a `route` — scripted, exactly as before — **or** an
+`objective`, which it plans its own way to, re-solving each decision epoch against the live
+risk raster. Declaring both is a load error (§7.6's family): neither "plan then ignore the
+plan" nor "follow the route then re-plan" is obviously the one meant.
+
+**Per unit, deliberately, not a `[sim]` switch.** Two things follow. The identity holds by
+*construction* — a scenario with no objective builds no planner and computes no raster, so
+there is nothing to switch off (V72). And a scripted unit and a planning unit can share one
+map on one seed, which makes control and treatment a single trial rather than two runs that
+have to be trusted to differ in only one way. Same argument as doctrine's
+`priority = ["all"]` default.
+
+**The decision grid is coarse**, and the number is what forced it: a risk raster at full
+terrain resolution costs **~4 s** for a 1000×1000 map with two sensors, because every cell
+asks every sensor for a detection rate and each of those walks a sightline. At one epoch per
+10 s that is a hundred times the cost of everything else, and a 500-seed study becomes a
+fortnight. So planning happens on the same coarse grid §10.3 uses for belief, for the same
+reason: a commander choosing an approach every ten seconds is not choosing between adjacent
+10 m cells. The unit still *moves* continuously at full resolution.
+
+The coarse edge cost is `TerrainGrid::move_cost`'s own formula — distance × mean mobility ×
+slope factor — evaluated on cell **aggregates** rather than point samples, so it is an
+approximation of the real cost rather than a different cost that resembles it. A coarse cell
+is impassable only when *every* fine cell in it is: at 150 m resolution "there is a way
+through" is the honest reading.
+
+`least_risk_path` was split so the planner runs the **same** search: `least_cost_path` takes
+an edge-cost function, and `least_risk_path` is that with the terrain's own. V25, V26 and V27
+constrain the shared core, so their guarantees reach the in-loop planner rather than a second
+implementation needing its own gates.
+
+**Hysteresis, named in advance.** A unit re-deciding every epoch flips between two near-equal
+routes as costs wobble — the movement analogue of §13.4's target-lock problem, and it gets
+the same answer. A new route is adopted only if it beats the held one by `repath_margin`
+(default 10%), with the held route re-costed on the *current* raster so a route only looks
+worse when the risk has actually moved.
+
+**Dials.** `[sim] risk_weight` is §5.1's exchange rate — the metres of movement cost a
+commander will spend to avoid one unit of exposure — and a unit may override it. Sweeping it
+traces the Pareto frontier between arriving quickly and arriving alive, which is a better
+answer than any single "optimal" route.
+
+### 10.6 Deliberate limitations (v1)
+
+- **The planned route is quantised to the decision grid.** Waypoints are coarse-cell
+  centres, so a unit deviates up to about half a cell from the ideal line even at
+  `risk_weight = 0` — measured at ~170 m on a 7 km map at 48 cells. It is the cost of
+  planning affordably, and it is why V73 measures deviation in *hundreds* of metres rather
+  than asserting a straight line.
+- **Risk is enemy observation only.** §5.2's definition: how detectable a reference mover
+  would be. It does not include being shot — a unit will happily route through a beaten zone
+  it cannot be seen from. Folding weapon reach into the raster is the natural next step.
+- **The mover is a reference, not the unit.** Risk is a property of the ground and the
+  enemy's sensors, computed once per side, so an unusually stealthy unit is not routed
+  differently from a conspicuous one.
+- **No demonstration scenario yet.** V72–V74 pin the mechanism on controlled fixtures, but
+  the bundled scenarios do not exercise it. A scenario in which the route choice visibly
+  changes the outcome needs geometry where the direct line is watched, the detour is
+  affordable, and the crossing completes inside the run — three constraints that took more
+  tuning than the phase had. Outstanding.
+
+### 10.7 Deferred
+
+~~**Movement decisions in-loop**~~ — built, and it is §10.5 above. The prediction it was
+deferred on turned out right: the coarse-grid machinery built for §10.3 is exactly what made
+it affordable, and a full-resolution raster would have cost ~4 s an epoch.

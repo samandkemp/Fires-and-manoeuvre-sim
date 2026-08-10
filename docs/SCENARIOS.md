@@ -383,7 +383,14 @@ Every placement names an `id` (unique in the scenario), a `type` from a library,
 id = "red-1"
 type = "afv"
 pos = [5600.0, 6400.0]
-route = [[5600.0, 6400.0], [4300.0, 5200.0]]   # optional; empty = static
+route = [[5600.0, 6400.0], [4300.0, 5200.0]]   # scripted; omit for a static unit
+
+[[blue.units]]
+id = "red-2"
+type = "afv"
+pos = [5600.0, 6800.0]
+objective = [4300.0, 5200.0]                   # OR: plan its own way there
+risk_weight = 400.0                            # optional; defaults to [sim] risk_weight
 
 [[blue.sensors]]
 id = "obs-1"
@@ -433,6 +440,16 @@ through it and an ARM has nothing to ride. Measured, going dark costs a battery 
 contribution — 0.000 detections, 0.000 shots — in exchange for surviving the missile
 ([§12.5](design/12-sead.md)).
 
+**A unit has a `route` or an `objective`, never both** — declaring both is a load error.
+A route is scripted and followed exactly; an objective is planned toward, re-solved each
+decision epoch against what the unit's side knows about enemy sensors, so a sensor placed
+across the way changes where it goes ([§10.5](design/10-the-decision-layer.md)).
+
+`risk_weight` is the exchange rate: metres of movement cost the unit will spend to avoid one
+unit of exposure. At `0` it takes the short way regardless of who is watching. Sweeping it on
+one unit while another follows a fixed route is how the trade between arriving quickly and
+arriving alive gets measured — control and treatment on the same map and seed.
+
 **`altitude_ref` is the decision that decides whether terrain can mask a drone.** `agl`
 follows the ground and rides over ridges; `amsl` holds a constant height above sea level
 and gets masked by anything taller. Same number, opposite behaviour
@@ -456,7 +473,9 @@ Every dial has a default, so a scenario states only what it wants to change.
 | `max_batteries_per_air_target` | 2 | Overkill cap: air-defence batteries per airframe ([§11.2](design/11-command-and-control.md)) |
 | `fires_need_c2` | `false` | Must a ground shooter be under a live C2 post to coordinate? ([§11.3](design/11-command-and-control.md)) |
 | `sensor_tasking` | `false` | Do steerable sensors search by belief? ([§10.3](design/10-the-decision-layer.md)) |
-| `belief_cells` | 48 | Edge length of the coarse belief grid |
+| `risk_weight` | 50.0 | Default exchange rate between movement cost and exposure ([§10.5](design/10-the-decision-layer.md)) |
+| `repath_margin` | 0.1 | How much better a new route must be before a unit switches to it |
+| `belief_cells` | 48 | Edge length of the coarse belief **and movement-planning** grid |
 
 Four are worth knowing as **switches back to older behaviour**, which is how one model is
 isolated from another:

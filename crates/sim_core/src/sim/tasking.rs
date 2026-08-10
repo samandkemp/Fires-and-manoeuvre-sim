@@ -75,6 +75,13 @@ pub(super) struct Tasking {
 
 impl Tasking {
     /// A fresh, maximally-uncertain belief for both sides.
+    /// The coarse grid's edge length. Shared with the movement planner (§10.5), which
+    /// plans at the same resolution for the same reason: a decision taken every ten seconds
+    /// does not need ten-metre cells.
+    pub(super) fn cells(&self) -> usize {
+        self.cells
+    }
+
     pub(super) fn new(cells: usize) -> Self {
         Self {
             cells,

@@ -141,6 +141,20 @@ pub struct SimConfig {
     /// decision to make.
     #[serde(default = "default_sensor_tasking")]
     pub sensor_tasking: bool,
+    /// Default exchange rate between movement cost and exposure for a unit with an
+    /// objective (§5.1). A unit may override it; `0` plans the shortest route regardless of
+    /// who is watching.
+    #[serde(default = "default_risk_weight")]
+    pub risk_weight: f32,
+    /// How much better a new route must be before a unit abandons the one it is on, as a
+    /// fraction of the held route's cost (§10.5).
+    ///
+    /// Without it a unit re-deciding every epoch dithers between two near-equal routes as
+    /// tiny cost differences wobble — the movement analogue of the target-lock problem
+    /// (§13.4), and it gets the same answer: switching is itself a decision with a cost, so
+    /// it takes something changing on the ground rather than a rounding difference.
+    #[serde(default = "default_repath_margin")]
+    pub repath_margin: f32,
     /// Edge length of the coarse belief grid, in cells (`docs/DESIGN.md` §10.3).
     ///
     /// Belief runs at this resolution regardless of terrain size: tasking chooses between
@@ -201,6 +215,14 @@ fn default_track_hold() -> f32 {
     45.0
 }
 
+fn default_risk_weight() -> f32 {
+    50.0
+}
+
+fn default_repath_margin() -> f32 {
+    0.1
+}
+
 fn default_track_maintain_p() -> f32 {
     0.5
 }
@@ -228,6 +250,8 @@ impl Default for SimConfig {
             suppressed_fire_factor: default_suppressed_fire_factor(),
             track_hold_s: default_track_hold(),
             track_maintain_p: default_track_maintain_p(),
+            risk_weight: default_risk_weight(),
+            repath_margin: default_repath_margin(),
             allocation: AllocationChoice::default(),
             max_batteries_per_air_target: default_max_batteries_per_air_target(),
             fires_need_c2: false,
@@ -413,8 +437,30 @@ pub struct UnitInstance {
     /// World position, metres `[x, y]` (the route start if a route is given).
     pub pos: [f32; 2],
     /// Optional movement route as world waypoints; empty = static.
+    ///
+    /// A **scripted** route: the unit follows it exactly, which is what every scenario did
+    /// before §10.5 and what most still do.
     #[serde(default)]
     pub route: Vec<[f32; 2]>,
+    /// Where the unit is trying to *get to*, if it is deciding its own route (§10.5).
+    ///
+    /// The alternative to `route`, and mutually exclusive with it. A unit with an objective
+    /// re-plans each decision epoch against the live risk raster, so a sensor placed on its
+    /// path changes where it goes — which a scripted route cannot express.
+    ///
+    /// Declaring **neither** is a static unit, exactly as before. That is what makes the
+    /// identity structural rather than dial-gated: a scenario with no objective anywhere
+    /// does no planning at all, rather than having a branch switched off.
+    #[serde(default)]
+    pub objective: Option<[f32; 2]>,
+    /// How many metres of movement cost this unit will spend to avoid one unit of exposure
+    /// (§5.1's exchange rate `w`). Defaults to `[sim] risk_weight`.
+    ///
+    /// Per unit because it is a statement about *this* commander's caution, and because
+    /// sweeping it on one unit while another holds still is how the trade between arriving
+    /// quickly and arriving alive gets measured.
+    #[serde(default)]
+    pub risk_weight: Option<f32>,
 }
 
 /// The terrain block of a scenario: grid dimensions and how to generate the elevation.
@@ -464,6 +510,23 @@ impl Scenario {
             return Err(ScenarioError::Invalid(
                 "cell_size_m must be positive and finite".into(),
             ));
+        }
+        // A unit either follows a scripted route or decides its own (§10.5). Declaring both
+        // is ambiguous — neither "plan, then ignore the plan" nor "follow the route, then
+        // re-plan" is obviously meant — so it is refused at load rather than resolved by a
+        // precedence rule nobody would remember. Same argument as `deny_unknown_fields`.
+        for (side, force) in [("blue", &self.blue), ("red", &self.red)] {
+            for u in &force.units {
+                if !u.route.is_empty() && u.objective.is_some() {
+                    return Err(ScenarioError::Invalid(format!(
+                        "{side} unit '{}' declares both `route` and `objective`; a unit                          either follows a route or plans to an objective, not both",
+                        u.id
+                    )));
+                }
+                if let Some(w) = u.risk_weight {
+                    require_non_negative(&format!("{side} unit '{}' risk_weight", u.id), w)?;
+                }
+            }
         }
         self.sim.validate()
     }
@@ -543,6 +606,8 @@ impl SimConfig {
         require_non_negative("[sim] track_hold_s", self.track_hold_s)?;
         require_non_negative("[sim] recover_per_s", self.recover_per_s)?;
         require_non_negative("[sim] suppression_radius_m", self.suppression_radius_m)?;
+        require_non_negative("[sim] risk_weight", self.risk_weight)?;
+        require_non_negative("[sim] repath_margin", self.repath_margin)?;
         if self.belief_cells == 0 {
             return Err(ScenarioError::Invalid(
                 "[sim] belief_cells must be at least 1".into(),

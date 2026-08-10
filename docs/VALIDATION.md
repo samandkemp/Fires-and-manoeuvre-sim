@@ -1,7 +1,7 @@
 # Validation
 
 Every model in this project ships with a **gate**: a test that checks it against a
-closed-form result or a stated invariant. There are 71 of them, V1–V71, and they are the
+closed-form result or a stated invariant. There are 74 of them, V1–V74, and they are the
 backbone of the whole thing.
 
 ## Why a gate is not a regression test
@@ -169,6 +169,9 @@ not of any one function. Nothing was written to produce it.
 | V57 | Belief-driven tasking | A tasked sensor detects where a fixed stare never does, with a shorter mean time-to-detect |
 | V58 | Decision-layer **identity** | A scenario with no allocation choice and no taskable sensor reproduces the pre-Phase-10 log bit-identically |
 | V61 | Carried-sensor coverage | A recce drone that finds nothing drains its side's belief out of that ground |
+| V72 | Movement decisions are a **structural identity** | A scenario where no unit declares an `objective` reproduces exactly and its scripted units follow their routes to the metre — no planner is built at all, so there is nothing to switch off. Declaring both `route` and `objective` is a load error naming the unit |
+| V73 | A planned route **avoids what watches it** | With an enemy sensor on the straight line to its objective, a planning unit leaves that line by hundreds of metres; with `risk_weight = 0` — same map, same sensor — it goes straight. V25's zero-risk-is-shortest-path, arriving inside the loop |
+| V74 | A planner does not dither | A watcher on the line makes north and south cost almost the same, which is what makes a fresh solve wobble. The committed direction must not flip, and the unit must arrive. Deliberately *not* monotone progress: a detour increases straight-line distance before it decreases it |
 
 ### Command and control — [§11](design/11-command-and-control.md)
 

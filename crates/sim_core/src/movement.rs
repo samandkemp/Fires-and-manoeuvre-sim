@@ -70,14 +70,44 @@ pub fn least_risk_path(
 ) -> Option<Path> {
     let (w, h) = (terrain.width(), terrain.height());
     assert_eq!(risk.dim(), (h, w), "risk raster must match terrain shape");
+    least_cost_path(
+        (w, h),
+        |from, to| terrain.move_cost(from, to),
+        risk,
+        start,
+        goal,
+        risk_weight,
+    )
+}
+
+/// The same search over **any** 8-connected grid, given a per-edge move cost.
+///
+/// [`least_risk_path`] is this with the terrain's own `move_cost`. It is separated so the
+/// in-loop planner (§10.5) can run the *identical* algorithm over its coarse decision grid
+/// rather than a second implementation that would need its own gates: V25, V26 and V27
+/// constrain this function, and reach the coarse planner through it.
+///
+/// `move_cost` must return `f32::INFINITY` for an impassable edge and a non-negative,
+/// finite cost otherwise. Dijkstra is only the dynamic-programming solution while every
+/// edge weight is non-negative; a negative one would make a settled cell reachable more
+/// cheaply later and the answer would be quietly wrong rather than obviously so.
+///
+/// # Panics
+/// If `risk`'s shape does not match `(w, h)`, or an endpoint is out of bounds.
+#[must_use]
+pub fn least_cost_path(
+    (w, h): (usize, usize),
+    move_cost: impl Fn((usize, usize), (usize, usize)) -> f32,
+    risk: &Array2<f32>,
+    start: (usize, usize),
+    goal: (usize, usize),
+    risk_weight: f32,
+) -> Option<Path> {
+    assert_eq!(risk.dim(), (h, w), "risk raster must match the grid shape");
     assert!(
         start.0 < w && start.1 < h && goal.0 < w && goal.1 < h,
         "endpoints in bounds"
     );
-    // Dijkstra is only the DP solution while every edge weight is non-negative; a negative
-    // risk would make a settled cell reachable more cheaply later and the answer would be
-    // silently wrong rather than obviously so. Stated the same way `allocation::hungarian`
-    // states its own non-negativity requirement.
     debug_assert!(
         risk_weight >= 0.0 && risk.iter().all(|r| *r >= 0.0),
         "risk and risk_weight must be non-negative: Dijkstra requires non-negative edges"
@@ -107,7 +137,7 @@ pub fn least_risk_path(
                 continue;
             }
             let to = (nx as usize, ny as usize);
-            let step = terrain.move_cost(cell, to);
+            let step = move_cost(cell, to);
             if !step.is_finite() {
                 continue;
             }
