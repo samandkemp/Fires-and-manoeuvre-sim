@@ -77,8 +77,19 @@ its own. Section numbers and phase numbers agree up to §12 and part company aft
   fixed-step LOS oracle, the greedy allocator — the reference is kept.
 - **Dials are data.** Every number is a TOML dial with a default; the spec states the
   functional form, not the value.
-- **Notation: display equations are LaTeX, inline symbols are Unicode.** A standalone
-  equation is written with the delimiters **on their own lines**:
+- **Notation: maths is LaTeX, backticks name code.** A symbol belongs in a LaTeX span —
+  `$…$` inline, `$$…$$` display — and backticks are reserved for things that name
+  something in the source tree: a file, a function, a TOML dial. So `move_cost` stays in
+  backticks beside the equation's $c_{\text{move}}$, and the two read as what they are.
+
+  [`docs/MATHS.md`](../MATHS.md) follows this throughout. **These design pages currently
+  use LaTeX for display equations but Unicode in prose** — about 180 spans that predate the
+  convention. Not wrong, just older; convert opportunistically when editing a section
+  rather than in one sweep. [`docs/HOW_IT_WORKS.md`](../HOW_IT_WORKS.md) deliberately stays
+  plain, because it states up front that it assumes no operational research and its worked
+  numbers read better in monospace.
+
+  A standalone equation is written with the delimiters **on their own lines**:
 
   ```
   $$
@@ -116,14 +127,17 @@ its own. Section numbers and phase numbers agree up to §12 and part company aft
     destroys the block before the renderer sees it.
 
   Keep to plain TeX and amsmath spelled in letters: `\frac`, `\sqrt`, `\sum`, `\prod`,
-  `\text`, `\mathrm`, `\mathbb`, `\lVert`, `\rVert`, `\quad`. Put dial names in a prose
-  gloss rather than `\texttt{with\_escaped\_underscores}`.
+  `\text`, `\mathrm`, `\mathbb`, `\lVert`, `\rVert`, `\lbrace`, `\rbrace`, `\quad`. Put
+  dial names in a prose gloss rather than `\texttt{with\_escaped\_underscores}`.
 
-  Inline symbols in prose stay as
-  literal `λ`, `σ`, `τ`, because that keeps the prose greppable and matching the ~700
-  Unicode maths characters in the Rust doc comments, which rustdoc cannot typeset. Dial
-  names keep their TOML spelling in a gloss line under the equation, so the symbols never
-  lose their mapping back to the schema.
+  **All of this applies to inline `$…$` too** — it is the same extraction path, so `\{`
+  and `\,` are eaten there just as readily.
+
+  **Rust doc comments are the exception, and always will be.** The ~700 Unicode maths
+  characters in `sim_core`'s `///` comments stay exactly as they are: rustdoc typesets no
+  LaTeX, so `λ` there is the best available rendering. That is why the code and the docs
+  will never share one notation, and why a symbol in a doc should carry a gloss naming the
+  dial it corresponds to — the gloss, not the glyph, is what ties the two together.
 
 See [`docs/VALIDATION.md`](../VALIDATION.md) for the gate table as a whole, and what each
 gate is checked *against*.
