@@ -302,6 +302,9 @@ interactions, and a sweep will mislead.
 
 ### A worked result
 
+> The model side is [§9.5](design/09-air-and-counter-air.md), the cueing timeline. As above,
+> both carry the numbers.
+
 `studies/sensing.toml` asks what decides whether a drone raid gets through — 32,720 trials
 over four dials:
 
@@ -437,6 +440,10 @@ see whether you are paying for time in which nothing happens.
 ---
 
 ## Worked example: is the overkill cap earning its keep?
+
+> The model side of this — *why* the dial exists and what it says about guns versus missiles
+> — is [§11.2](design/11-command-and-control.md). This page is about the method. Both carry
+> the numbers, so re-measuring means updating both.
 
 `max_batteries_per_air_target` caps how many air-defence batteries may be assigned to one
 airframe. It defaults to 2, on the reasoning that a second battery is insurance against the

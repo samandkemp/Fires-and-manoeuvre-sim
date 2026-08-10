@@ -157,6 +157,10 @@ plays against.
 
 ### 9.5 The cueing timeline
 
+> Which of this section's dials actually decides raid leakage was measured by global
+> sensitivity analysis, not argued: see the worked result in
+> [EXPERIMENTS.md](../EXPERIMENTS.md#a-worked-result). Cruise speed dominates cue latency.
+
 A battery acts on whichever route to the track reaches it first — its own radar, or the
 network:
 

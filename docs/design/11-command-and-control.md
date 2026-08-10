@@ -73,6 +73,11 @@ There is a real quantity to be wasted, which is what a cap is for.
 **Measured (1,000 paired trials on `ad_c2`).** That reasoning was still a claim, so it was
 swept. Against a cap of 1:
 
+> The same study is written up as a *worked example* in
+> [EXPERIMENTS.md](../EXPERIMENTS.md#worked-example-is-the-overkill-cap-earning-its-keep),
+> where the point is how to design and read it rather than what it says about the model.
+> **Both carry the numbers, so re-measuring means updating both.**
+
 | cap | drones downed | rounds left |
 |---|---|---|
 | 2 | +0.013 ± 0.011 (t = 1.2) — **not significant** | −0.233 ± 0.064 (t = −3.6) |
