@@ -93,6 +93,7 @@ to shoot first, so directive control can be measured against optimal control.
 | [docs/OPERATIONS.md](docs/OPERATIONS.md) | Every command: build, run, playback controls, tests, experiments, benches |
 | [docs/SCENARIOS.md](docs/SCENARIOS.md) | Adding a unit / weapon / sensor / drone / battery, and building a scenario |
 | [docs/EXPERIMENTS.md](docs/EXPERIMENTS.md) | Designing a study: batch runs, sweeps, paired statistics, reading the output |
+| [docs/ROADMAP.md](docs/ROADMAP.md) | What comes next, in what order, and the decisions already taken |
 | [SETUP.md](SETUP.md) | Environment setup, written for a Rust beginner |
 
 ## Layout
