@@ -108,7 +108,7 @@ nothing else to engage contributed nothing at all. Gate V68 holds the replacemen
 assigned to it — which is the only thing available before the problem is solved. The bias
 has a direction: a distant shooter that will never be chosen drags `q̄` down, which
 under-discounts the later slots and so mildly *encourages* piling on. Exact when the
-shooters are alike, as above; worth re-checking with `allocation_gap` on a scenario with
+shooters are alike, as above; worth re-checking with a `sim.allocation` sweep on a scenario with
 deliberately heterogeneous shooters.
 
 Solved by Hungarian (Kuhn–Munkres) over shooters × slots, with greedy and `independent`
@@ -125,7 +125,7 @@ scored identically.
 
 #### Measured: coordination pays, optimality does not *(2026-08-04)*
 
-`experiments/allocation_gap` runs each scenario under all three rules on the same seeds,
+`sweep --param sim.allocation --values optimal,greedy,independent` runs all three rules on the same seeds,
 and compares **paired** — the per-seed difference cancels the map and the dice, leaving
 only the effect of the rule. On `scenarios/fire_allocation.toml` (four shooters that can
 all reach all four targets), 500 seeds:
@@ -154,7 +154,7 @@ currently earning its extra complexity.
 > from comparing two unpaired means (30 and 200 seeds) whose difference sat inside the
 > sampling error, with no standard error reported to make that visible. A paired test over
 > 500 seeds gives a mean difference of −0.12 s with SE 0.22 (t = −0.55): no effect.
-> `allocation_gap` now reports a standard error on every figure and pairs every
+> the harness reports a standard error on every figure and pairs every
 > comparison, because a bare mean is precisely what invited the wrong conclusion.
 
 On the other shipped scenarios the difference is exactly zero on every seed: with one or

@@ -217,17 +217,16 @@ conclusions survive the numbers being wrong?**
 
 ### The bespoke probes
 
-Each answers one question and prints a table. They pre-date the general harness and are
-kept because each one *demonstrates* a model rather than measuring a dial.
+Each answers one question and prints a table. Kept because each does something `sweep` and
+`factorial` cannot — search over positions, solve a game, or print a closed form beside the
+measurement. Three others were deleted once the harness subsumed them; see
+[EXPERIMENTS.md](EXPERIMENTS.md#the-bespoke-binaries).
 
 ```
-cargo run -p experiments --bin pd_sweep            # detection model vs its closed form
-cargo run -p experiments --bin duel_probe          # a direct-fire duel
+cargo run -p experiments --bin duel_probe          # a direct-fire duel, pair by pair
 cargo run -p experiments --bin sensor_siting       # what a sensor position is worth
-cargo run -p experiments --bin risk_path           # least-risk pathing vs the shortest route
 cargo run -p experiments --bin interdiction        # fires against a moving force
-cargo run -p experiments --release --bin air_raid          # a drone raid vs air defence
-cargo run -p experiments --release --bin allocation_gap    # coordinated vs uncoordinated fire
+cargo run -p experiments --release --bin air_raid  # a drone raid vs air defence
 ```
 
 ### Benchmarks

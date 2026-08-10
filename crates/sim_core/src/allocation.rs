@@ -21,7 +21,7 @@
 //! [`hungarian`] is optimal. [`greedy`] is the obvious "repeatedly take the best
 //! remaining cell" heuristic. Greedy is not dead code: it is the baseline that turns
 //! "the optimal solver is worth having" from an assumption into a measured number, which
-//! `experiments/allocation_gap` reports.
+//! a `sweep --param sim.allocation` reports.
 
 /// A payoff below this counts as ineligible — the pairing is not allowed at all.
 ///

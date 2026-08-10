@@ -481,7 +481,7 @@ Four are worth knowing as **switches back to older behaviour**, which is how one
 isolated from another:
 
 - `allocation = "independent"` restores the pre-Phase-10 rule where every shooter picked
-  the nearest enemy for itself. Comparing it against `optimal` is what `allocation_gap`
+  the nearest enemy for itself. Comparing it against `optimal` is what a `sweep --param sim.allocation`
   measures — and the answer is that coordinating is worth about 15% off the time to clear
   the enemy, while *optimality* over greedy is worth nothing measurable.
 - `track_hold_s` set towards the run length recovers permanent detection — useful when you

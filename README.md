@@ -84,27 +84,50 @@ to shoot first, so directive control can be measured against optimal control.
 
 ## Documentation
 
-| Doc | Read it for |
-|---|---|
-| **[docs/HOW_IT_WORKS.md](docs/HOW_IT_WORKS.md)** | **Start here.** The model in plain terms: the modules, one tick, how detection and engagement actually work, with worked numbers |
-| [docs/MATHS.md](docs/MATHS.md) | The six OR strands stated properly, and the argument for each |
-| [docs/design/](docs/design/) | The specification: equations, state machines and invariants, one page per section |
-| [docs/VALIDATION.md](docs/VALIDATION.md) | The V1–V74 gates, what each is checked *against*, and how to add one |
-| [docs/OPERATIONS.md](docs/OPERATIONS.md) | Every command: build, run, playback controls, tests, experiments, benches |
-| [docs/SCENARIOS.md](docs/SCENARIOS.md) | Adding a unit / weapon / sensor / drone / battery, and building a scenario |
-| [docs/EXPERIMENTS.md](docs/EXPERIMENTS.md) | Designing a study: batch runs, sweeps, paired statistics, reading the output |
-| [docs/ROADMAP.md](docs/ROADMAP.md) | What comes next, in what order, and the decisions already taken |
-| [SETUP.md](SETUP.md) | Environment setup, written for a Rust beginner |
+There is a lot of it. **You almost certainly do not need to read most of it** — pick the
+path that matches why you are here, and treat the rest as reference to consult when a
+question actually arises.
+
+**To understand the model** — [docs/HOW_IT_WORKS.md](docs/HOW_IT_WORKS.md) is the one to
+read, and for many people the only one. The modules, one tick end to end, and how detection
+and engagement actually work, with worked numbers. From there,
+[docs/MATHS.md](docs/MATHS.md) states the six OR strands properly, and
+[docs/design/](docs/design/) holds the equations and invariants one page per section.
+
+**To run it** — [SETUP.md](SETUP.md) for the environment, then
+[docs/OPERATIONS.md](docs/OPERATIONS.md) for every command and the app's controls. If you
+want to *measure* something rather than watch it, [docs/EXPERIMENTS.md](docs/EXPERIMENTS.md)
+covers study design, and [docs/SCENARIOS.md](docs/SCENARIOS.md) covers writing a scenario or
+adding a unit type.
+
+**To check whether it is right** — [docs/VALIDATION.md](docs/VALIDATION.md) lists every gate
+and what it is checked *against*. [docs/ROADMAP.md](docs/ROADMAP.md) says what is deliberately
+not built yet.
+
+### Two numbering schemes, and what they mean
+
+The prose leans on both, so they are worth thirty seconds up front:
+
+- **§N.M** — a section of the design spec, e.g. §10.2 is fire allocation. The map from § to
+  page is [docs/design/README.md](docs/design/README.md), and the numbers are referenced from
+  ~300 places in the source, which is why they are never renumbered.
+- **V1–V74** — a *validation gate*: one property checked against a closed form or a
+  documented invariant. V25 is "zero risk weight gives the shortest path". Run
+  `cargo run -p validation --release --bin validation_report` to print all of them with the
+  reference each is checked against.
+
+Neither is a hierarchy you need to learn. They are just stable names, so that a claim made
+in one place can be checked in another.
 
 ## Layout
 
 ```
 crates/sim_core/     the OR engine — pure Rust, no Bevy. Where all the maths lives
 crates/app/          Bevy front-end: tactical map, pan/zoom, egui control panel
-crates/experiments/  headless batch runs: sweeps, Monte Carlo, equilibria
+crates/experiments/  headless studies: batch, sweep, factorial, sensitivity
 crates/validation/   the V1–V74 gates, checked through the public API only
 scenarios/           TOML scenarios and the unit/weapon/sensor stat blocks
-docs/                see the table above
+docs/                the spec, the gates, and how to run things
 ```
 
 The dependency arrows only point one way. **`sim_core` never depends on `app` or on Bevy** —

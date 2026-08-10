@@ -101,7 +101,7 @@ pub struct SimConfig {
     /// pre-Phase-10 rule where every shooter chose for itself.
     ///
     /// A dial rather than a constant so the cost of *not* coordinating is measurable on
-    /// any scenario; `experiments/allocation_gap` sweeps all three.
+    /// any scenario; `sweep --param sim.allocation` compares all three, paired.
     #[serde(default)]
     pub allocation: AllocationChoice,
     /// Most **air-defence batteries** that may be assigned to one airframe

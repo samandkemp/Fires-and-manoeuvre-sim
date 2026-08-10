@@ -2,7 +2,7 @@
 #
 # The shipped scenarios never present a contested targeting choice — one or two shooters
 # that can each reach one enemy is a decision with only one answer, so optimal, greedy and
-# the old nearest-enemy rule all agree. `allocation_gap` measured 0.0% between them.
+# the old nearest-enemy rule all agree. A paired sweep measured 0.0% between them.
 #
 # This is the case where they differ: **four shooters that can all reach all four
 # targets**. Under the old rule every gun engages whichever target is nearest, so three

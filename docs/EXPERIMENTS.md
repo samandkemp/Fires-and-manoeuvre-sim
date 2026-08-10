@@ -537,22 +537,22 @@ Both arms ran seeds `0..1000`, so they are paired by construction. That is the p
 
 ## The bespoke binaries
 
-Older, single-purpose experiments, each answering one question its own way. Several predate
-the shared harness and would be shorter written against it now.
+Four single-purpose experiments that do something the general tools cannot, plus the
+benches. Each answers one question its own way and prints a table.
 
-| Binary | Question |
-|---|---|
-| `pd_sweep` | probability of detection against range |
-| `duel_probe` | mutual-detection duel: who sees whom first |
-| `sensor_siting` | where to put a sensor, by coverage |
-| `risk_path` | least-risk path under a threat field |
-| `interdiction` | the §6.3 sensing-vs-routing game equilibrium |
-| `air_raid` | counter-air: cue latency vs leakers |
-| `allocation_gap` | the §10.2 allocation solvers, paired |
-| `bench`, `fires_bench` | tick, LOS, viewshed and fires cost |
+| Binary | Question | Why not a sweep |
+|---|---|---|
+| `duel_probe` | mutual-detection duel: who sees whom first | a diagnostic — prints per-pair geometry, not a metric |
+| `sensor_siting` | where to put a sensor, by coverage | searches over *positions*, which is not a dial |
+| `interdiction` | the §6.3 sensing-vs-routing game equilibrium | solves a game; there is no arm to compare |
+| `air_raid` | counter-air: cue latency vs leakers | reports a closed form beside the measurement |
+| `bench`, `fires_bench` | tick, LOS, viewshed and fires cost | performance, not behaviour |
 
-`sweep fire_allocation --param sim.allocation` now reproduces `allocation_gap`'s headline
-independently, which is a useful cross-check on both.
+**Three were deleted once the harness subsumed them** — `pd_sweep` (the sensing gates check
+the same closed form, and `validation_report` prints it), `allocation_gap` (`sweep --param
+sim.allocation --values optimal,greedy,independent` is the same comparison, paired, with
+standard errors) and `risk_path` (§10.5 put least-risk pathing *in the loop*, and V73 gates
+it). A demo that the engine has since absorbed is a maintenance cost, not a feature.
 
 ## What this harness cannot do yet
 
