@@ -77,67 +77,13 @@ its own. Section numbers and phase numbers agree up to §12 and part company aft
   fixed-step LOS oracle, the greedy allocator — the reference is kept.
 - **Dials are data.** Every number is a TOML dial with a default; the spec states the
   functional form, not the value.
-- **Notation: maths is LaTeX, backticks name code.** A symbol belongs in a LaTeX span —
-  `$…$` inline, `$$…$$` display — and backticks are reserved for things that name
-  something in the source tree: a file, a function, a TOML dial. So `move_cost` stays in
-  backticks beside the equation's $c_{\text{move}}$, and the two read as what they are.
-
-  [`docs/MATHS.md`](../MATHS.md) follows this throughout. **These design pages currently
-  use LaTeX for display equations but Unicode in prose** — about 180 spans that predate the
-  convention. Not wrong, just older; convert opportunistically when editing a section
-  rather than in one sweep. [`docs/HOW_IT_WORKS.md`](../HOW_IT_WORKS.md) deliberately stays
-  plain, because it states up front that it assumes no operational research and its worked
-  numbers read better in monospace.
-
-  A standalone equation is written with the delimiters **on their own lines**:
-
-  ```
-  $$
-  E = mc^2
-  $$
-  ```
-
-  The line breaks are load-bearing, not style. GitHub reads `$$` with content beside it as
-  *inline* math, and inline math cannot span lines — so a multi-line equation written
-  `$$\begin{aligned}…` renders as raw LaTeX source on github.com while looking fine in the
-  VSCode preview. Delimiters on their own lines is GitHub's documented block form and
-  displays correctly in both.
-
-  **Only letter-spelled macros survive.** This is the rule that matters, and it explains
-  the rest. GitHub applies CommonMark backslash escaping to the block's contents *before*
-  extracting the maths, so a backslash followed by ASCII punctuation is eaten: `\,` arrives
-  as a comma, `\!` as an exclamation mark, `\;` as a semicolon, and `\\` as a single
-  backslash — which stops separating rows, so an `aligned` block collapses onto one line
-  with a literal `\[2pt]` in the middle of it. `\<letters>` is untouched, which is why
-  `\frac` and `\lambda` were never affected.
-
-  So: **no spacing macros** (use `\quad` and `\qquad`, which are letters), **no `\\`**, and
-  therefore **no multi-row `aligned` or `cases`** — write each row as its own block. None of
-  the equations here needed alignment; each was a pair of independent statements.
-
-  Two more, both of which shipped broken:
-
-  - **`\operatorname` is rejected by GitHub's macro allowlist** ("the following macros are
-    not allowed"). Use `\mathrm{erf}`. The same applies to anything that can define or
-    expand — `\def`, `\newcommand`, `\require`.
-  - **Never write `](` inside an equation.** Markdown link syntax is consumed before the
-    maths is extracted, so `\mathbb{E}[D](d)` became a link and the whole block rendered as
-    source. Written `\mathbb{E}[D(d)]` it is both safe and better notation. Underscores and
-    asterisks inside a block that parses are fine — it is only the link pattern that
-    destroys the block before the renderer sees it.
-
-  Keep to plain TeX and amsmath spelled in letters: `\frac`, `\sqrt`, `\sum`, `\prod`,
-  `\text`, `\mathrm`, `\mathbb`, `\lVert`, `\rVert`, `\lbrace`, `\rbrace`, `\quad`. Put
-  dial names in a prose gloss rather than `\texttt{with\_escaped\_underscores}`.
-
-  **All of this applies to inline `$…$` too** — it is the same extraction path, so `\{`
-  and `\,` are eaten there just as readily.
-
-  **Rust doc comments are the exception, and always will be.** The ~700 Unicode maths
-  characters in `sim_core`'s `///` comments stay exactly as they are: rustdoc typesets no
-  LaTeX, so `λ` there is the best available rendering. That is why the code and the docs
-  will never share one notation, and why a symbol in a doc should carry a gloss naming the
-  dial it corresponds to — the gloss, not the glyph, is what ties the two together.
+- **Notation.** Maths is LaTeX — `$…$` inline, `$$…$$` display — and backticks are kept
+  for things that name something in the source tree: a file, a function, a TOML dial. So
+  `move_cost` sits in backticks beside the equation's $c_{\text{move}}$. A symbol should
+  carry a gloss naming the dial it corresponds to, since that is what ties a page to the
+  schema. [`docs/MATHS.md`](../MATHS.md) follows this throughout; these design pages still
+  use Unicode in prose in places, which is worth converting when a section is edited
+  anyway. Rust doc comments stay Unicode — rustdoc typesets no LaTeX.
 
 See [`docs/VALIDATION.md`](../VALIDATION.md) for the gate table as a whole, and what each
 gate is checked *against*.

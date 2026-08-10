@@ -124,7 +124,7 @@ $$
 
 for any subdivision of the interval, so halving $dt$ cannot change the detection
 statistics. A per-tick probability would silently make the physics a function of the
-integrator — a class of bug that is very hard to see and very easy to ship. V17 checks
+integrator — a class of bug that is very hard to see and very easy to publish. V17 checks
 the identity to float tolerance.
 
 ### Fires: two Gaussians, two closed forms
