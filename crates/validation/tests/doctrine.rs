@@ -551,7 +551,6 @@ fn v66_a_lock_is_held_until_the_target_is_finished() {
         [sim]
         dt_s = 1.0
         epoch_s = 10.0
-        max_shooters_per_target = 1
         [terrain]
         cell_size_m = 10.0
         width_cells = 400
@@ -636,19 +635,23 @@ fn v66_a_lock_is_lost_when_the_target_becomes_unengageable() {
     );
 }
 
-// A lock still occupies a slot. Without that, `max_shooters_per_target` would apply only to
-// shooters that happened to be re-deciding, and a target could accumulate any number of
-// locked guns â€” the cap V56 exists to enforce, quietly bypassed.
+// A lock still counts against its target's **discount**. Without that the geometric term
+// would restart for every shooter that happened to be re-deciding, and a target already
+// covered by a locked gun would look as attractive to the next gun as an untouched one.
+//
+// This replaces an assertion about `max_shooters_per_target`, which no longer exists: it
+// was a hard cap that idled shooters rather than discouraging them (§11.4, V68). The
+// property worth keeping is not "at most N on a target" but "having one already makes the
+// next one prefer somewhere else", which is what the discount is for.
 #[test]
-fn v66_a_lock_counts_against_the_overkill_cap() {
+fn v66_a_lock_shifts_the_discount_so_fire_still_spreads() {
     let scn = Scenario::from_toml_str(&format!(
         r#"
-        name = "doctrine-cap"
+        name = "doctrine-spread"
         default_seed = 6
         [sim]
         dt_s = 1.0
         epoch_s = 10.0
-        max_shooters_per_target = 1
         [terrain]
         cell_size_m = 10.0
         width_cells = 400
@@ -680,15 +683,22 @@ fn v66_a_lock_counts_against_the_overkill_cap() {
     .unwrap();
     let mut sim = Sim::new(&scn, &lock_libraries(), 6).unwrap();
 
+    // The first epoch in which both guns hold a lock is the one that decides it. Deliberately
+    // not also requiring both targets to be alive *afterwards*: a lock is issued against a
+    // live target and the fire then resolves, so the smaller target is routinely dead by the
+    // time the epoch is inspected. Its death is the consequence being tested, not a
+    // disqualification. Release-on-death is V66's own separate test.
     for _ in 0..8 {
         sim.run_until(sim.time_s() + 10.0);
-        for t in [FireTarget::Unit(2), FireTarget::Unit(3)] {
-            let on_it = sim.units().iter().filter(|u| u.engaging == Some(t)).count();
-            assert!(
-                on_it <= 1,
-                "cap is 1, but {on_it} shooters are locked onto {t:?} at t = {}",
-                sim.time_s()
+        let locks: Vec<_> = sim.units()[..2].iter().filter_map(|u| u.engaging).collect();
+        if locks.len() == 2 {
+            assert_ne!(
+                locks[0], locks[1],
+                "two guns with two live targets should hold one each, not stack on {:?}",
+                locks[0]
             );
+            return;
         }
     }
+    panic!("no epoch had both guns holding a lock");
 }

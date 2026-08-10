@@ -439,14 +439,6 @@ impl Panel<'_, '_, '_> {
                     self.sim.sim.set_allocation(allocation);
                 }
 
-                let mut cap = self.sim.sim.max_shooters_per_target();
-                if ui
-                    .add(egui::Slider::new(&mut cap, 1..=8).text("max shooters/target"))
-                    .changed()
-                {
-                    self.sim.sim.set_max_shooters_per_target(cap);
-                }
-
                 let mut air_cap = self.sim.sim.max_batteries_per_air_target();
                 if ui
                     .add(egui::Slider::new(&mut air_cap, 1..=4).text("max batteries/airframe"))

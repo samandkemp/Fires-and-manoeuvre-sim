@@ -60,30 +60,36 @@ that arrives late cannot retrospectively undo the duplicated engagements already
 
 ### 11.2 The air-defence payoff
 
-The overkill cap is its own dial, `max_batteries_per_air_target` (default 2), rather than
-the ground one. They answer different questions: a ground target is a multi-element unit
-that genuinely absorbs several shooters, while an airframe is a single object, so a second
-battery is insurance against the first missing and a third is nearly always waste.
+`max_batteries_per_air_target` (default 2) is the only overkill cap left in the model. The
+ground side has none: §11.4 removed it because a hard cap *idles* shooters, and a
+multi-element ground unit genuinely absorbs several of them, so the $(1-\bar q)^k$ discount
+is the whole story there.
 
-**Measured (10,000 paired trials on `ad_c2`, 2026-08-06).** That reasoning was a claim, so
-it was swept. Against a cap of 1:
+An airframe is different, and that is why the dial survives. It is a **single object**, so a
+second battery is insurance against the first missing rather than extra damage delivered,
+and a missile is a discrete round out of a finite magazine rather than a continuous rate.
+There is a real quantity to be wasted, which is what a cap is for.
+
+**Measured (1,000 paired trials on `ad_c2`).** That reasoning was still a claim, so it was
+swept. Against a cap of 1:
 
 | cap | drones downed | rounds left |
 |---|---|---|
-| 2 | −0.002 ± 0.007 — **not significant** | −0.252 ± 0.040 (t = −6.3) |
-| 3 | −0.028 ± 0.008 (t = −3.7) | −0.642 ± 0.042 (t = −15.2) |
-| 4 | identical to 3 (the scenario has three batteries) | identical to 3 |
+| 2 | +0.013 ± 0.011 (t = 1.2) — **not significant** | −0.233 ± 0.064 (t = −3.6) |
+| 3 | −0.020 ± 0.012 (t = −1.6) — **not significant** | −0.584 ± 0.067 (t = −8.7) |
 
-So the second battery buys **nothing** and costs a quarter of a round — a genuine null at
-2,500 paired seeds, not an effect too small to see. The third is actively worse: it spends
-0.64 rounds *and* kills fewer drones, because a battery committed to an airframe another
-battery has already covered is not covering a different one. The default of 2 is therefore
-defensible but unearned on this scenario; whether it earns its keep when batteries are
-scarcer relative to the raid is the open question. Reproduce with:
+So on this scenario the second battery buys **nothing measurable** and costs about a
+quarter of a round; the third buys nothing and costs more than half a round. Neither is a
+disaster and neither is an argument for the default — it is defensible but unearned here.
+Whether a cap above 1 earns its keep when batteries are scarce relative to the raid is the
+open question, and it is a question this scenario cannot answer because it has three
+batteries and ten drones.
+
+Reproduce with:
 
 ```
-sweep ad_c2 --param sim.max_batteries_per_air_target --values 1,2,3,4 --seeds 2500 \
-      --metric ad_rounds_left
+sweep ad_c2 --param sim.max_batteries_per_air_target --values 1,2,3 --seeds 1000 \
+      --until 240 --metric ad_rounds_left
 ```
 
 Rows of the assignment are **free engagement channels**, not batteries — a two-channel
@@ -201,24 +207,30 @@ sweep <scn> --param sim.fires_need_c2 --values false,true --seeds 1000 --metric 
 - ~~**The post is not attritable yet.**~~ Lifted by §12: posts and batteries carry
   `element_count`, take §2.3 area damage, and `TargetSpec::Named` resolves across all three
   asset lists. V60.
-- **The overkill cap is scoped to a fire-control problem, not to a side.** With
-  `fires_need_c2` on, `max_shooters_per_target` is applied once to the netted shooters and
-  again to the loose ones, so splitting a side effectively doubles it. This follows
-  necessarily from the two-problem structure above — a loose gun cannot honour a count it
-  has no way of knowing — but the consequence surprises: when targets are scarce relative
-  to shooters, **being split up makes a side fight better**, because the coordinated side
-  idles shooters that the split side puts to work.
+- ~~**The overkill cap is scoped to a fire-control problem, not to a side.**~~ **Resolved by
+  removing the cap** (gate V68).
 
-  `scenarios/fires_c2.toml` measures it. Under a cap of 1, every gun brought into the net
-  costs about 17 s of clear time (500 paired seeds), monotone in the net's radius, and with
-  all guns netted the result returns exactly to the no-net baseline.
+  `max_shooters_per_target` was a *hard* cap: a target offered `min(elements, cap)` slots,
+  so once targets were scarcer than shooters the surplus shooters were assigned nothing and
+  fired nothing. Because it was applied once per fire-control problem, a side split by
+  `fires_need_c2` got two of them and could put more guns to work than a coordinated side
+  was allowed to — so **being split up made a side fight better**, measured on
+  `scenarios/fires_c2.toml` at −24.5 s of clear time (t = −10.0), monotone in the net's
+  radius.
 
-  The deeper question this exposes is whether a **hard cap** is the right instrument at all.
-  §10.2 already discounts the k-th shooter on a target by `(1 − q̄)^k`, so piling on is
-  priced; the cap on top of that truncates rather than discourages, and a shooter with
-  nothing else to engage does nothing instead of contributing at a discount. Overkill may be
-  better than silence. Unresolved, and deliberately not quietly changed — every existing
-  air-defence and allocation result is calibrated against the current behaviour.
+  §10.2 already prices piling on at $(1-\bar q)^k$. Truncating that as well said "rather
+  than overkill, do nothing", which is the wrong trade whenever there is nothing else to
+  shoot. The cap is gone; every target now offers a slot to every free shooter and the
+  discount decides what the marginal one is worth.
+
+  Re-measured after the change: the coordinated baseline improves from 103.40 s to
+  **66.80 s** — that gap is the fire the cap was throwing away — and the inversion is gone.
+  Coordination is now worth about **−2.2 s** (t = −2.1), in the direction it should be, and
+  netting a third gun adds nothing beyond the second.
+
+  The transferable lesson is not about C2: **a dial whose meaning depends on the scope it is
+  applied over will invert when that scope changes.** The cap was coherent while a side was
+  one problem and stopped being so the moment a side could be two.
 - **The link ignores terrain.** Jamming and latency now bear on it, but a ridge between the
   post and a battery does not. A terrain-aware comms model is the natural next refinement.
 - **A post cannot be handed off.** There is no notion of a deputy taking over, so killing

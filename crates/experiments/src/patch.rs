@@ -72,8 +72,8 @@ impl Override {
 
 /// Turn a command-line word into the TOML type it most obviously is.
 ///
-/// Integer **before** float, deliberately: `max_shooters_per_target` is a `u32` and would
-/// refuse a float, whereas every float dial in the schema accepts an integer (serde's
+/// Integer **before** float, deliberately: `max_batteries_per_air_target` is a `u32` and
+/// would refuse a float, whereas every float dial in the schema accepts an integer (serde's
 /// numeric visitors widen). So `2` must stay an integer and `2.0` must stay a float.
 ///
 /// Anything opening with `[` or `{` is parsed as a **TOML value expression**, so arrays and
@@ -287,7 +287,7 @@ elevation_m = 0.0
 
 [sim]
 track_hold_s = 45.0
-max_shooters_per_target = 3
+max_batteries_per_air_target = 2
 allocation = "optimal"
 
 [[red.air]]
@@ -308,9 +308,9 @@ heading_deg = 90.0
     /// The integer-before-float rule: a `u32` dial must not receive a TOML float.
     #[test]
     fn an_integer_dial_takes_an_integer() {
-        let ov = [Override::parse("sim.max_shooters_per_target=2").unwrap()];
+        let ov = [Override::parse("sim.max_batteries_per_air_target=3").unwrap()];
         let scn = scenario_with_overrides(SCN, &ov).expect("patches cleanly");
-        assert_eq!(scn.sim.max_shooters_per_target, 2);
+        assert_eq!(scn.sim.max_batteries_per_air_target, 3);
         // And a float dial still accepts a bare integer, which is the other half of it.
         let ov = [Override::parse("sim.track_hold_s=30").unwrap()];
         let scn = scenario_with_overrides(SCN, &ov).expect("integers widen to floats");

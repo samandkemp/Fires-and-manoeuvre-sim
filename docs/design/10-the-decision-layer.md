@@ -93,12 +93,16 @@ for every slot past the first, and the diminishing return becomes a cliff rather
 curve. Scenarios where one shooter can expect to destroy a whole target in one epoch are
 therefore the ones where the discount does least work.
 
-**Slots and the discount.** A target with `E` elements offers `min(E, cap)` slots, and
+**Slots and the discount.** Every target offers a slot to every free shooter, and
 slot `k` is discounted by `(1 − q̄)^k` for a representative `q̄`: the (k+1)-th shooter
 only helps if the `k` before it all failed. This is the standard weapon–target-assignment
 decomposition and is exact when the shooters on a target are alike. It turns diminishing
 returns into extra columns, keeping the problem a plain linear assignment rather than a
 submodular one.
+
+There is deliberately **no hard cap** on top. There was one, and §11.4 records why it went:
+truncating the discount idled shooters rather than discouraging them, and a shooter with
+nothing else to engage contributed nothing at all. Gate V68 holds the replacement.
 
 `q̄` is averaged over the shooters that *could* engage the target, not over those actually
 assigned to it — which is the only thing available before the problem is solved. The bias
@@ -228,7 +232,7 @@ on by itself.
 |---|----------|-----------|
 | V54 | removal preserves history | removal tombstones rather than shifting: every index already in an event log still resolves to the same asset |
 | V55 | track lifecycle & EW | a track lapses `track_hold_s` after its last observation and is cleared; continuous observation refreshes it indefinitely; jamming drives `λ_eff` below the maintenance threshold and so *breaks* a track, which permanent detection made impossible |
-| V56 | allocation optimality | Hungarian matches an exhaustive brute-force optimum for n ≤ 7; its total payoff is never below greedy's; no target draws more shooters than it has slots; an ineligible pairing is never chosen |
+| V56 | allocation optimality | Hungarian matches an exhaustive brute-force optimum for n ≤ 7; its total payoff is never below greedy's; no shooter is committed to two targets in one epoch; an ineligible pairing is never chosen |
 | V57 | tasking beats staring | against an enemy hidden outside its initial arc, a belief-tasked sensor detects where a fixed stare never does, with a shorter mean time-to-detect; belief stays a normalised non-negative distribution with finite entropy across many updates (extends V42); tasking draws no randomness |
 | V58 | decision-layer identity | with one shooter and one reachable target, every allocation rule and both tasking settings produce the identical detection and fire logs — the decision phases draw zero randomness, so the stream cannot shift |
 | V61 | carried sensors inform belief | a recce drone that overflies ground and finds nothing drains its side's belief out of that ground, against a control with no drone; belief stays normalised; an emplaced-only scenario is unchanged (only carried poses are quantised); the cleared ground moves with the drone, so the raster is genuinely refreshed |

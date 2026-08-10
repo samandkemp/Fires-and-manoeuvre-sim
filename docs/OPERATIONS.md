@@ -104,7 +104,7 @@ capture time is reproducible rather than dependent on how fast the machine drew.
 
 ```
 cargo test --workspace                 # all of it
-cargo test -p validation               # the V1-V67 gates
+cargo test -p validation               # the V1-V68 gates
 cargo test -p sim_core                 # engine unit tests (fast, headless)
 cargo test -p experiments              # harness: parallel-equals-serial, patching, statistics
 cargo test -p app                      # selection and picking

@@ -40,18 +40,6 @@ impl Sim {
         self.sensor_tasking = on;
     }
 
-    /// Most shooters that may be assigned to one target in an epoch.
-    #[must_use]
-    pub fn max_shooters_per_target(&self) -> u32 {
-        self.max_shooters_per_target
-    }
-
-    /// Set the overkill cap. Clamped to at least 1 — a cap of zero would silence the
-    /// whole side rather than doing anything interesting.
-    pub fn set_max_shooters_per_target(&mut self, cap: u32) {
-        self.max_shooters_per_target = cap.max(1);
-    }
-
     /// Most air-defence batteries that may be assigned to one airframe
     /// (`docs/DESIGN.md` §11.2).
     #[must_use]

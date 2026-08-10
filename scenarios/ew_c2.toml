@@ -56,8 +56,6 @@ default_seed = 23
 dt_s = 1.0
 epoch_s = 10.0
 allocation = "optimal"
-max_shooters_per_target = 3
-
 [terrain]
 cell_size_m = 10.0
 width_cells = 700

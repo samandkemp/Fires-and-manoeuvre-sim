@@ -1,7 +1,7 @@
 # Validation
 
 Every model in this project ships with a **gate**: a test that checks it against a
-closed-form result or a stated invariant. There are 67 of them, V1–V67, and they are the
+closed-form result or a stated invariant. There are 68 of them, V1–V68, and they are the
 backbone of the whole thing.
 
 ## Why a gate is not a regression test
@@ -170,6 +170,7 @@ not of any one function. Nothing was written to produce it.
 | V59 | C2-coordinated air defence | A post makes batteries cover one drone each where nearest-first sends them all at one; a dead post costs no battery, only the coordination; and a post coordinates its **own side only** — with both sides coordinated each still follows its own doctrine and chooses as it would with the enemy's post removed |
 | V62 | The link degrades, not only dies | An enemy jammer scales the post's radius, decohering the defence with nothing destroyed; a zero-power jammer is an exact **identity** |
 | V63 | Fires can be made to need C2 | With `fires_need_c2` on, guns under a post coordinate and guns outside do not; with it off, the fire log is bit-identical |
+| V68 | The overkill **discount** replaces the overkill cap | Three guns and one target: all three engage, where the old hard cap `max_shooters_per_target` assigned the surplus nothing and they fired nothing at all. With a target each they still take one each, so the geometric discount delivers the spread the cap was credited with |
 
 ### SEAD — [§12](design/12-sead.md)
 

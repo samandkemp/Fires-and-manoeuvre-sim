@@ -77,7 +77,6 @@ impl Sim {
             track_hold_s: cfg.track_hold_s,
             track_maintain_p: cfg.track_maintain_p,
             allocation: cfg.allocation,
-            max_shooters_per_target: cfg.max_shooters_per_target,
             max_batteries_per_air_target: cfg.max_batteries_per_air_target,
             fires_need_c2: cfg.fires_need_c2,
             doctrine: [Doctrine::default(), Doctrine::default()],

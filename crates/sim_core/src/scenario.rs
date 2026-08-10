@@ -104,11 +104,6 @@ pub struct SimConfig {
     /// any scenario; `experiments/allocation_gap` sweeps all three.
     #[serde(default)]
     pub allocation: AllocationChoice,
-    /// Most **ground shooters** that may be assigned to one target in an epoch. Caps
-    /// overkill: a target still offers at most one slot per remaining element, whichever
-    /// is smaller.
-    #[serde(default = "default_max_shooters_per_target")]
-    pub max_shooters_per_target: u32,
     /// Most **air-defence batteries** that may be assigned to one airframe
     /// (`docs/DESIGN.md` §11.2).
     ///
@@ -210,10 +205,6 @@ fn default_track_maintain_p() -> f32 {
     0.5
 }
 
-fn default_max_shooters_per_target() -> u32 {
-    3
-}
-
 fn default_max_batteries_per_air_target() -> u32 {
     2
 }
@@ -238,7 +229,6 @@ impl Default for SimConfig {
             track_hold_s: default_track_hold(),
             track_maintain_p: default_track_maintain_p(),
             allocation: AllocationChoice::default(),
-            max_shooters_per_target: default_max_shooters_per_target(),
             max_batteries_per_air_target: default_max_batteries_per_air_target(),
             fires_need_c2: false,
             sensor_tasking: default_sensor_tasking(),

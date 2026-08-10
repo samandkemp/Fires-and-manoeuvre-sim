@@ -458,10 +458,10 @@ impl Sim {
     /// How many shooters are already committed to each engageable target, parallel to
     /// [`Sim::engageable_targets`].
     ///
-    /// A lock is a shooter on a target just as much as a fresh assignment is, so it has to
-    /// consume a slot. Without this a battery holding three locks would keep drawing new
-    /// shooters however low `max_shooters_per_target` was set — the cap would apply only to
-    /// the shooters that happened to be re-deciding.
+    /// A lock is a shooter on a target just as much as a fresh assignment is, so it counts
+    /// against that target's discount. Without this the sequence would restart for every
+    /// shooter that happened to be re-deciding, and a target already covered by three
+    /// locked guns would look as attractive to a fourth as an untouched one.
     fn slots_taken(&self, side: Side, assigned: &[(usize, FireTarget)]) -> Vec<u32> {
         let targets = self.engageable_targets(side);
         targets
@@ -631,18 +631,30 @@ impl Sim {
             .collect();
 
         let value_scale = self.threat_scale();
-        // Slots: one per remaining element, capped. Slot k of a target is worth less than
-        // slot k-1 — see `slot_weight`.
+        // Every target offers a slot to every free shooter, and slot k is worth less than
+        // slot k-1 (see `slot_weight`). There is deliberately **no hard cap**.
+        //
+        // There used to be one, `max_shooters_per_target`, and it was a hard cap that
+        // *idled* shooters: a target offered `min(elements, cap)` slots, so once targets
+        // were scarcer than shooters — which for indirect fire is most of the opening,
+        // since a target must be tracked before it can be shot at — the surplus shooters
+        // were assigned nothing and fired nothing. Measured on `fires_c2.toml`, that made
+        // a side which had been *split in two* by `fires_need_c2` fight better than a
+        // coordinated one, because the cap was applied once per fire-control problem and a
+        // split side therefore got it twice (§11.4).
+        //
+        // The geometric discount below already prices piling on. Truncating it as well
+        // said "rather than overkill, do nothing", which is the wrong trade whenever there
+        // is nothing else to shoot. Offering one slot per free shooter means the marginal
+        // shooter always has somewhere to go, at a value the discount has already decided
+        // is small.
         let mut slot_target = Vec::new();
         let mut slot_weight = Vec::new();
         for (t_pos, &t) in targets.iter().enumerate() {
-            let elements = self.target_state(t).elements;
-            // Slots already held by locked or ordered shooters are gone (`slots_taken`),
-            // so a target that is fully committed offers none and draws no more fire.
-            let count = elements
-                .min(self.max_shooters_per_target)
-                .max(1)
-                .saturating_sub(taken[t_pos]);
+            // Slots held by locked or ordered shooters are not offered again
+            // (`slots_taken`); they only shift where this target's discount sequence
+            // starts, so the (k+1)-th shooter is discounted for the k already committed.
+            let count = shooters.len() as u32;
             // A representative kill probability for this target, over the shooters that
             // can actually engage it. Exact when they are identical, which is the case
             // the geometric discount below is derived for.

@@ -59,8 +59,6 @@ dt_s = 1.0
 epoch_s = 10.0
 # One shooter per target. With a single gun pair this is what forces a choice rather than
 # a spread.
-max_shooters_per_target = 1
-
 [terrain]
 cell_size_m = 10.0
 width_cells = 700

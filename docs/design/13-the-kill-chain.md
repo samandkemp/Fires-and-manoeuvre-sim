@@ -131,9 +131,10 @@ would recognise. Switching targets is itself a decision with a cost, so it takes
 changing on the ground, not a rounding difference. The one thing that *does* break a lock is
 a new order, which is the point of an order.
 
-A held lock still **consumes a slot** on its target. Otherwise `max_shooters_per_target`
-would apply only to the shooters that happened to be re-deciding, and a target could
-accumulate any number of locked guns — the overkill cap of §10.2 quietly bypassed.
+A held lock still counts against its target's **discount**. Otherwise the $(1-\bar q)^k$
+sequence would restart for every shooter that happened to be re-deciding, and a target
+already covered by three locked guns would look as attractive to a fourth as an untouched
+one.
 
 ### 13.5 Deliberate limitations (v1)
 

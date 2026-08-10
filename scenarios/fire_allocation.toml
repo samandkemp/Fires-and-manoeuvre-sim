@@ -22,8 +22,6 @@ dt_s = 1.0
 epoch_s = 10.0
 # Try "independent" to recover the pre-Phase-10 behaviour, or "greedy" for the heuristic.
 allocation = "optimal"
-max_shooters_per_target = 3
-
 [terrain]
 cell_size_m = 10.0
 width_cells = 220

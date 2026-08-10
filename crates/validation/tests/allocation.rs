@@ -114,7 +114,6 @@ fn two_on_two(allocation: AllocationChoice) -> Sim {
         dt_s = 1.0
         epoch_s = 10.0
         allocation = "{}"
-        max_shooters_per_target = 3
         [terrain]
         cell_size_m = 10.0
         width_cells = 200
@@ -233,30 +232,34 @@ fn v56_allocation_spreads_fire_across_targets() {
     );
 }
 
-// V56 (overkill half): no target may draw more shooters than the dials allow — at most
-// one per remaining element, and never more than `max_shooters_per_target`.
+// V56 (feasibility half): an assignment is an assignment — no shooter may be committed to
+// two targets in the same epoch, however the slots are priced.
+//
+// This used to assert a hard cap of `min(elements, max_shooters_per_target)` shooters per
+// target. That cap is gone (§11.4): it idled shooters rather than discouraging overkill,
+// and V68 now pins the property it was getting wrong. What survives is feasibility, which
+// is a statement about the solver rather than about the dials.
 #[test]
-fn v56_no_target_draws_more_shooters_than_it_has_slots() {
+fn v56_no_shooter_engages_two_targets_in_one_epoch() {
     let mut sim = two_on_two(AllocationChoice::Optimal);
-    let cap = 3usize;
     for _ in 0..12 {
         let before = sim.fire_events().len();
         sim.run_until(sim.time_s() + 10.0);
-        // Shooters engaging each target in this epoch's slice of the log.
-        let mut per_target: BTreeMap<sim_core::sim::FireTarget, Vec<usize>> = BTreeMap::new();
+        let mut targets_per_shooter: BTreeMap<usize, Vec<sim_core::sim::FireTarget>> =
+            BTreeMap::new();
         for e in &sim.fire_events()[before..] {
-            per_target.entry(e.target).or_default().push(e.shooter);
+            targets_per_shooter
+                .entry(e.shooter)
+                .or_default()
+                .push(e.target);
         }
-        for (target, mut shooters) in per_target {
-            shooters.sort_unstable();
-            shooters.dedup();
-            // This fixture fields only units, so every target must be one.
-            let idx = target.unit().expect("units-only fixture");
-            let elements = sim.units()[idx].elements as usize;
-            assert!(
-                shooters.len() <= cap.min(elements.max(1)),
-                "target {target:?} drew {} shooters with {elements} elements (cap {cap})",
-                shooters.len()
+        for (shooter, mut targets) in targets_per_shooter {
+            targets.sort_unstable();
+            targets.dedup();
+            assert_eq!(
+                targets.len(),
+                1,
+                "shooter {shooter} engaged {targets:?} in one epoch; an assignment gives                  each shooter exactly one target"
             );
         }
     }

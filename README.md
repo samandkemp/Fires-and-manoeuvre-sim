@@ -24,7 +24,7 @@ tweakable — not to ship as a game.
   to a serial run.
 - **The maths is the product.** Every model is formulated and validated against a known
   analytical result or a documented invariant *before* it is made fast or pretty.
-  Correctness is testable; "realism" is not. There are 67 such gates.
+  Correctness is testable; "realism" is not. There are 68 such gates.
 - **Data-driven.** Unit, weapon and sensor stats live in TOML, never hard-coded, so they
   are tweakable at runtime — and sweepable by dotted path without editing a file.
 - **Composable subsystems.** Terrain, fires, sensing, suppression, movement and
@@ -89,7 +89,7 @@ to shoot first, so directive control can be measured against optimal control.
 | **[docs/HOW_IT_WORKS.md](docs/HOW_IT_WORKS.md)** | **Start here.** The model in plain terms: the modules, one tick, how detection and engagement actually work, with worked numbers |
 | [docs/MATHS.md](docs/MATHS.md) | The six OR strands stated properly, and the argument for each |
 | [docs/design/](docs/design/) | The specification: equations, state machines and invariants, one page per section |
-| [docs/VALIDATION.md](docs/VALIDATION.md) | The V1–V67 gates, what each is checked *against*, and how to add one |
+| [docs/VALIDATION.md](docs/VALIDATION.md) | The V1–V68 gates, what each is checked *against*, and how to add one |
 | [docs/OPERATIONS.md](docs/OPERATIONS.md) | Every command: build, run, playback controls, tests, experiments, benches |
 | [docs/SCENARIOS.md](docs/SCENARIOS.md) | Adding a unit / weapon / sensor / drone / battery, and building a scenario |
 | [docs/EXPERIMENTS.md](docs/EXPERIMENTS.md) | Designing a study: batch runs, sweeps, paired statistics, reading the output |
@@ -102,7 +102,7 @@ to shoot first, so directive control can be measured against optimal control.
 crates/sim_core/     the OR engine — pure Rust, no Bevy. Where all the maths lives
 crates/app/          Bevy front-end: tactical map, pan/zoom, egui control panel
 crates/experiments/  headless batch runs: sweeps, Monte Carlo, equilibria
-crates/validation/   the V1–V67 gates, checked through the public API only
+crates/validation/   the V1–V68 gates, checked through the public API only
 scenarios/           TOML scenarios and the unit/weapon/sensor stat blocks
 docs/                see the table above
 ```
@@ -151,7 +151,7 @@ seconds. See [docs/OPERATIONS.md](docs/OPERATIONS.md) for everything else.
 Roadmap phases 1–14 are complete: terrain and LOS, sensing, fires, suppression and
 attrition, movement as DP, game-theoretic decisions, visualisation, electronic warfare with
 partial observability, air and counter-air, the decision layer, command and control, SEAD,
-and the kill chain. V1–V67 all hold.
+and the kill chain. V1–V68 all hold.
 
 Next: the allocation surrogate (a multi-epoch objective), air-to-air, acoustic detection of
 drones, real-world DEM ingestion, movement decisions in-loop, and a dynamic stochastic game

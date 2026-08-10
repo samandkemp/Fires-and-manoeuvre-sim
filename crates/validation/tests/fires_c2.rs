@@ -89,7 +89,6 @@ fn two_on_two(fires_need_c2: bool, post: bool, coordination_range_m: f32) -> Sim
         dt_s = 1.0
         epoch_s = 10.0
         allocation = "optimal"
-        max_shooters_per_target = 3
         fires_need_c2 = {fires_need_c2}
         [terrain]
         cell_size_m = 10.0
@@ -221,7 +220,6 @@ fn v63_the_net_is_per_shooter_not_per_side() {
         dt_s = 1.0
         epoch_s = 10.0
         allocation = "optimal"
-        max_shooters_per_target = 3
         fires_need_c2 = true
         [terrain]
         cell_size_m = 10.0
@@ -307,7 +305,6 @@ fn v63_jamming_the_post_breaks_ground_coordination() {
         dt_s = 1.0
         epoch_s = 10.0
         allocation = "optimal"
-        max_shooters_per_target = 3
         fires_need_c2 = true
         [terrain]
         cell_size_m = 10.0
