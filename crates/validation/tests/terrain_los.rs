@@ -1,16 +1,15 @@
-//! Air and counter-air: flight, air defence, and the sensor-to-shooter timeline
-//! (V44-V52).
+//! Terrain, line of sight, and the layers derived from them (V1-V13).
 //!
 //! One test binary over several suites. Cargo builds every `tests/*.rs` as its own
-//! binary linking `sim_core` afresh; files under `tests/air/` are modules of this
+//! binary linking `sim_core` afresh; files under `tests/terrain_los/` are modules of this
 //! one instead, which is why the suite relinks once here rather than 2 times.
 //! Each module below is the file it always was, moved rather than rewritten.
 //!
 //! The `#[path]` attributes are not decoration: a test binary is a *crate root*, so a
-//! bare `mod flight;` would look for `tests/flight.rs` -- back at the top level, where it
+//! bare `mod terrain;` would look for `tests/terrain.rs` -- back at the top level, where it
 //! would become its own binary again and undo the grouping.
 
-#[path = "air/counter_air.rs"]
-mod counter_air;
-#[path = "air/flight.rs"]
-mod flight;
+#[path = "terrain_los/los.rs"]
+mod los;
+#[path = "terrain_los/terrain.rs"]
+mod terrain;

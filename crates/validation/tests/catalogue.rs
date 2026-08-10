@@ -13,17 +13,33 @@ use validation::gates::GATES;
 
 /// Every source file that can hold a gate: this crate's suites, plus the one unit test
 /// left inside sim_core (V52's zero-draw half, which tests the RNG stream).
+///
+/// **Recursive**, and that is load-bearing. Suites are grouped into subdirectories so that
+/// several share one test binary (`tests/sead/arm.rs` and friends), and a reader of only the
+/// top level would find the group file's `mod` declarations and none of the gates. Walking
+/// one level deep would have quietly reported every moved gate as missing — which is the
+/// exact drift this file exists to prevent, so it is worth the recursion.
 fn gate_sources() -> Vec<PathBuf> {
     let root = Path::new(env!("CARGO_MANIFEST_DIR"));
-    let mut files: Vec<PathBuf> = fs::read_dir(root.join("tests"))
-        .expect("tests dir")
-        .filter_map(Result::ok)
-        .map(|e| e.path())
-        .filter(|p| p.extension().is_some_and(|e| e == "rs"))
-        .collect();
+    let mut files = Vec::new();
+    collect_rs(&root.join("tests"), &mut files);
     files.push(root.join("../sim_core/src/sim/mod.rs"));
     files.sort();
     files
+}
+
+/// Every `.rs` file at or below `dir`.
+fn collect_rs(dir: &Path, out: &mut Vec<PathBuf>) {
+    let Ok(entries) = fs::read_dir(dir) else {
+        return;
+    };
+    for path in entries.filter_map(Result::ok).map(|e| e.path()) {
+        if path.is_dir() {
+            collect_rs(&path, out);
+        } else if path.extension().is_some_and(|e| e == "rs") {
+            out.push(path);
+        }
+    }
 }
 
 /// Every `fn name(` defined across those sources.

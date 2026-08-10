@@ -250,7 +250,11 @@ so it stays a unit test inside `sim_core`.
    implementation, the invariant, or the identity it must satisfy. If you cannot name one,
    that is worth pausing over — it usually means the model is not yet specified.
 2. State the gate in its design section, in the `Validation gates` table at the end.
-3. Add the test to `crates/validation/tests/`, named `vNN_what_it_checks`.
+3. Add the test to `crates/validation/tests/`, named `vNN_what_it_checks`. Suites are
+   grouped by design area — `sead/arm.rs`, `c2/link.rs` — with one `tests/<group>.rs` per
+   group declaring them via `#[path]`. Cargo builds every `tests/*.rs` as its own binary
+   linking `sim_core` afresh, so the grouping keeps a new suite from adding another link
+   unit. Put a new suite in the group its § belongs to; a genuinely new area gets its own.
 4. Add the `Gate { … }` entry to [`crates/validation/src/gates.rs`](../crates/validation/src/gates.rs),
    with the reference written out.
 
