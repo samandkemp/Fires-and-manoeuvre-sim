@@ -338,8 +338,8 @@ grows with the time it has to do it in. On `default` a horizon of 8 stops shooti
 defence battery altogether - its threat to ground forces is zero - and concentrates on armed
 units.
 
-It does **not** change how many shooters to put on one target. That is a different myopia,
-and measuring it says so plainly:
+It does **not** close the gap between the optimal solver and the greedy one, and measuring
+says so at every setting tried:
 
 | Horizon | `optimal` vs `greedy` on `fire_allocation` |
 |---|---|
@@ -347,24 +347,66 @@ and measuring it says so plainly:
 | 4 | +0.450 ± 0.076 s |
 | 8 | +0.450 ± 0.076 s |
 
-Identical, to three decimals, at every horizon - and necessarily so. `fire_allocation` fields
-**four identical targets**, so scaling every value by the same factor leaves every assignment
-untouched. The gap between the solvers on that scenario cannot be about target selection,
-because the targets are indistinguishable. It is about **concentration**: how fire is
-distributed across targets that are alike.
+Necessarily so, in fact. `fire_allocation` fields four **identical** targets that cannot
+shoot back, so scaling every value by the same factor leaves every assignment untouched and
+a survivor threatens nothing. Nothing about the future of a *target* can matter there.
 
-Closing that needs a different change. The objective is linear in expected elements
-destroyed, so damaging two targets by half scores exactly as killing one. Over an
-engagement they are not equal - a target at one element still fires, a target at zero does
-not - so the objective would have to become **convex in cumulative damage**, valuing the shot
-that finishes a target above the shot that merely wounds it. That is a larger change than a
-scale factor and is not attempted here.
+### What the gap is actually made of
 
-The honest summary: this prices the future of a *target*, which was worth doing on its own
-terms, and it is not what the measured optimal-versus-greedy gap was made of.
+Tracing the seeds where the two solvers disagree settles it. Over 150 seeds, optimal is worse
+on 7, **better on none**, and identical on 143 - and on the seeds where it loses, both
+solvers fire the *same number of rounds*. Nothing is being wasted. The divergence is always
+at the endgame:
+
+```
+[14] greedy  0 -> Unit(7)      optimal  0 -> Unit(6)
+[15] greedy  1 -> Unit(6)      optimal  2 -> Unit(6)
+[16] greedy  2 -> Unit(6)      optimal  3 -> Unit(7)
+[17] greedy  3 -> Unit(7)      optimal  2 -> Unit(7)   <- one epoch later
+```
+
+Greedy pairs its last shooters so that both remaining targets die in the same epoch. The
+optimal assignment scores higher on expected damage and leaves one target barely alive,
+costing a whole epoch.
+
+**The objective maximises expected damage; the outcome is a completion time.** Expected damage
+is indifferent to how damage is spread across survivors. Time-to-clear is not - it depends
+only on the last target standing. Throughput against makespan, in the usual scheduling sense.
+
+### Why no better value function fixes it
+
+The obvious repair is to make finishing a target worth more than wounding two. That was
+implemented - a flat bonus credited to a target for being a target, so a target with one
+element left carries the same bonus as one with six and the marginal shooter is pulled onto
+what can actually be killed this epoch - and then **removed**, because it did nothing:
+
+| `finish_bonus` | vs greedy | on its own terms (optimal only) |
+|---|---|---|
+| 0 | +0.450 ± 0.076 | baseline 62.913 s |
+| 1 | +0.460 ± 0.076 | +0.000 ± 0.033, not significant |
+| 2 | +0.460 ± 0.075 | −0.040 ± 0.044, not significant |
+| 4 | +0.470 ± 0.078 | +0.007 ± 0.061, not significant |
+
+The reason is structural, and it is the useful part of this result. **Both solvers optimise
+the same objective**, so improving the objective moves both together; the gap is not a
+property of the value function at all. Greedy does not win because it values completion - it
+has no notion of completion. It wins because its heuristic bias happens to produce assignments
+that finish targets, and exact maximisation of an additive surrogate does not.
+
+Closing it properly would mean optimising the thing that actually matters: the probability
+that *every* remaining target dies this epoch. That is a product over targets, not a sum, so
+it is not a linear assignment problem and the Hungarian algorithm cannot express it. An
+additive objective over slots can never encode a makespan.
+
+So the honest position is that V56 holds, the solver is correct, the objective is a
+reasonable surrogate, and **the surrogate's structure - not its coefficients - is what costs
+the 0.45 s**. Optimising a surrogate harder does not improve what the surrogate stands for,
+and no amount of re-weighting turns a sum into a maximum.
 
 ### 10.7 Deferred
 
-**An objective that is convex in cumulative damage**, so that finishing a target outranks
-wounding two. §10.6 shows this is what the measured optimal-versus-greedy gap is made of, and
-that the planning horizon does not reach it.
+**A completion-time objective**, maximising the probability that every remaining target dies
+this epoch rather than the expected damage dealt. §10.6 establishes that this - not the value
+function's coefficients - is what the optimal-versus-greedy gap is made of. It is a product
+over targets rather than a sum, so it leaves the linear-assignment family entirely and needs
+a different solver, which is why it is deferred rather than attempted.
