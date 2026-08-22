@@ -473,6 +473,7 @@ Every dial has a default, so a scenario states only what it wants to change.
 | `max_batteries_per_air_target` | 2 | Overkill cap: air-defence batteries per airframe ([§11.2](design/11-command-and-control.md)) |
 | `fires_need_c2` | `false` | Must a ground shooter be under a live C2 post to coordinate? ([§11.3](design/11-command-and-control.md)) |
 | `sensor_tasking` | `false` | Do steerable sensors search by belief? ([§10.3](design/10-the-decision-layer.md)) |
+| `allocation_horizon` | 1 | How many epochs the fire-allocation objective prices ([§10.6](design/10-the-decision-layer.md)); 1 scores only this epoch |
 | `risk_weight` | 50.0 | Default exchange rate between movement cost and exposure ([§10.5](design/10-the-decision-layer.md)) |
 | `repath_margin` | 0.1 | How much better a new route must be before a unit switches to it |
 | `belief_cells` | 48 | Edge length of the coarse belief **and movement-planning** grid |

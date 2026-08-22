@@ -14,6 +14,8 @@
 mod allocation;
 #[path = "decision_layer/carried_coverage.rs"]
 mod carried_coverage;
+#[path = "decision_layer/horizon.rs"]
+mod horizon;
 #[path = "decision_layer/identity.rs"]
 mod identity;
 #[path = "decision_layer/overkill.rs"]

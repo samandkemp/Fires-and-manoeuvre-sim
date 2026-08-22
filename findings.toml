@@ -71,3 +71,21 @@ seeds = 2500
 until_s = 300.0
 expect = -0.028
 tolerance = 0.02
+
+# The planning horizon does NOT close the optimal-versus-greedy gap, and cannot: the fixture
+# fields four identical targets, so scaling every value by the same factor leaves every
+# assignment untouched. Pinned because it is the kind of negative result that quietly stops
+# being true - if a future change makes the horizon bite here, this is how it gets noticed.
+[[finding]]
+id = "horizon-does-not-close-the-gap"
+claim = "Lengthening the allocation horizon leaves the optimal-versus-greedy gap exactly where it was."
+documented_in = ["docs/design/10-the-decision-layer.md"]
+scenario = "fire_allocation"
+param = "sim.allocation"
+arms = ["greedy", "optimal"]
+metric = "red_cleared_s"
+seeds = 1000
+until_s = 300.0
+expect = 0.450
+tolerance = 0.15
+set = ["sim.allocation_horizon=8"]

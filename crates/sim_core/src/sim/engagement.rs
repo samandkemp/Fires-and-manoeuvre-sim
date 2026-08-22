@@ -807,9 +807,18 @@ impl Sim {
     /// a derivation.
     fn target_value(&self, t: FireTarget, threat_scale: f32) -> f32 {
         let target = self.target_state(t);
+        // How long this target would go on being dangerous if it survived, in epochs.
+        // At the default horizon of 1 this is 1.0 and the expression below is exactly the
+        // single-epoch formula, to the bit - which is what makes the horizon an identity
+        // rather than a re-baseline (V75).
+        let horizon = f32::from(u16::try_from(self.allocation_horizon).unwrap_or(u16::MAX));
         let per_element = target.declared_value.unwrap_or_else(|| {
             if threat_scale > 0.0 {
-                1.0 + target.threat / threat_scale
+                // Size counts once; threat counts once per epoch it would still be firing.
+                // A declared `value` is left alone deliberately: it is the author saying
+                // what this asset is worth outright, and second-guessing it with a horizon
+                // would make an explicit dial mean something other than it says.
+                1.0 + horizon * target.threat / threat_scale
             } else {
                 1.0
             }

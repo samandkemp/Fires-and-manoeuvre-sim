@@ -141,6 +141,19 @@ pub struct SimConfig {
     /// decision to make.
     #[serde(default = "default_sensor_tasking")]
     pub sensor_tasking: bool,
+    /// How many decision epochs the fire-allocation objective looks ahead (§10.2).
+    ///
+    /// `1` scores only the epoch being decided, which is what the objective always did and
+    /// is an exact identity. Above 1, a target's threat is weighted by how long it would go
+    /// on being dangerous if it survived, so killing a shooter is preferred to damaging
+    /// several bystanders.
+    ///
+    /// The reason this dial exists: solving a single-epoch objective *exactly* is myopically
+    /// right and measurably worse over a whole engagement than a greedy rule that happens to
+    /// spread fire. Optimising a surrogate harder does not improve what the surrogate stands
+    /// for; the surrogate has to be made to stand for more.
+    #[serde(default = "default_allocation_horizon")]
+    pub allocation_horizon: u32,
     /// Default exchange rate between movement cost and exposure for a unit with an
     /// objective (§5.1). A unit may override it; `0` plans the shortest route regardless of
     /// who is watching.
@@ -215,6 +228,10 @@ fn default_track_hold() -> f32 {
     45.0
 }
 
+fn default_allocation_horizon() -> u32 {
+    1
+}
+
 fn default_risk_weight() -> f32 {
     50.0
 }
@@ -250,6 +267,7 @@ impl Default for SimConfig {
             suppressed_fire_factor: default_suppressed_fire_factor(),
             track_hold_s: default_track_hold(),
             track_maintain_p: default_track_maintain_p(),
+            allocation_horizon: default_allocation_horizon(),
             risk_weight: default_risk_weight(),
             repath_margin: default_repath_margin(),
             allocation: AllocationChoice::default(),
@@ -606,6 +624,11 @@ impl SimConfig {
         require_non_negative("[sim] track_hold_s", self.track_hold_s)?;
         require_non_negative("[sim] recover_per_s", self.recover_per_s)?;
         require_non_negative("[sim] suppression_radius_m", self.suppression_radius_m)?;
+        if self.allocation_horizon == 0 {
+            return Err(ScenarioError::Invalid(
+                "[sim] allocation_horizon must be at least 1 (1 = score only this epoch)".into(),
+            ));
+        }
         require_non_negative("[sim] risk_weight", self.risk_weight)?;
         require_non_negative("[sim] repath_margin", self.repath_margin)?;
         if self.belief_cells == 0 {

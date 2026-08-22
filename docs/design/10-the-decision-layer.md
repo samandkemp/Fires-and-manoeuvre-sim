@@ -318,7 +318,53 @@ answer than any single "optimal" route.
   affordable, and the crossing completes inside the run - three constraints that took more
   tuning than the phase had. Outstanding.
 
+### 10.6 The planning horizon
+
+`[sim] allocation_horizon` is how many decision epochs the objective prices. A target's value
+becomes
+
+$$v(t) = \text{elements}(t)\left(1 + H\,\frac{\theta(t)}{\bar\theta}\right)$$
+
+where $\theta$ is the target's threat and $\bar\theta$ the most dangerous unit on the field.
+Size counts once; **threat counts once per epoch the target would still be firing**. At
+$H = 1$ this is the original formula exactly, so the default is an identity rather than a
+re-baseline (V75). A declared `value` is left alone: that dial is the author saying what an
+asset is worth outright, and a horizon second-guessing it would make an explicit statement
+mean something else.
+
+**What it prices, and what it does not.** The horizon changes *which* target to shoot: it
+makes a dangerous one worth more than a merely large one, because the harm a survivor does
+grows with the time it has to do it in. On `default` a horizon of 8 stops shooting the air
+defence battery altogether - its threat to ground forces is zero - and concentrates on armed
+units.
+
+It does **not** change how many shooters to put on one target. That is a different myopia,
+and measuring it says so plainly:
+
+| Horizon | `optimal` vs `greedy` on `fire_allocation` |
+|---|---|
+| 1 | +0.450 ± 0.076 s (t = 6.0) |
+| 4 | +0.450 ± 0.076 s |
+| 8 | +0.450 ± 0.076 s |
+
+Identical, to three decimals, at every horizon - and necessarily so. `fire_allocation` fields
+**four identical targets**, so scaling every value by the same factor leaves every assignment
+untouched. The gap between the solvers on that scenario cannot be about target selection,
+because the targets are indistinguishable. It is about **concentration**: how fire is
+distributed across targets that are alike.
+
+Closing that needs a different change. The objective is linear in expected elements
+destroyed, so damaging two targets by half scores exactly as killing one. Over an
+engagement they are not equal - a target at one element still fires, a target at zero does
+not - so the objective would have to become **convex in cumulative damage**, valuing the shot
+that finishes a target above the shot that merely wounds it. That is a larger change than a
+scale factor and is not attempted here.
+
+The honest summary: this prices the future of a *target*, which was worth doing on its own
+terms, and it is not what the measured optimal-versus-greedy gap was made of.
+
 ### 10.7 Deferred
 
-**A multi-epoch allocation objective.** §10.2 scores a single epoch, which is what makes an
-exactly solved assignment myopic; see §10.2's measured cost.
+**An objective that is convex in cumulative damage**, so that finishing a target outranks
+wounding two. §10.6 shows this is what the measured optimal-versus-greedy gap is made of, and
+that the planning horizon does not reach it.

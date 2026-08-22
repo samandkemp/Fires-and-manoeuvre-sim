@@ -79,6 +79,7 @@ impl Sim {
             allocation: cfg.allocation,
             max_batteries_per_air_target: cfg.max_batteries_per_air_target,
             fires_need_c2: cfg.fires_need_c2,
+            allocation_horizon: cfg.allocation_horizon,
             risk_weight: cfg.risk_weight,
             repath_margin: cfg.repath_margin,
             planner: None,

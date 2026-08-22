@@ -65,6 +65,8 @@ pub struct Sim {
     // Fire-allocation dials (§10.2).
     allocation: AllocationChoice,
     max_batteries_per_air_target: u32,
+    // How many epochs the allocation objective prices (§10.2). 1 = the myopic original.
+    allocation_horizon: u32,
     // Does a ground shooter need a C2 post to join the side-wide plan (§11.3)?
     fires_need_c2: bool,
     // Movement decisions (§10.5). The planner is built lazily: a scenario with no unit
