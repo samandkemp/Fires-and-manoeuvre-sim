@@ -47,15 +47,38 @@ pub fn draw_markers(
     // Routes: a faint line from each moving unit's current position through its
     // remaining waypoints, with a marker at each waypoint.
     for u in sim.sim.units() {
-        if !u.alive() || u.route_idx >= u.route.len() {
+        if !u.alive() {
             continue;
         }
         let c = side_color(u.side).with_alpha(0.5);
-        let mut prev = u.pos;
-        for &wp in &u.route[u.route_idx..] {
-            gizmos.line_2d(prev, wp, c);
-            gizmos.circle_2d(Isometry2d::from_translation(wp), 4.0 * px, c);
-            prev = wp;
+
+        // A planned route is drawn dashed rather than solid, because it is not an order the
+        // unit is keeping: it is this epoch's answer, and it will be re-solved against the
+        // risk raster at the next one. A scripted route is a commitment; a planned one is a
+        // current opinion, and they should not look alike.
+        let planned = u.objective.is_some();
+        if u.route_idx < u.route.len() {
+            let mut prev = u.pos;
+            for &wp in &u.route[u.route_idx..] {
+                if planned {
+                    dashed_line(&mut gizmos, prev, wp, c, 60.0);
+                } else {
+                    gizmos.line_2d(prev, wp, c);
+                }
+                gizmos.circle_2d(Isometry2d::from_translation(wp), 4.0 * px, c);
+                prev = wp;
+            }
+        }
+
+        // The objective itself: a ringed cross, so it reads as a place the unit is trying
+        // to reach rather than another waypoint on the way.
+        if let Some(goal) = u.objective {
+            let g = side_color(u.side);
+            let r = 9.0 * px;
+            gizmos.circle_2d(Isometry2d::from_translation(goal), r, g);
+            gizmos.circle_2d(Isometry2d::from_translation(goal), r * 0.45, g);
+            gizmos.line_2d(goal - Vec2::X * r * 1.7, goal + Vec2::X * r * 1.7, g);
+            gizmos.line_2d(goal - Vec2::Y * r * 1.7, goal + Vec2::Y * r * 1.7, g);
         }
     }
 
@@ -357,4 +380,24 @@ fn strength_bar(gizmos: &mut Gizmos, pos: Vec2, px: f32, fraction: f32) {
         Vec2::new(left + w * fraction.clamp(0.0, 1.0), y),
         Color::srgb(0.2, 0.9, 0.3),
     );
+}
+
+/// A dashed line, for a route that is a current opinion rather than a standing order.
+///
+/// Bevy's gizmos draw solid segments, so the dashes are drawn as segments with gaps. The
+/// dash length is in world metres, so dashes lengthen as the map zooms out rather than
+/// turning a long route into a solid line.
+fn dashed_line(gizmos: &mut Gizmos, from: Vec2, to: Vec2, colour: Color, dash_m: f32) {
+    let span = from.distance(to);
+    if span <= f32::EPSILON {
+        return;
+    }
+    let dir = (to - from) / span;
+    let step = dash_m.max(1.0);
+    let mut s = 0.0;
+    while s < span {
+        let e = (s + step * 0.55).min(span);
+        gizmos.line_2d(from + dir * s, from + dir * e, colour);
+        s += step;
+    }
 }

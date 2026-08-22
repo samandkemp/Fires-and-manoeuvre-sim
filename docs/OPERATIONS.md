@@ -78,14 +78,48 @@ casualty, a missile away - last a single tick, so slowing down is not enough on 
 it also requires looking at the right pixel at the right moment. A breakpoint stops the
 clock on the tick that tripped it.
 
+### Placing assets
+
+Every asset class can be placed for **either** force: pick what to place, then pick the side
+it joins. The counter-sensing fight - positioning to see without being seen - is the point of
+the tool, so it has to be something the map can express rather than only a scenario file.
+
+| Mode | Places |
+|---|---|
+| **Sensor** | An observer of the chosen type |
+| **Unit** | A manoeuvre or artillery unit, with its weapon resolved from the stat block |
+| **Jammer (EW)** | An EW bubble degrading the *other* side's sensing nearby |
+| **Drone** | An air asset at the panel's altitude, heading and speed |
+| **Air defence** | A battery, with its organic radar |
+| **C2 post** | A post coordinating nearby friendly air defence |
+| **Objective for selected unit(s)** | Where the selected units should get to, planning their own route |
+
+An **objective** is the alternative to drawing a route by hand. A unit given one re-solves its
+route every decision epoch against what its side knows about enemy sensors, so placing a
+sensor across its path changes where it goes. The caution slider is the exchange rate: metres
+of movement cost the unit will spend to avoid one unit of exposure, `0` being the shortest
+route regardless of who is watching.
+
+A planned route is drawn **dashed** and a scripted one solid, because they are different
+kinds of thing: a scripted route is a commitment, a planned one is this epoch's opinion and
+will be re-solved at the next. Setting one cancels the other, in either direction.
+
 ### Overlays and inspection
 
 | Button | Shows |
 |---|---|
-| **Coverage overlay (Pd)** | Detection probability across the map for the placed sensors |
-| **Belief snapshot** | Where Red could be, given what Blue has and has not seen |
-| **Belief the sim is flying on (Blue)** | The sim's own per-side belief - what tasking is actually reading |
+| **Coverage (Pd)** | Detection probability across the map for the chosen side's sensors |
+| **Belief snapshot** | Where the enemy could be, given what has and has not been seen |
+| **Belief the sim is flying on** | The sim's own per-side belief - what tasking actually reads |
 | **Legend** | What every marker and colour means |
+
+Overlays compute on a **background thread**: the map stays live while a raster is built, which
+matters because a full pass over a large map with a long-ranged sensor is measured in seconds.
+
+They also say when they have stopped being true. An overlay is computed from a snapshot of
+the assets, so moving a sensor makes it describe where that sensor *used to be* - the panel
+marks it **STALE**, and **keep it up to date** rebuilds it automatically when its inputs
+change, throttled so a running battle does not queue rasters faster than they finish.
 
 Live dials in the panel - fire allocation, sensor tasking, the air and decision-layer
 settings - take effect immediately, so a rule can be watched changing the battle rather than
@@ -214,6 +248,28 @@ space is a file: see [`studies/README.md`](../studies/README.md).
 
 Answers the question hanging over a model built entirely from placeholder numbers: **which
 conclusions survive the numbers being wrong?**
+
+### `findings` - do the documented numbers still hold?
+
+```
+findings [--only ID] [--quick]
+```
+
+```
+cargo run -p experiments --release --bin findings
+cargo run -p experiments --release --bin findings -- --quick
+```
+
+Re-runs every finding in [`findings.toml`](../findings.toml) and reports any whose measured
+value has moved outside the tolerance its author set. Exits non-zero on drift, so it can be
+run on a schedule and noticed.
+
+`--quick` cuts the seeds to a tenth. That is enough to catch a finding that has *broken* - a
+renamed dial, a deleted scenario, an inverted sign - and far too few to judge drift, which is
+what it says when it finishes.
+
+Not a `cargo test`: the full pass is 18,000 trials. It is fast enough to run before a release
+or nightly, not on every edit.
 
 ### The bespoke probes
 

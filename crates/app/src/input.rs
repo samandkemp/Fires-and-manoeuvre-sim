@@ -164,36 +164,58 @@ fn right_click(
                 }
             }
         }
-        ClickMode::PlaceRedAir => place_drone(sim, ui_state, world),
-        ClickMode::PlaceBlueAirDefence => place_air_defence(sim, ui_state, world),
-        ClickMode::PlaceBlueC2 => place_c2(sim, ui_state, world),
+        ClickMode::SetObjective => {
+            // Every selected unit gets the same objective and plans its own way there, so
+            // two units given one objective may take quite different routes - which is the
+            // point, and the clearest way to see the planner working.
+            for sel in &ui_state.selected {
+                if let Selected::Unit(i) = sel {
+                    sim.sim.set_objective(*i, Some(world));
+                    sim.sim.set_unit_risk_weight(*i, Some(ui_state.risk_weight));
+                }
+            }
+        }
+        ClickMode::PlaceAir => place_drone(sim, ui_state, world),
+        ClickMode::PlaceAirDefence => place_air_defence(sim, ui_state, world),
+        ClickMode::PlaceC2 => place_c2(sim, ui_state, world),
         // `.get(..)` rather than indexing, as the drone/battery/post arms already do: a
         // type id that no longer names anything - after a scenario switch whose library
         // set differs - is an ordinary miss, not a reason to take the window down.
-        ClickMode::PlaceBlueSensor => {
+        ClickMode::PlaceSensor => {
             let Some(stats) = sim.data.libs.sensors.get(&ui_state.sensor_type_id).cloned() else {
                 return;
             };
             sim.placed += 1;
-            let id = format!("obs-p{}", sim.placed);
-            sim.sim.add_sensor(&id, Side::Blue, world, 0.0, stats);
+            let side = ui_state.place_side;
+            let id = format!("{}-obs-p{}", side_tag(side), sim.placed);
+            sim.sim.add_sensor(&id, side, world, 0.0, stats);
         }
-        ClickMode::PlaceRedUnit => {
+        ClickMode::PlaceUnit => {
             let Some(stats) = sim.data.libs.units.get(&ui_state.unit_type_id).cloned() else {
                 return;
             };
             sim.placed += 1;
-            let id = format!("tgt-p{}", sim.placed);
+            let side = ui_state.place_side;
+            let id = format!("{}-unit-p{}", side_tag(side), sim.placed);
             let weapon = stats
                 .weapon
                 .as_ref()
                 .and_then(|w| sim.data.libs.weapons.get(w).cloned());
-            sim.sim.add_unit(&id, Side::Red, world, stats, weapon);
+            sim.sim.add_unit(&id, side, world, stats, weapon);
             ui_state.selected = vec![Selected::Unit(sim.sim.units().len() - 1)];
         }
-        ClickMode::PlaceRedJammer => {
-            sim.sim.add_jammer(Side::Red, world, 0.9, 900.0);
+        ClickMode::PlaceJammer => {
+            sim.sim.add_jammer(ui_state.place_side, world, 0.9, 900.0);
         }
+    }
+}
+
+/// Short side prefix for a generated asset id, so a placed asset's side is readable in the
+/// selection panel and in any CSV it later appears in.
+fn side_tag(side: Side) -> &'static str {
+    match side {
+        Side::Blue => "blu",
+        Side::Red => "red",
     }
 }
 
@@ -203,7 +225,7 @@ fn place_drone(sim: &mut SimRes, ui_state: &mut UiState, world: Vec2) {
         return;
     };
     sim.placed += 1;
-    let id = format!("uas-p{}", sim.placed);
+    let id = format!("{}-uas-p{}", side_tag(ui_state.place_side), sim.placed);
     let sensor = stats
         .sensor
         .as_ref()
@@ -214,7 +236,7 @@ fn place_drone(sim: &mut SimRes, ui_state: &mut UiState, world: Vec2) {
         .and_then(|w| sim.data.libs.weapons.get(w).cloned());
     let idx = sim.sim.add_air(
         &id,
-        Side::Red,
+        ui_state.place_side,
         world,
         ui_state.air_altitude_m,
         if ui_state.air_altitude_amsl {
@@ -238,8 +260,9 @@ fn place_c2(sim: &mut SimRes, ui_state: &mut UiState, world: Vec2) {
         return;
     };
     sim.placed += 1;
-    let id = format!("cp-p{}", sim.placed);
-    let idx = sim.sim.add_c2(&id, Side::Blue, world, stats);
+    let side = ui_state.place_side;
+    let id = format!("{}-cp-p{}", side_tag(side), sim.placed);
+    let idx = sim.sim.add_c2(&id, side, world, stats);
     // Select what was just placed, as unit and drone placement do: the next thing you want
     // is almost always to nudge it, and the panel then reports what it is coordinating.
     ui_state.selected = vec![Selected::C2(idx)];
@@ -257,18 +280,75 @@ fn place_air_defence(sim: &mut SimRes, ui_state: &mut UiState, world: Vec2) {
         return;
     };
     sim.placed += 1;
-    let id = format!("ad-p{}", sim.placed);
+    let id = format!("{}-ad-p{}", side_tag(ui_state.place_side), sim.placed);
     let sensor = stats
         .sensor
         .as_ref()
         .and_then(|s| sim.data.libs.sensors.get(s).cloned());
     let idx = sim.sim.add_air_defence(
         &id,
-        Side::Blue,
+        ui_state.place_side,
         world,
         stats,
         RadarPosture::default(),
         sensor,
     );
     ui_state.selected = vec![Selected::AirDefence(idx)];
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use sim_core::scenario::{Libraries, Scenario};
+    use sim_core::sim::Sim;
+    use std::path::Path;
+
+    fn fixture() -> Option<(Sim, Libraries)> {
+        let dir = Path::new("../../scenarios");
+        let libs = Libraries::load_dir(dir).ok()?;
+        let scn = Scenario::load(&dir.join("ad_c2.toml")).ok()?;
+        Some((Sim::new(&scn, &libs, scn.default_seed).ok()?, libs))
+    }
+
+    /// Placement used to hardcode a side per mode, so half the asset classes could only ever
+    /// join one force and the counter-sensing fight could not be set up from the map. Every
+    /// placing mode must now honour the chosen side.
+    #[test]
+    fn every_placing_mode_honours_the_chosen_side() {
+        let Some((sim, libs)) = fixture() else {
+            return; // scenarios not present; nothing to assert
+        };
+        for mode in [
+            ClickMode::PlaceSensor,
+            ClickMode::PlaceUnit,
+            ClickMode::PlaceJammer,
+            ClickMode::PlaceAir,
+            ClickMode::PlaceAirDefence,
+            ClickMode::PlaceC2,
+        ] {
+            assert!(
+                mode.places_an_asset(),
+                "{mode:?} places something, so it must offer a side"
+            );
+        }
+        for mode in [ClickMode::Probe, ClickMode::AirOrbit] {
+            assert!(
+                !mode.places_an_asset(),
+                "{mode:?} acts on what is already there; a side control would do nothing"
+            );
+        }
+        // The fixture is only here to prove the libraries a placement reads actually
+        // resolve - a mode whose stat block is missing silently places nothing.
+        assert!(!libs.sensors.is_empty() && !libs.units.is_empty());
+        assert!(!sim.sensors().is_empty());
+    }
+
+    /// A placed asset's id carries its side, so the selection panel and any CSV it reaches
+    /// say which force it belongs to without a lookup.
+    #[test]
+    fn a_placed_id_names_its_side() {
+        assert_eq!(side_tag(Side::Blue), "blu");
+        assert_eq!(side_tag(Side::Red), "red");
+        assert_ne!(side_tag(Side::Blue), side_tag(Side::Red));
+    }
 }

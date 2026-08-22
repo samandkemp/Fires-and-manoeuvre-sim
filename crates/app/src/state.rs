@@ -5,9 +5,11 @@
 //! and [`crate::markers`] draw over the map.
 
 use bevy::prelude::*;
+use bevy::tasks::Task;
 use bevy::window::PrimaryWindow;
 use sim_core::los;
-use sim_core::sim::Sim;
+use sim_core::sim::{Side, Sim};
+use std::sync::Arc;
 
 use crate::terrain_view;
 
@@ -44,24 +46,37 @@ pub enum Selected {
 /// Only *placement* is modal. Selecting, moving, routing and deleting are driven by
 /// left-click, modifiers and keys, so the common loop - pick a unit, give it a route -
 /// no longer means toggling a radio button between every step.
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum ClickMode {
     /// Set the LOS-probe observer.
     Probe,
-    /// Place a Blue sensor of the selected type.
-    PlaceBlueSensor,
-    /// Place a Red unit of the selected type.
-    PlaceRedUnit,
-    /// Place a Red jammer (EW bubble that hides nearby Red units).
-    PlaceRedJammer,
-    /// Place a Red drone of the selected air type, at the panel's altitude/heading/speed.
-    PlaceRedAir,
-    /// Place a Blue air-defence battery of the selected type.
-    PlaceBlueAirDefence,
-    /// Place a Blue C2 post, which coordinates nearby air defence (DESIGN §11).
-    PlaceBlueC2,
+    /// Place a sensor of the selected type.
+    PlaceSensor,
+    /// Place a unit of the selected type.
+    PlaceUnit,
+    /// Place a jammer (an EW bubble that hides nearby friendly units).
+    PlaceJammer,
+    /// Place a drone of the selected air type, at the panel's altitude/heading/speed.
+    PlaceAir,
+    /// Place an air-defence battery of the selected type.
+    PlaceAirDefence,
+    /// Place a C2 post, which coordinates nearby air defence (DESIGN §11).
+    PlaceC2,
     /// Send the selected drone(s) to orbit the click at the panel's radius.
     AirOrbit,
+    /// Give the selected unit(s) an objective to plan their own way to (§10.5).
+    SetObjective,
+}
+
+impl ClickMode {
+    /// Whether this mode places an asset, and so reads [`UiState::place_side`].
+    ///
+    /// Probing and orbiting act on what is already there, so offering a side for them would
+    /// be a control that does nothing.
+    #[must_use]
+    pub fn places_an_asset(self) -> bool {
+        !matches!(self, Self::Probe | Self::AirOrbit | Self::SetObjective)
+    }
 }
 
 /// A reset requested from the panel, applied after the egui closure releases the sim.
@@ -159,6 +174,18 @@ impl LogMarks {
 pub struct UiState {
     /// What a right-click places, if anything.
     pub mode: ClickMode,
+    /// Which force the next placed asset joins.
+    ///
+    /// Placement used to hardcode a side per mode - Blue sensors, Red units, Blue air
+    /// defence - which meant the counter-sensing fight the whole tool is about could not be
+    /// set up from the map at all. One side control over side-agnostic modes covers both
+    /// forces with half the modes.
+    pub place_side: Side,
+    /// Caution used when giving a unit an objective: metres of movement cost it will spend
+    /// to avoid one unit of exposure (§5.1).
+    pub risk_weight: f32,
+    /// Whose sensors the map overlays are computed from.
+    pub overlay_side: Side,
     pub sensor_type_id: String,
     pub unit_type_id: String,
     pub air_type_id: String,
@@ -208,13 +235,111 @@ pub struct Probe {
     pub last: Option<los::LosResult>,
 }
 
-/// The current coverage-overlay sprite, if on screen.
-#[derive(Resource, Default)]
-pub struct Overlay(pub Option<Entity>);
+/// Which overlay is on screen, or being computed.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum OverlayKind {
+    /// Per-cell `P(detect by T)` for the most recent sensor of the chosen side.
+    Coverage,
+    /// Where the enemy could still be, given nothing has been seen (§8.2).
+    BeliefSnapshot,
+    /// The belief the simulation is actually flying on, as the tasking layer reads it.
+    SimBelief,
+}
 
-/// A sensor paired with its effective placement: (position, height above its own ground,
-/// facing). A carried sensor reports its airframe's, not its own mount height.
-pub type PlacedSensor<'a> = (&'a sim_core::sim::SensorState, (Vec2, f32, f32));
+impl OverlayKind {
+    /// Label for the panel and the status line.
+    #[must_use]
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Coverage => "coverage (Pd)",
+            Self::BeliefSnapshot => "belief snapshot",
+            Self::SimBelief => "sim belief",
+        }
+    }
+}
+
+/// What an overlay was asked for, and what it was computed against.
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub struct OverlayRequest {
+    /// Which overlay.
+    pub kind: OverlayKind,
+    /// Whose sensors it is computed from.
+    pub side: Side,
+    /// Exposure window, seconds.
+    pub exposure_s: f32,
+}
+
+/// The map overlay: what is showing, what is being computed, and whether it still describes
+/// the simulation.
+///
+/// An overlay used to be a synchronous snapshot: pressing a button blocked the frame for as
+/// long as the raster took - up to seconds for a long-ranged sensor - and the result then
+/// silently went on describing where a sensor *used to be*. Both halves are fixed here: the
+/// raster is computed on a background task, and a fingerprint of the assets it was built
+/// from says when it has stopped being true.
+#[derive(Resource, Default)]
+pub struct Overlay {
+    /// The sprite currently on screen.
+    pub sprite: Option<Entity>,
+    /// Terrain shared with background tasks. Cloned once per scenario, because terrain does
+    /// not change during a run - which is what makes sharing it safe and cheap.
+    pub terrain: Option<Arc<sim_core::terrain::TerrainGrid>>,
+    /// The raster being computed, if one is in flight.
+    pub job: Option<Task<OverlayRaster>>,
+    /// What that job is computing.
+    pub pending: Option<OverlayRequest>,
+    /// What is on screen now.
+    pub showing: Option<OverlayRequest>,
+    /// Fingerprint of the assets the visible overlay was computed from.
+    pub built_from: u64,
+    /// Recompute automatically when the fingerprint changes.
+    pub auto: bool,
+    /// A finished raster waiting to be painted.
+    pub ready: Option<OverlayRaster>,
+    /// Real seconds since the last automatic rebuild.
+    ///
+    /// Auto-refresh is throttled because the fingerprint moves whenever anything is
+    /// detected, and a running battle changes it several times a second. Without a floor,
+    /// finishing a raster would immediately start the next one and a core would spin
+    /// permanently for a picture nobody could read changing that fast.
+    pub since_auto_s: f32,
+}
+
+/// A finished raster, on its way back from a background task.
+pub struct OverlayRaster {
+    /// The values, row-major, already normalised for painting.
+    pub cells: ndarray::Array2<f32>,
+    /// What it was computed for.
+    pub request: OverlayRequest,
+    /// The fingerprint at the moment the inputs were snapshotted.
+    pub fingerprint: u64,
+    /// How long it took, for the status line.
+    pub took: std::time::Duration,
+}
+
+/// A cheap summary of everything an overlay depends on.
+///
+/// Positions are quantised to a metre before hashing: a drone drifting continuously would
+/// otherwise change the fingerprint every tick and an auto-refreshing overlay would never
+/// stop recomputing. A metre is far below the resolution any overlay is painted at.
+#[must_use]
+pub fn overlay_fingerprint(sim: &Sim) -> u64 {
+    use std::hash::{Hash, Hasher};
+    let mut h = std::collections::hash_map::DefaultHasher::new();
+    for (i, s) in sim.sensors().iter().enumerate() {
+        let (pos, height, facing) = sim.sensor_view(i);
+        sim.sensor_active(i).hash(&mut h);
+        (pos.x as i64, pos.y as i64, height as i64, facing as i64).hash(&mut h);
+        (s.side == Side::Blue).hash(&mut h);
+    }
+    for j in sim.jammers() {
+        (j.jammer.pos.x as i64, j.jammer.pos.y as i64).hash(&mut h);
+        (j.jammer.power as i64, j.jammer.radius_m as i64).hash(&mut h);
+    }
+    // Belief moves with what has been seen, not only with where things are.
+    sim.events().len().hash(&mut h);
+    h.finish()
+}
 
 /// The map sprite, excluded from the camera so the two `Transform`s can be held at once.
 pub type MapSpriteQuery<'w, 's> = Query<

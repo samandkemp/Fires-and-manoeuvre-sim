@@ -567,6 +567,36 @@ sim.allocation --values optimal,greedy,independent` is the same comparison, pair
 standard errors) and `risk_path` (§10.5 put least-risk pathing *in the loop*, and V73 gates
 it). A demo that the engine has since absorbed is a maintenance cost, not a feature.
 
+## Findings have to be re-run, not just recorded
+
+A measured finding is a claim about a model at a moment. The model then changes, and unless
+something re-runs the claim, a number that was right when written goes on being quoted after
+it stopped being true.
+
+[`findings.toml`](../findings.toml) pins each documented claim to the paired comparison that
+produced it - scenario, dial, two arms, metric, seeds, the expected difference and a
+tolerance - and `findings` re-runs them all:
+
+```
+cargo run -p experiments --release --bin findings
+```
+
+```
+allocation-coordination-pays          holds  measured -12.835 +- 0.224, documented -12.835
+allocation-optimal-is-worse           holds  measured +0.405 +- 0.051, documented +0.405
+ad-overkill-cap-second-battery        holds  measured -0.002 +- 0.007, documented -0.002
+ad-overkill-cap-third-battery         holds  measured -0.028 +- 0.008, documented -0.028
+```
+
+**The tolerance is not a confidence interval.** The run computes its own standard error. The
+tolerance is the author's statement of how far the number may move before the prose around it
+stops being true, which is a different and more useful question.
+
+**Arms are compared against each other, never each against a shared baseline.** Reading a
+difference across two baselines overstates its error about fivefold. A drift report also
+lists every document repeating the number, because fixing a stale finding is mostly a matter
+of finding all the places it was copied to.
+
 ## What this harness cannot do yet
 
 - **Two-way interactions only.** `factorial` reports every pair of factors; a three-way

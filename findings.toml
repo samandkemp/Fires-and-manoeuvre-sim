@@ -1,0 +1,73 @@
+# The findings the documentation states, and the measurements that must keep supporting them.
+#
+#   cargo run -p experiments --release --bin findings
+#   cargo run -p experiments --release --bin findings -- --quick     # structure only, fast
+#
+# A finding here is a claim some document makes in prose, pinned to the paired comparison
+# that produced it. Re-running them is the only thing standing between a measured project
+# and a project that merely used to be measured.
+#
+# `expect` is the paired mean difference of arms[1] minus arms[0]. `tolerance` is the
+# author's statement of how far it may move before the surrounding prose stops being true -
+# not a confidence interval, which the run computes for itself.
+#
+# Arms are compared against EACH OTHER, never each against a shared baseline. Reading a
+# difference across two baselines overstates its error about fivefold, and that is precisely
+# how the allocation effect below stayed invisible for two phases.
+
+[[finding]]
+id = "allocation-coordination-pays"
+claim = "Coordinating fires clears the enemy about 12.8 s sooner than the old nearest-enemy rule, roughly 17%."
+documented_in = ["README.md", "docs/MATHS.md", "docs/design/10-the-decision-layer.md"]
+scenario = "fire_allocation"
+param = "sim.allocation"
+arms = ["independent", "greedy"]
+metric = "red_cleared_s"
+seeds = 2000
+until_s = 300.0
+expect = -12.835
+tolerance = 0.8
+
+[[finding]]
+id = "allocation-optimal-is-worse"
+claim = "Solving the assignment optimally is measurably WORSE than greedy, because the objective scores a single epoch."
+documented_in = [
+    "README.md",
+    "docs/MATHS.md",
+    "docs/design/10-the-decision-layer.md",
+    "docs/DESIGN.md",
+]
+scenario = "fire_allocation"
+param = "sim.allocation"
+arms = ["greedy", "optimal"]
+metric = "red_cleared_s"
+seeds = 2000
+until_s = 300.0
+expect = 0.405
+tolerance = 0.15
+
+[[finding]]
+id = "ad-overkill-cap-second-battery"
+claim = "A second air-defence battery per airframe buys no extra kills: a genuine null, not a small effect."
+documented_in = ["docs/EXPERIMENTS.md", "docs/design/11-command-and-control.md"]
+scenario = "ad_c2"
+param = "sim.max_batteries_per_air_target"
+arms = ["1", "2"]
+metric = "air_downed"
+seeds = 2500
+until_s = 300.0
+expect = -0.002
+tolerance = 0.02
+
+[[finding]]
+id = "ad-overkill-cap-third-battery"
+claim = "A third battery is actively worse: it costs reserve and kills marginally fewer drones."
+documented_in = ["docs/EXPERIMENTS.md", "docs/design/11-command-and-control.md"]
+scenario = "ad_c2"
+param = "sim.max_batteries_per_air_target"
+arms = ["1", "3"]
+metric = "air_downed"
+seeds = 2500
+until_s = 300.0
+expect = -0.028
+tolerance = 0.02

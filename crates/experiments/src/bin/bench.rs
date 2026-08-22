@@ -130,7 +130,11 @@ fn main() {
 simulation tick (shipped scenarios):"
     );
     let libs = sim_core::scenario::Libraries::load_dir(&dir).unwrap();
-    for name in ["default", "air_raid", "mountain_pass"] {
+    println!(
+        "  {:<14} {:>9} {:>8} {:>9}   {:<36} drift",
+        "scenario", "build", "tick", "baseline", "composition when recorded"
+    );
+    for (name, baseline) in TICK_BASELINE {
         let Ok(scn) = sim_core::scenario::Scenario::load(&dir.join(format!("{name}.toml"))) else {
             continue;
         };
@@ -161,12 +165,81 @@ simulation tick (shipped scenarios):"
         } else {
             hits as f64 * 100.0 / (hits + misses) as f64
         };
+        let tick_us = el.as_secs_f64() * 1e6 / f64::from(ticks);
         println!(
-            "  {name:<14} build {:>7.1?}  reset {:>7.1?}  tick {:>6.1} us  (LOS memo {rate:.0}% of {} lookups)",
+            "  {name:<14} {:>8.1?} {:>7.1} {:>8.1}   {:<36} {}",
             build,
+            tick_us,
+            baseline.tick_us,
+            baseline.composition,
+            drift(tick_us, baseline.tick_us)
+        );
+        println!(
+            "                 reset {:>7.1?}   LOS memo {rate:.0}% of {} lookups",
             reset,
-            el.as_secs_f64() * 1e6 / f64::from(ticks),
             hits + misses
         );
+    }
+    println!(
+        "
+  A baseline is a REPORT, not a gate: tick cost swings 2-3x on a busy machine, so a
+  failing threshold here would be noise. What it catches is the slower failure - a
+  figure quietly ceasing to describe what it names. `default` once measured 13.9 us
+  and later 37; nothing had regressed, the scenario had gained two drones and a
+  moving target never hits the exact-endpoint LOS memo. The composition column is
+  there so that change is visible next time instead of looking like a regression."
+    );
+}
+
+/// What each scenario's tick cost, and **what it contained when that was measured**.
+///
+/// The composition is not decoration. A tick figure is a statement about a scenario as much
+/// as about the engine, and the scenario is the half that changes silently: adding a drone
+/// to `default` moved its tick 4x while the engine got faster underneath. Recording both
+/// means the next reader can tell those two apart.
+struct TickBaseline {
+    tick_us: f64,
+    composition: &'static str,
+}
+
+const TICK_BASELINE: [(&str, TickBaseline); 3] = [
+    (
+        "default",
+        TickBaseline {
+            tick_us: 36.0,
+            composition: "5 units, 3 sensors, 2 drones, 1 AD",
+        },
+    ),
+    (
+        "air_raid",
+        TickBaseline {
+            tick_us: 6.5,
+            composition: "10 drones, 2 AD, 1 sensor",
+        },
+    ),
+    (
+        "mountain_pass",
+        TickBaseline {
+            tick_us: 8.8,
+            composition: "4 units, 2 sensors, no air",
+        },
+    ),
+];
+
+/// How far a measurement has moved from its baseline, as a readable marker.
+///
+/// Deliberately wide: anything inside 40% is reported as steady, because that is roughly the
+/// run-to-run spread of a sub-millisecond tick on a machine doing anything else.
+fn drift(measured: f64, baseline: f64) -> String {
+    if baseline <= 0.0 {
+        return "-".to_owned();
+    }
+    let ratio = measured / baseline;
+    if (0.6..=1.4).contains(&ratio) {
+        format!("steady ({ratio:.2}x)")
+    } else if ratio > 1.4 {
+        format!("SLOWER {ratio:.2}x - check what changed")
+    } else {
+        format!("faster {ratio:.2}x - re-record")
     }
 }

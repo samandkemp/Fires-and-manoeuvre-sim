@@ -16,7 +16,10 @@ use sim_core::sim::{Side, Sim};
 use sim_core::suppression::Suppression;
 
 use crate::overlays;
-use crate::state::{ClickMode, Overlay, PendingLoad, Probe, ResetKind, Selected, SimRes, UiState};
+use crate::state::{
+    ClickMode, Overlay, OverlayKind, OverlayRequest, PendingLoad, Probe, ResetKind, Selected,
+    SimRes, UiState,
+};
 
 /// Everything the panel draws from, gathered so each section takes only `&mut self`.
 pub struct Panel<'a, 'w, 's> {
@@ -25,7 +28,6 @@ pub struct Panel<'a, 'w, 's> {
     pub probe: &'a Probe,
     pub overlay: &'a mut Overlay,
     pub commands: &'a mut Commands<'w, 's>,
-    pub images: &'a mut Assets<Image>,
     /// Set by a section, carried out by [`apply_reset`] once egui lets go of the sim.
     pub reset: ResetKind,
 }
@@ -196,15 +198,40 @@ impl Panel<'_, '_, '_> {
         let mode = &mut self.ui_state.mode;
         for (value, label) in [
             (ClickMode::Probe, "nothing (move/route)"),
-            (ClickMode::PlaceBlueSensor, "Place Blue sensor"),
-            (ClickMode::PlaceRedUnit, "Place Red unit"),
-            (ClickMode::PlaceRedJammer, "Place Red jammer (EW)"),
-            (ClickMode::PlaceRedAir, "Place Red drone"),
-            (ClickMode::PlaceBlueAirDefence, "Place Blue air defence"),
-            (ClickMode::PlaceBlueC2, "Place Blue C2 post"),
+            (ClickMode::PlaceSensor, "Sensor"),
+            (ClickMode::PlaceUnit, "Unit"),
+            (ClickMode::PlaceJammer, "Jammer (EW)"),
+            (ClickMode::PlaceAir, "Drone"),
+            (ClickMode::PlaceAirDefence, "Air defence"),
+            (ClickMode::PlaceC2, "C2 post"),
             (ClickMode::AirOrbit, "Drone orbit here (radius below)"),
+            (ClickMode::SetObjective, "Objective for selected unit(s)"),
         ] {
             ui.radio_value(mode, value, label);
+        }
+
+        // The exchange rate the objective is planned against (§5.1): how many metres of
+        // movement cost this unit will spend to avoid one unit of exposure. At 0 it takes
+        // the short way regardless of who is watching, which is the comparison worth making.
+        if self.ui_state.mode == ClickMode::SetObjective {
+            ui.add(
+                egui::Slider::new(&mut self.ui_state.risk_weight, 0.0..=800.0)
+                    .text("caution (risk weight)"),
+            );
+            ui.label("0 = shortest route; higher trades distance for cover");
+        }
+
+        // Which force the asset joins. Shown only for modes that place something, so the
+        // control is never present while doing nothing. Both sides can field every asset
+        // class, which is what makes the counter-sensing fight - positioning to see without
+        // being seen - something the map can express rather than only a scenario file.
+        if self.ui_state.mode.places_an_asset() {
+            ui.horizontal(|ui| {
+                ui.label("for side:");
+                let side = &mut self.ui_state.place_side;
+                ui.selectable_value(side, Side::Blue, "Blue");
+                ui.selectable_value(side, Side::Red, "Red");
+            });
         }
     }
 
@@ -492,40 +519,61 @@ impl Panel<'_, '_, '_> {
             egui::Slider::new(&mut self.ui_state.coverage_exposure_s, 5.0..=180.0)
                 .text("exposure s"),
         );
-        let exposure = self.ui_state.coverage_exposure_s;
-        if ui.button("Coverage overlay (Pd)").clicked() {
-            overlays::rebuild_coverage_overlay(
-                self.sim,
-                exposure,
-                self.overlay,
-                self.commands,
-                self.images,
-            );
+        ui.horizontal(|ui| {
+            ui.label("from side:");
+            let side = &mut self.ui_state.overlay_side;
+            ui.selectable_value(side, Side::Blue, "Blue");
+            ui.selectable_value(side, Side::Red, "Red");
+        });
+
+        let request = |kind| OverlayRequest {
+            kind,
+            side: self.ui_state.overlay_side,
+            exposure_s: self.ui_state.coverage_exposure_s,
+        };
+        let mut asked: Option<OverlayRequest> = None;
+        ui.horizontal(|ui| {
+            if ui.button("Coverage (Pd)").clicked() {
+                asked = Some(request(OverlayKind::Coverage));
+            }
+            if ui.button("Belief snapshot").clicked() {
+                asked = Some(request(OverlayKind::BeliefSnapshot));
+            }
+        });
+        if ui.button("Belief the sim is flying on").clicked() {
+            asked = Some(request(OverlayKind::SimBelief));
         }
-        if ui
-            .button("Belief snapshot (where Red could hide)")
-            .clicked()
-        {
-            overlays::rebuild_belief_overlay(
-                self.sim,
-                exposure,
-                self.overlay,
-                self.commands,
-                self.images,
-            );
+        if let Some(r) = asked {
+            overlays::request_overlay(self.sim, r, self.overlay);
         }
-        // The sim's own running filter, as opposed to the snapshot above - this is what
-        // the tasking layer actually reads when deciding where to look.
-        if ui.button("Belief the sim is flying on (Blue)").clicked() {
-            overlays::rebuild_sim_belief_overlay(
-                self.sim,
-                Side::Blue,
-                self.overlay,
-                self.commands,
-                self.images,
-            );
+
+        // Auto-refresh, and the status line that makes a stale overlay obvious. Before
+        // this, an overlay silently went on describing where a sensor used to be.
+        ui.checkbox(&mut self.overlay.auto, "keep it up to date");
+        if ui.button("Clear overlay").clicked() {
+            overlays::clear_overlay(self.overlay, self.commands);
         }
-        ui.label("(coverage/snapshot from Blue sensors, vs 'afv')");
+        if self.overlay.pending.is_some() {
+            ui.label("computing... (the map stays live)");
+        } else if let Some(showing) = self.overlay.showing {
+            let stale = crate::state::overlay_fingerprint(&self.sim.sim) != self.overlay.built_from;
+            let side = if showing.side == Side::Blue {
+                "Blue"
+            } else {
+                "Red"
+            };
+            if stale && !self.overlay.auto {
+                ui.colored_label(
+                    egui::Color32::from_rgb(200, 140, 60),
+                    format!(
+                        "{} ({side}) - STALE, assets have moved",
+                        showing.kind.label()
+                    ),
+                );
+            } else {
+                ui.label(format!("{} ({side})", showing.kind.label()));
+            }
+        }
     }
 
     /// The last LOS probe result.
@@ -706,11 +754,12 @@ pub fn apply_reset(
     pending_load: &mut PendingLoad,
     commands: &mut Commands,
 ) {
-    // Every reset drops the overlay: it was computed against the old world.
+    // Every reset drops the overlay: it was computed against the old world. The cached
+    // terrain goes too, because a scenario switch is the one thing that changes it - and a
+    // background task holding the old map would paint the new one with the wrong raster.
     let drop_overlay = |overlay: &mut Overlay, commands: &mut Commands| {
-        if let Some(e) = overlay.0.take() {
-            commands.entity(e).despawn();
-        }
+        overlays::clear_overlay(overlay, commands);
+        overlay.terrain = None;
     };
     match reset {
         ResetKind::None => return,

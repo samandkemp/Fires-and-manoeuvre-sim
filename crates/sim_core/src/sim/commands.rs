@@ -67,18 +67,53 @@ impl Sim {
     /// Turn the ground fire-control net requirement on or off mid-run.
     ///
     /// Safe between ticks: the split into netted and loose shooters is recomputed from
-    /// scratch each epoch, so there is no state to migrate. Flipping it live is the
-    /// clearest way to see §11.4's counter-intuitive result - that a *split* side can
-    /// fight better, because the overkill cap applies once per fire-control problem and a
-    /// loose shooter puts to work a slot the coordinated side would have idled.
+    /// scratch each epoch, so there is no state to migrate. Flipping it live shows what
+    /// the net is worth: a side split into netted and loose shooters solves two smaller
+    /// fire-control problems, and a loose shooter cannot avoid a target a netted one has
+    /// already taken (§11.3).
     pub fn set_fires_need_c2(&mut self, on: bool) {
         self.fires_need_c2 = on;
     }
 
     /// Assign a movement route (world waypoints) to a placed unit.
+    ///
+    /// Clears any objective the unit had. A scenario refuses a unit that declares both
+    /// (§10.5), and the same exclusivity has to hold when they are set from a mouse:
+    /// otherwise the planner would quietly overwrite this route at the next epoch and the
+    /// route would appear not to have taken.
     pub fn set_route(&mut self, unit_idx: usize, route: Vec<Vec2>) {
-        self.units[unit_idx].route = route;
-        self.units[unit_idx].route_idx = 0;
+        let u = &mut self.units[unit_idx];
+        u.objective = None;
+        u.route = route;
+        u.route_idx = 0;
+    }
+
+    /// Give a unit an objective to plan its own way to, or `None` to stop it planning.
+    ///
+    /// The mirror of [`Sim::set_route`], and it clears the route for the same reason: from
+    /// here on the planner owns it, and leaving the old waypoints in place would make the
+    /// unit briefly follow a route nothing intends to maintain. Clearing rather than
+    /// keeping also means the first planned route is computed against the *current* risk
+    /// raster rather than inheriting a stale one.
+    pub fn set_objective(&mut self, unit_idx: usize, objective: Option<Vec2>) {
+        let u = &mut self.units[unit_idx];
+        u.objective = objective;
+        if objective.is_some() {
+            u.route.clear();
+            u.route_idx = 0;
+        }
+    }
+
+    /// Set one unit's exchange rate between movement cost and exposure, or `None` to take
+    /// the scenario's `[sim] risk_weight` (§5.1).
+    pub fn set_unit_risk_weight(&mut self, unit_idx: usize, weight: Option<f32>) {
+        self.units[unit_idx].risk_weight = weight;
+    }
+
+    /// The default exchange rate a unit falls back to when it declares none.
+    #[must_use]
+    pub fn risk_weight(&self) -> f32 {
+        self.risk_weight
     }
 
     /// Append one waypoint to a unit's route (for interactive route drawing).

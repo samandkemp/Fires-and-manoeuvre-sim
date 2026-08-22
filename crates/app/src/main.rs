@@ -50,6 +50,9 @@ fn main() {
                 advance_sim,
                 markers::draw_markers,
                 markers::draw_probe,
+                // Polls the background overlay task and installs a finished raster. Also
+                // decides whether what is on screen still describes the simulation.
+                overlays::drive_overlays,
                 apply_scenario_load,
             ),
         )
@@ -130,6 +133,9 @@ fn setup(mut commands: Commands, mut images: ResMut<Assets<Image>>) {
     });
     commands.insert_resource(UiState {
         mode: ClickMode::Probe,
+        place_side: Side::Blue,
+        risk_weight: 400.0,
+        overlay_side: Side::Blue,
         sensor_type_id: data.libs.sensors.keys().next().cloned().unwrap_or_default(),
         unit_type_id: data.libs.units.keys().next().cloned().unwrap_or_default(),
         air_type_id: data.libs.air.keys().next().cloned().unwrap_or_default(),
@@ -292,7 +298,7 @@ fn ui_panel(
     mut overlay: ResMut<Overlay>,
     mut pending_load: ResMut<PendingLoad>,
     mut commands: Commands,
-    mut images: ResMut<Assets<Image>>,
+
     buttons: Res<ButtonInput<MouseButton>>,
     keys: Res<ButtonInput<KeyCode>>,
     window: WindowQuery,
@@ -306,7 +312,6 @@ fn ui_panel(
         probe: &probe,
         overlay: &mut overlay,
         commands: &mut commands,
-        images: &mut images,
         reset: ResetKind::None,
     };
     egui::SidePanel::left("controls")

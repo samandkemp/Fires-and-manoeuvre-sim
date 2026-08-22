@@ -296,3 +296,85 @@ fn v74_an_objective_already_reached_is_stable() {
     );
     assert_eq!(sim.units()[0].side, Side::Blue);
 }
+
+// ---------------------------------------------------------------------------------------
+// Setting an objective at runtime, as the app's mouse does
+// ---------------------------------------------------------------------------------------
+
+// The scenario loader refuses a unit declaring both a route and an objective. The same
+// exclusivity has to hold when they are set interactively, or the planner would silently
+// overwrite a hand-drawn route at the next epoch and the route would look like it had not
+// taken.
+#[test]
+fn v72_setting_an_objective_and_a_route_stay_exclusive() {
+    let scn = crossing(&format!(
+        r#"
+        [[blue.units]]
+        id = "mover"
+        type = "mover"
+        pos = [{}, {}]
+    "#,
+        START.x, START.y
+    ));
+    let mut sim = Sim::new(&scn, &libraries(), 12).expect("builds");
+
+    sim.set_objective(0, Some(GOAL));
+    assert_eq!(sim.units()[0].objective, Some(GOAL));
+
+    // A route now arrives from the mouse: the objective must go, or the planner keeps
+    // overwriting what was just drawn.
+    sim.set_route(0, vec![Vec2::new(1000.0, 1000.0)]);
+    assert_eq!(
+        sim.units()[0].objective,
+        None,
+        "a hand-drawn route must cancel the objective"
+    );
+    assert_eq!(sim.units()[0].route.len(), 1);
+
+    // And back the other way: taking an objective drops the stale waypoints, so the first
+    // planned route is computed against the current raster rather than inheriting one.
+    sim.set_objective(0, Some(GOAL));
+    assert!(
+        sim.units()[0].route.is_empty(),
+        "taking an objective must clear the route the planner is about to own"
+    );
+
+    // Clearing the objective leaves the unit where it is rather than planning on.
+    sim.set_objective(0, None);
+    assert_eq!(sim.units()[0].objective, None);
+}
+
+// An objective set at runtime must actually reach the planner, not merely be stored: the
+// unit plans a route at the next epoch and starts moving along it.
+#[test]
+fn v72_a_runtime_objective_is_planned_and_followed() {
+    let scn = crossing(&format!(
+        r#"
+        [[blue.units]]
+        id = "mover"
+        type = "mover"
+        pos = [{}, {}]
+    "#,
+        START.x, START.y
+    ));
+    let mut sim = Sim::new(&scn, &libraries(), 12).expect("builds");
+    sim.run_until(30.0);
+    let parked = sim.units()[0].pos;
+    assert!(
+        parked.distance(START) < 1.0,
+        "a unit with neither route nor objective must not move"
+    );
+
+    sim.set_objective(0, Some(GOAL));
+    sim.set_unit_risk_weight(0, Some(0.0));
+    sim.run_until(120.0);
+
+    assert!(
+        !sim.units()[0].route.is_empty(),
+        "the planner should have produced a route by the next epoch"
+    );
+    assert!(
+        sim.units()[0].pos.distance(GOAL) < parked.distance(GOAL) - 100.0,
+        "the unit should have made real progress toward the objective"
+    );
+}
