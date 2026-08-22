@@ -24,7 +24,7 @@ tweakable - not to ship as a game.
   to a serial run.
 - **The maths is the product.** Every model is formulated and validated against a known
   analytical result or a documented invariant *before* it is made fast or pretty.
-  Correctness is testable; "realism" is not. There are 76 such gates.
+  Correctness is testable; "realism" is not. There are 77 such gates.
 - **Data-driven.** Unit, weapon and sensor stats live in TOML, never hard-coded, so they
   are tweakable at runtime - and sweepable by dotted path without editing a file.
 - **Composable subsystems.** Terrain, fires, sensing, suppression, movement and
@@ -117,7 +117,7 @@ The prose leans on both, so they are worth thirty seconds up front:
 - **§N.M** - a section of the design spec, e.g. §10.2 is fire allocation. The map from § to
   page is [docs/design/README.md](docs/design/README.md), and the numbers are referenced from
   ~300 places in the source, which is why they are never renumbered.
-- **V1-V76** - a *validation gate*: one property checked against a closed form or a
+- **V1-V77** - a *validation gate*: one property checked against a closed form or a
   documented invariant. V25 is "zero risk weight gives the shortest path". Run
   `cargo run -p validation --release --bin validation_report` to print all of them with the
   reference each is checked against.
@@ -131,7 +131,7 @@ in one place can be checked in another.
 crates/sim_core/     the OR engine - pure Rust, no Bevy. Where all the maths lives
 crates/app/          Bevy front-end: tactical map, pan/zoom, egui control panel
 crates/experiments/  headless studies: batch, sweep, factorial, sensitivity
-crates/validation/   the V1-V76 gates, checked through the public API only
+crates/validation/   the V1-V77 gates, checked through the public API only
 scenarios/           TOML scenarios and the unit/weapon/sensor stat blocks
 docs/                the spec, the gates, and how to run things
 ```
@@ -185,7 +185,7 @@ fires, suppression and attrition, movement as dynamic programming, a game-theore
 electronic warfare with partial observability, air and counter-air, a decision layer closing
 sensing to action, command and control as a placed asset, SEAD, directed targeting, and
 movement decisions taken inside the loop. Alongside it sits a study harness for batch runs,
-sweeps, factorial designs and global sensitivity analysis. All 76 validation gates hold.
+sweeps, factorial designs and global sensitivity analysis. All 77 validation gates hold.
 
 Each design page states the limitations its model accepts. The largest open one is that the
 fire-allocation objective scores a single epoch, which is measurably what costs the optimal

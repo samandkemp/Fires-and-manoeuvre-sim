@@ -270,6 +270,27 @@ impl Sim {
             }
         }
 
+        // Being shootable, as a second term (§5.2). Zero-weighted by default, and the whole
+        // block is skipped in that case - so the identity is structural, not a multiply by
+        // nought that still walks every sightline.
+        if self.fire_risk_weight > 0.0 {
+            let fire = self.fire_exposure(side, cells);
+            let max = fire.iter().copied().fold(0.0f32, f32::max);
+            if max > 0.0 {
+                // Each term is normalised on its own before they are combined, so the dial
+                // is an exchange rate between two [0, 1] quantities rather than between a
+                // detection rate and a threat score, whose scales have nothing in common.
+                let w = self.fire_risk_weight;
+                ndarray::Zip::from(&mut risk)
+                    .and(&fire)
+                    .for_each(|r, &f| *r += w * f / max);
+                let combined = risk.iter().copied().fold(0.0f32, f32::max);
+                if combined > 0.0 {
+                    risk.mapv_inplace(|v| v / combined);
+                }
+            }
+        }
+
         let planner = self.planner.as_mut().expect("planner built by caller");
         planner.risk[side as usize] = risk;
         planner.built_at[side as usize] = Some(epoch);
@@ -353,5 +374,70 @@ impl Sim {
             prev = cell;
         }
         total
+    }
+}
+
+impl Sim {
+    /// How exposed each coarse cell is to enemy *fire*, before normalisation.
+    ///
+    /// A cell scores the threat of the most dangerous enemy weapon that could engage a mover
+    /// standing in it. Direct fire additionally needs a sightline; indirect needs only range,
+    /// because its eligibility is a track rather than a line (§2.2) and a mover cannot count
+    /// on not being seen by somebody.
+    ///
+    /// The range test comes **first**, and deliberately: it is a subtraction and a compare,
+    /// while the sightline it guards is a terrain walk. Most cells are out of reach of most
+    /// shooters, so the cheap test removes nearly all the expensive ones.
+    fn fire_exposure(&self, side: Side, cells: usize) -> Array2<f32> {
+        let mut out = Array2::<f32>::zeros((cells, cells));
+        let mover = reference_mover();
+
+        // Enemy shooters that could actually fire: alive, armed, and not this side's.
+        let shooters: Vec<(Vec2, f32, crate::fires::WeaponType, f32)> = self
+            .units
+            .iter()
+            .filter(|u| u.side != side && u.alive())
+            .filter_map(|u| {
+                let w = u.weapon.clone()?;
+                let threat = Self::raw_threat(u);
+                (threat > 0.0).then_some((u.pos, u.stats.height_m, w, threat))
+            })
+            .collect();
+        if shooters.is_empty() {
+            return out;
+        }
+
+        let planner = self.planner.as_ref().expect("planner built by caller");
+        for cy in 0..cells {
+            for cx in 0..cells {
+                let at = planner.centre(&self.terrain, cx, cy);
+                let mut worst = 0.0f32;
+                for (pos, height, weapon, threat) in &shooters {
+                    if *threat <= worst {
+                        continue; // cannot raise the maximum; skip the geometry entirely
+                    }
+                    let range =
+                        crate::los::slant_range(&self.terrain, *pos, *height, at, mover.height_m);
+                    if range > weapon.max_range_m {
+                        continue;
+                    }
+                    if weapon.class == crate::fires::WeaponClass::Direct
+                        && !crate::los::line_of_sight(
+                            &self.terrain,
+                            *pos,
+                            *height,
+                            at,
+                            mover.height_m,
+                        )
+                        .clear
+                    {
+                        continue;
+                    }
+                    worst = *threat;
+                }
+                out[[cy, cx]] = worst;
+            }
+        }
+        out
     }
 }

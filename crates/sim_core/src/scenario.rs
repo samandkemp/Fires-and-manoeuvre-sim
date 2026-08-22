@@ -154,6 +154,18 @@ pub struct SimConfig {
     /// for; the surrogate has to be made to stand for more.
     #[serde(default = "default_allocation_horizon")]
     pub allocation_horizon: u32,
+    /// How heavily being *shootable* counts against being *observable* in the movement
+    /// planner's risk raster (§5.2).
+    ///
+    /// `0` - the default and an exact identity - makes risk purely a matter of enemy
+    /// observation, which is what it has always been. Above zero, ground inside an enemy
+    /// weapon's reach is priced as well, so "least-risk" stops meaning "least-observed".
+    ///
+    /// The two are separate terms rather than one blended raster because they are separate
+    /// facts: a unit can be watched from ground that nothing can shoot, and shelled from
+    /// ground nothing can see. Collapsing them would make the dial mean neither.
+    #[serde(default)]
+    pub fire_risk_weight: f32,
     /// Default exchange rate between movement cost and exposure for a unit with an
     /// objective (§5.1). A unit may override it; `0` plans the shortest route regardless of
     /// who is watching.
@@ -268,6 +280,7 @@ impl Default for SimConfig {
             track_hold_s: default_track_hold(),
             track_maintain_p: default_track_maintain_p(),
             allocation_horizon: default_allocation_horizon(),
+            fire_risk_weight: 0.0,
             risk_weight: default_risk_weight(),
             repath_margin: default_repath_margin(),
             allocation: AllocationChoice::default(),
@@ -629,6 +642,7 @@ impl SimConfig {
                 "[sim] allocation_horizon must be at least 1 (1 = score only this epoch)".into(),
             ));
         }
+        require_non_negative("[sim] fire_risk_weight", self.fire_risk_weight)?;
         require_non_negative("[sim] risk_weight", self.risk_weight)?;
         require_non_negative("[sim] repath_margin", self.repath_margin)?;
         if self.belief_cells == 0 {

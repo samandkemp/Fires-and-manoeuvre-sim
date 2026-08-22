@@ -1,7 +1,7 @@
 # Validation
 
 Every model in this project ships with a **gate**: a test that checks it against a
-closed-form result or a stated invariant. There are 76 of them, V1-V76, and they are the
+closed-form result or a stated invariant. There are 77 of them, V1-V77, and they are the
 backbone of the whole thing.
 
 ## Why a gate is not a regression test
@@ -174,6 +174,7 @@ not of any one function. Nothing was written to produce it.
 | V74 | A planner does not dither | A watcher on the line makes north and south cost almost the same, which is what makes a fresh solve wobble. The committed direction must not flip, and the unit must arrive. Deliberately *not* monotone progress: a detour increases straight-line distance before it decreases it |
 | V75 | The allocation objective's **planning horizon** | A horizon of 1 reproduces the single-epoch objective exactly, event for event, because it multiplies the threat term by 1.0. Above 1 the fire plan genuinely changes, and the formula ordering is checked arithmetically: a large harmless target must be overtaken by a small dangerous one as the horizon grows |
 | V76 | **Autonomous strike targeting** | An airframe without the flag aims only where it was told, or at its flight plan's destination, so every earlier scenario is unchanged. With it, a drone passing a located enemy aims at that enemy instead - ranked by the same value function and doctrine tier the guns use. An explicit assignment still wins, so opportunity never overrides orders. Checked by where munitions were *aimed*, since a drone with no assignment has always released somewhere |
+| V77 | **Fire** in the movement risk raster | At weight zero the raster is enemy observation only, as it always was. Above zero, ground inside an enemy weapon's reach is priced too, and more weight never buys less clearance. The fixture separates the two facts completely - an indirect gun covering a corridor and *no enemy sensor anywhere* - so observation risk is identically zero and only the new term can move the route |
 
 ### Command and control - [§11](design/11-command-and-control.md)
 

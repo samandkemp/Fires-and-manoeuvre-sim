@@ -479,6 +479,7 @@ Every dial has a default, so a scenario states only what it wants to change.
 | `fires_need_c2` | `false` | Must a ground shooter be under a live C2 post to coordinate? ([§11.3](design/11-command-and-control.md)) |
 | `sensor_tasking` | `false` | Do steerable sensors search by belief? ([§10.3](design/10-the-decision-layer.md)) |
 | `allocation_horizon` | 1 | How many epochs the fire-allocation objective prices ([§10.6](design/10-the-decision-layer.md)); 1 scores only this epoch |
+| `fire_risk_weight` | 0.0 | How heavily enemy weapon reach counts against enemy observation in the movement risk raster ([§5.2](design/05-movement-as-dp.md)) |
 | `risk_weight` | 50.0 | Default exchange rate between movement cost and exposure ([§10.5](design/10-the-decision-layer.md)) |
 | `repath_margin` | 0.1 | How much better a new route must be before a unit switches to it |
 | `belief_cells` | 48 | Edge length of the coarse belief **and movement-planning** grid |

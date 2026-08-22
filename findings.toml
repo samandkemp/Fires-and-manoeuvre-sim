@@ -121,3 +121,32 @@ until_s = 300.0
 expect = 9.258
 tolerance = 0.5
 set = ["air.strike_uas.autonomous=true"]
+
+# The demonstration §10.5 owed: route choice visibly changing an outcome. Pinned on both
+# sides of the trade, because a scenario that stops demonstrating is the failure mode here -
+# it goes quiet rather than wrong.
+[[finding]]
+id = "caution-buys-survival"
+claim = "A cautious approach arrives with a third more of itself than the direct one."
+documented_in = ["docs/design/10-the-decision-layer.md", "scenarios/covered_approach.toml"]
+scenario = "covered_approach"
+param = "blue.units.0.risk_weight"
+arms = ["0", "800"]
+metric = "blue_losses"
+seeds = 400
+until_s = 900.0
+expect = -1.145
+tolerance = 0.25
+
+[[finding]]
+id = "caution-buys-time-unseen"
+claim = "The cautious approach stays unseen about seven times longer than the direct one."
+documented_in = ["docs/design/10-the-decision-layer.md", "scenarios/covered_approach.toml"]
+scenario = "covered_approach"
+param = "blue.units.0.risk_weight"
+arms = ["0", "800"]
+metric = "first_detection_s"
+seeds = 400
+until_s = 900.0
+expect = 390.228
+tolerance = 45.0

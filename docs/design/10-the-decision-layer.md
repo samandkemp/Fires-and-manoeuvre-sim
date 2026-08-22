@@ -312,11 +312,10 @@ answer than any single "optimal" route.
 - **The mover is a reference, not the unit.** Risk is a property of the ground and the
   enemy's sensors, computed once per side, so an unusually stealthy unit is not routed
   differently from a conspicuous one.
-- **No demonstration scenario yet.** V72-V74 pin the mechanism on controlled fixtures, but
-  the bundled scenarios do not exercise it. A scenario in which the route choice visibly
-  changes the outcome needs geometry where the direct line is watched, the detour is
-  affordable, and the crossing completes inside the run - three constraints that took more
-  tuning than the phase had. Outstanding.
+- **A route choice is a step, not a curve, on a map with one detour.** Demonstrated by
+  `scenarios/covered_approach.toml`: caution below 800 takes the direct corridor, 800 and
+  above takes the detour, and further caution buys nothing because there is nothing left to
+  buy. Tracing a real frontier needs a map with graded alternatives.
 
 ### 10.6 The planning horizon
 

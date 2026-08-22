@@ -10,6 +10,8 @@
 //! bare `mod pathing;` would look for `tests/pathing.rs` -- back at the top level, where it
 //! would become its own binary again and undo the grouping.
 
+#[path = "movement/fire_risk.rs"]
+mod fire_risk;
 #[path = "movement/pathing.rs"]
 mod pathing;
 #[path = "movement/planning.rs"]

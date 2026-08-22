@@ -1,0 +1,80 @@
+# What is a covered approach worth? (docs/design/10-the-decision-layer.md 10.5)
+#
+# A Blue troop has to cross five kilometres to reach its objective. The direct line runs
+# through a corridor a Red observer watches and a Red battery can reach; north of it the
+# going is longer but out of the observer's arc, and what cannot be seen cannot be shelled,
+# because indirect fire needs a track.
+#
+# The troop is given an **objective**, not a route, so it plans its own way there each
+# decision epoch against what it knows about Red's sensors. `risk_weight` is the exchange
+# rate it plans against: metres of movement cost it will spend to avoid one unit of exposure.
+#
+#   sweep covered_approach --param blue.units.0.risk_weight \
+#         --values 0,100,400,1200 --seeds 500 --until 900 --metric blue_losses
+#
+# Sweeping it traces the trade directly: at 0 the troop takes the short way through the
+# corridor and gets shelled; raised, it goes round and arrives later but intact. The frontier
+# between those is the answer worth having, rather than any single "best" route.
+#
+# Measured, 400 paired seeds:
+#
+#   risk_weight            0        800
+#   blue elements lost     3.000    -1.145 +- 0.069  (t = -16.7)
+#   first detection        54.3 s   +390.2 +- 15.3 s (t = 25.5, 0 seeds tied)
+#   detections             1.000    -0.325 +- 0.023  (t = -13.9)
+#
+# The cautious troop stays unseen roughly seven times longer, is never detected at all on a
+# third of seeds, and arrives with a third more of itself.
+#
+# The frontier is a **step, not a curve**: 0, 100 and 400 all take the direct corridor and
+# lose all three elements; 800 and everything above it take the detour and stop there. That
+# is honest rather than disappointing - there is essentially one alternative route on this
+# map, so once caution is enough to buy it, more caution has nothing left to buy. A scenario
+# with two or three graded detours would trace a real curve.
+#
+# The observer is a `narrow_optical` on purpose. A `mast_optical` reaches 6000 m on a 7000 m
+# map and sees essentially everything, so "avoid being seen" would have no solution and the
+# planner would correctly conclude there is no better route - a scenario that measures
+# nothing. A 70-degree arc leaves ground genuinely unwatched, which is what makes the choice
+# a choice.
+
+name = "covered_approach"
+default_seed = 23
+
+[sim]
+dt_s = 1.0
+epoch_s = 10.0
+# The troop below overrides this; it is here so the scenario states its own default.
+risk_weight = 400.0
+
+[terrain]
+cell_size_m = 10.0
+width_cells = 700
+height_cells = 500
+
+[terrain.source.flat]
+elevation_m = 0.0
+
+# --- Blue: one troop, planning its own way across --------------------------------------
+[[blue.units]]
+id = "blue-troop"
+type = "afv"
+pos = [500.0, 1600.0]
+objective = [6200.0, 1600.0]
+risk_weight = 400.0
+
+# --- Red: the eye and the guns ---------------------------------------------------------
+# The observer covers the direct corridor from the south, facing west down it. Kill it and
+# the battery is blind, which is the point of the pairing.
+[[red.sensors]]
+id = "red-op"
+type = "narrow_optical"
+pos = [3600.0, 900.0]
+facing_deg = 180.0
+
+# Well out of the way, and reaching the whole map. What decides whether it fires is not its
+# range but whether the observer has found anything.
+[[red.units]]
+id = "red-battery"
+type = "sp_gun"
+pos = [6600.0, 600.0]

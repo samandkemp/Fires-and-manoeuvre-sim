@@ -784,7 +784,7 @@ impl Sim {
 
     /// How dangerous a unit is, before normalisation: rate of fire × lethality × reach.
     /// Unarmed units score zero.
-    fn raw_threat(unit: &super::UnitState) -> f32 {
+    pub(super) fn raw_threat(unit: &super::UnitState) -> f32 {
         unit.weapon.as_ref().map_or(0.0, |w| {
             w.rof_rounds_per_min * w.p_kill_given_hit.max(0.01) * w.max_range_m
         })
