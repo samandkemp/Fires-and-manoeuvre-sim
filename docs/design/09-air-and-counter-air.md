@@ -111,6 +111,41 @@ attack. Together they span the modern spectrum - a reusable guided-bomb carrier
 (`munitions = 2, expendable = false`) and a one-way attack munition
 (`munitions = 1, expendable = true`) are the same model with different dials.
 
+
+#### Autonomous targeting
+
+`autonomous` on the airframe's stat block lets a drone release on an enemy **its own side has
+located** when it has no live assignment, instead of flying past it. Off by default, which is
+every airframe written before this existed.
+
+Three constraints, each deliberate:
+
+- The target must be **located**. Autonomy here means acting on the side's picture without
+  waiting to be told, not seeing through terrain.
+- It must already be inside `release_range_m`. The drone does **not** divert, so this is
+  opportunism along the route it was given. Diverting couples targeting to path planning,
+  which is a larger question and a separate one.
+- The choice is ranked by the **same** value function and doctrine tier the ground shooters
+  use. A side ordered to kill command posts first now does that with its drones too.
+
+Precedence is assignment, then autonomy, then the flight plan's destination. An explicit
+assignment wins outright, so opportunity never overrides orders.
+
+**Measured** on `scenarios/hunter_uas.toml`, 500 paired seeds: a drone given no target
+destroys **0.000** Blue elements without autonomy and **9.154 ± 0.074** with it (t = 123.3,
+no seed tied). Without the decision it flies the route, releases at its last waypoint and
+hits nothing.
+
+Blinding the observer takes it straight back to 0.000. Autonomy is worth exactly nothing
+without the sensor that finds the targets - the drone may choose, and has nothing to choose
+from. That is worth stating plainly, because it is easy to read autonomy as a property of the
+airframe when it is really a property of the side's picture.
+
+One case is subtler than it looks. A **named** target that no longer exists yields no release
+for a non-autonomous airframe - not a fallback to the destination - because that is the
+identity half of V60. An autonomous airframe in the same position looks for something else,
+which is re-targeting rather than a fallback.
+
 ### 9.4 Air defence - two engagement models, two closed forms
 
 Two models, because **time-to-kill is distributed differently** in each - differing in
@@ -247,8 +282,8 @@ gun; it changes nothing today.
 
 Stated rather than hidden:
 
-- **No autonomous target selection.** Strike targets are assigned (§9.3); a drone will
-  not opportunistically attack what its own sensor finds.
+- **Autonomy does not divert.** An autonomous drone releases on what comes inside release
+  range along its route (§9.3); it does not re-plan its flight to go and find a target.
 - **No air-to-air.** Drones do not engage other drones.
 - **Acoustic detection of drones** is the natural modality and remains unimplemented -
   §3.1's `Modality` tag is the seam.

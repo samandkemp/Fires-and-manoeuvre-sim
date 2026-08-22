@@ -1,0 +1,81 @@
+# What is a drone allowed to decide for itself? (docs/design/09-air-and-counter-air.md 9.3)
+#
+# A Red strike drone flies a fixed route across a Blue battle position. It is given **no
+# target**: before autonomous targeting existed, that meant it flew the route, aimed its
+# munitions at the last waypoint, and ignored everything it passed. With `autonomous = true`
+# it releases on whichever located Blue asset comes inside release range, ranked by Red's own
+# doctrine and value function.
+#
+#   sweep hunter_uas --param air.strike_uas.autonomous --values false,true \
+#         --seeds 500 --until 300 --metric blue_losses
+#
+# The drone does not divert. Its route is identical in both arms, so the comparison isolates
+# the decision and nothing else - same map, same seed, same flight path, the only difference
+# being whether the airframe may choose.
+#
+# Measured, 500 paired seeds:
+#
+#   autonomous = false -> 0.000 Blue elements lost   (baseline)
+#   autonomous = true  -> +9.154 +- 0.074 (t = 123.3, 0 seeds tied)
+#
+# Not a subtle effect. Without the decision the drone flies the whole route, releases both
+# munitions at its last waypoint and hits nothing at all; with it, it destroys most of the
+# position. Zero seeds tied means it changed the outcome every single time.
+#
+# The second half is the more interesting one. Blinding Red's observer - the same scenario,
+# autonomy still on, `sensors.mast_optical.lambda0_per_s = 0` - takes it straight back to
+# **0.000**. Autonomy is worth exactly nothing without the sensor that finds the targets: the
+# drone may choose, and has nothing to choose from. Sensing is not an input to this
+# capability, it is the whole of it.
+#
+# Red's observer is what makes the choice possible at all: autonomy acts on the side's
+# picture, so a target nobody has found is not a target.
+
+name = "hunter_uas"
+default_seed = 17
+
+[sim]
+dt_s = 1.0
+epoch_s = 10.0
+
+[terrain]
+cell_size_m = 10.0
+width_cells = 700
+height_cells = 400
+
+[terrain.source.flat]
+elevation_m = 0.0
+
+# --- Blue: a battle position strung along the drone's track --------------------------
+# Deliberately spread, so "which one" is a real question rather than a formality. The gun
+# is the valuable one: `sp_gun` carries a weapon, so the derived value ranks it above the
+# infantry even before doctrine has a say.
+[[blue.units]]
+id = "blue-inf-1"
+type = "inf_section"
+pos = [2200.0, 2000.0]
+
+[[blue.units]]
+id = "blue-gun"
+type = "sp_gun"
+pos = [3500.0, 2100.0]
+
+[[blue.units]]
+id = "blue-inf-2"
+type = "inf_section"
+pos = [4800.0, 1900.0]
+
+# --- Red: the observer that makes autonomy possible, and the drone itself -------------
+[[red.sensors]]
+id = "red-op"
+type = "mast_optical"
+pos = [3500.0, 400.0]
+
+# No `target` line. That is the whole point of the scenario.
+[[red.air]]
+id = "hunter"
+type = "strike_uas"
+pos = [500.0, 2000.0]
+altitude_m = 300.0
+heading_deg = 90.0
+waypoints = [[500.0, 2000.0], [6500.0, 2000.0]]

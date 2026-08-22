@@ -89,3 +89,35 @@ until_s = 300.0
 expect = 0.450
 tolerance = 0.15
 set = ["sim.allocation_horizon=8"]
+
+# Autonomy is a large effect and an easy one to break silently: it depends on the target
+# being located, on doctrine ranking, and on assignment precedence. Pinned so a regression in
+# any of those shows up as a number rather than as a scenario quietly going quiet.
+[[finding]]
+id = "autonomy-lets-a-drone-hunt"
+claim = "A drone given no target destroys nothing; allowed to choose, it destroys most of the position."
+documented_in = ["docs/design/09-air-and-counter-air.md", "scenarios/hunter_uas.toml"]
+scenario = "hunter_uas"
+param = "air.strike_uas.autonomous"
+arms = ["false", "true"]
+metric = "blue_losses"
+seeds = 500
+until_s = 300.0
+expect = 9.154
+tolerance = 0.5
+
+# The half that matters more: autonomy is parasitic on sensing. Blind the observer and the
+# capability is worth exactly zero.
+[[finding]]
+id = "autonomy-is-worth-nothing-blind"
+claim = "Autonomy without a sensor to find targets is worth exactly nothing."
+documented_in = ["docs/design/09-air-and-counter-air.md", "scenarios/hunter_uas.toml"]
+scenario = "hunter_uas"
+param = "sensors.mast_optical.lambda0_per_s"
+arms = ["0.0", "0.6"]
+metric = "blue_losses"
+seeds = 400
+until_s = 300.0
+expect = 9.258
+tolerance = 0.5
+set = ["air.strike_uas.autonomous=true"]

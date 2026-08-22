@@ -12,6 +12,8 @@
 
 #[path = "sead/arm.rs"]
 mod arm;
+#[path = "sead/autonomy.rs"]
+mod autonomy;
 #[path = "sead/counter_battery.rs"]
 mod counter_battery;
 #[path = "sead/emcon.rs"]

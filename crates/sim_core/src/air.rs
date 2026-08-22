@@ -129,6 +129,19 @@ pub struct AirType {
     /// Number of munitions carried.
     #[serde(default)]
     pub munitions: u32,
+    /// May this airframe attack a target it finds itself, rather than only the one a
+    /// scenario named (`docs/DESIGN.md` §9.3)?
+    ///
+    /// `false` - the default, and every airframe's behaviour before this existed - means the
+    /// drone strikes its assigned target or nothing. `true` lets it release on a located
+    /// enemy that comes inside release range when it has no assigned target left, ranked by
+    /// the side's own doctrine and value function rather than a second targeting model.
+    ///
+    /// It does **not** divert: the flight plan is unchanged, so this is opportunism on the
+    /// route it was given rather than a hunt. Diverting couples targeting to path planning,
+    /// which is a larger change and a separate question.
+    #[serde(default)]
+    pub autonomous: bool,
     /// Is the airframe consumed by its own attack (a one-way attack munition)?
     #[serde(default)]
     pub expendable: bool,
@@ -177,6 +190,7 @@ impl Default for AirType {
             sensor: None,
             payload: None,
             munitions: 0,
+            autonomous: false,
             expendable: false,
             role: None,
             release_range_m: default_release_range(),

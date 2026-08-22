@@ -774,7 +774,7 @@ impl Sim {
 
     /// The largest raw threat score on the field, used to normalise [`Sim::target_value`].
     /// Zero when nobody is armed, in which case value is size alone.
-    fn threat_scale(&self) -> f32 {
+    pub(super) fn threat_scale(&self) -> f32 {
         self.units
             .iter()
             .filter(|u| u.alive())
@@ -805,7 +805,7 @@ impl Sim {
     /// scenario that wants artillery to prefer the SAM over the tanks says so with `value`.
     /// That is what the dial is for: expressing "kill the radar first" is a judgement, not
     /// a derivation.
-    fn target_value(&self, t: FireTarget, threat_scale: f32) -> f32 {
+    pub(super) fn target_value(&self, t: FireTarget, threat_scale: f32) -> f32 {
         let target = self.target_state(t);
         // How long this target would go on being dangerous if it survived, in epochs.
         // At the default horizon of 1 this is 1.0 and the expression below is exactly the
@@ -831,7 +831,7 @@ impl Sim {
     /// Units first, so a scenario with no air defence and no posts produces exactly the
     /// list it always did and every existing result is untouched (§7.4). Batteries and
     /// posts are appended, which is the same additive posture §12 took for strike targets.
-    fn engageable_targets(&self, side: Side) -> Vec<FireTarget> {
+    pub(super) fn engageable_targets(&self, side: Side) -> Vec<FireTarget> {
         let mut out: Vec<FireTarget> = (0..self.units.len())
             .filter(|&i| self.units[i].side != side && self.units[i].alive())
             .map(FireTarget::Unit)

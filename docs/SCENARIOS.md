@@ -450,6 +450,11 @@ unit of exposure. At `0` it takes the short way regardless of who is watching. S
 one unit while another follows a fixed route is how the trade between arriving quickly and
 arriving alive gets measured - control and treatment on the same map and seed.
 
+**`autonomous` decides whether a drone may pick its own target.** Off by default. With it on,
+an airframe with no live assignment releases on a located enemy that comes inside release
+range, ranked by the side's doctrine and value function. It does not divert to go and find
+one, and an explicit `target` always wins.
+
 **`altitude_ref` is the decision that decides whether terrain can mask a drone.** `agl`
 follows the ground and rides over ridges; `amsl` holds a constant height above sea level
 and gets masked by anything taller. Same number, opposite behaviour

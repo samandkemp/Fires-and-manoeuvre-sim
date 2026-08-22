@@ -146,10 +146,10 @@ is for - "kill the radar first" is a judgement, not a derivation.
 
 ### 12.5 Deliberate limitations (v1)
 
-- **Targeting is still assigned.** A strike drone attacks what a scenario named; even an
-  ARM homes on the emitter it was *sent* at rather than scanning for the nearest
-  transmitting radar. Autonomous target selection remains the deferred kill-chain work
-  (§9.7).
+- **An ARM still homes where it was sent.** An `autonomous` airframe now picks its own
+  target from what the side has located (§9.3), but an anti-radiation seeker rides the
+  emitter it was aimed at rather than scanning for the nearest transmitting radar. Choosing
+  a target and homing on one are different mechanisms, and only the first is autonomous.
 - **Emissions are binary.** A radar is on or off; there is no intermittent emission, no
   blinking to reduce exposure, and no memory of a position after the emitter goes quiet
   beyond the aim point itself.

@@ -143,8 +143,11 @@ one.
   natural next step and would sit on the same tier machinery.
 - **Priority is not per shooter.** The whole side shares one list. Giving a specific
   battery its own priority would need doctrine on the instance rather than the force.
-- **Strike drones are unaffected.** They still attack the asset a scenario named (§12.5);
-  doctrine drives *allocation*, and a strike drone does not allocate.
+- **Doctrine reaches an autonomous drone, but not an assigned one.** An `autonomous`
+  airframe ranks what it finds by the same priority list the guns use (§9.3), so a side's
+  orders now carry to its drones. A drone with an explicit target still attacks that target:
+  an order to a specific airframe outranks the side's general priority, which is the same
+  precedence `[[side.orders]]` has over `priority`.
 
 ### 13.6 Validation gates (V66)
 

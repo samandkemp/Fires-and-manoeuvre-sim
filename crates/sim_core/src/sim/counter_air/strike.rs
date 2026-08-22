@@ -57,14 +57,82 @@ impl Sim {
     }
 
     /// A strike drone's aim point: its assigned target if it still exists, otherwise the
-    /// final waypoint of its flight plan (`docs/DESIGN.md` §9.3). A named target that is
-    /// already dead yields `None` - the drone does not re-target itself, by design.
+    /// final waypoint of its flight plan (`docs/DESIGN.md` §9.3).
+    ///
+    /// A named target that is already dead yields `None` **unless** the airframe is
+    /// `autonomous`, in which case it looks for something else worth hitting within release
+    /// range. Assignment still wins: a drone with a live assigned target goes for that one,
+    /// so orders are not quietly overridden by opportunity.
     pub(super) fn strike_aim_point(&self, air_idx: usize) -> Option<Vec2> {
+        // Precedence, and every branch of it is load-bearing.
+        //
+        // A **named** target that no longer exists yields no release at all, for anyone
+        // without autonomy. That is not an oversight to tidy away: it is the §7.4 identity
+        // half of V60, which says naming a target that is not there must behave exactly as
+        // it did before batteries and posts became targetable. An earlier cut of this
+        // function let a missing named target fall through to the flight plan's
+        // destination, and V60 failed - correctly.
+        //
+        // No assignment **at all** is the different case, and there the destination has
+        // always been the fallback.
+        //
+        // Autonomy slots into both, and never ahead of a live assignment: orders are not
+        // overridden by opportunity.
+        let autonomous = self.air[air_idx].stats.autonomous;
         match &self.air[air_idx].target {
             Some(TargetSpec::Point(p)) => Some(*p),
-            Some(TargetSpec::Named(id)) => self.named_ground_asset(id),
-            None => self.air[air_idx].plan.destination(),
+            Some(TargetSpec::Named(id)) => self
+                .named_ground_asset(id)
+                .or_else(|| autonomous.then(|| self.opportune_target(air_idx)).flatten()),
+            None => autonomous
+                .then(|| self.opportune_target(air_idx))
+                .flatten()
+                .or_else(|| self.air[air_idx].plan.destination()),
         }
+    }
+
+    /// The best thing this drone could hit from where it is, or `None` if nothing qualifies.
+    ///
+    /// Three constraints, and each is deliberate:
+    ///
+    /// * The target must be **located** by the drone's own side. A drone cannot attack what
+    ///   nobody has found; autonomy here means acting on the side's picture without waiting
+    ///   to be told, not seeing through terrain.
+    /// * It must already be within `release_range_m`. The drone does not divert, so this is
+    ///   opportunism along the route it was given.
+    /// * The choice is ranked by the **same** value function and doctrine the ground fires
+    ///   use, so a side that has been ordered to kill command posts first does that with its
+    ///   drones too. Before this, doctrine stopped at the ground shooters (§13.3).
+    ///
+    /// Deterministic: ties break on the fixed target-list order, and no randomness is drawn.
+    fn opportune_target(&self, air_idx: usize) -> Option<Vec2> {
+        let air = &self.air[air_idx];
+        let height = air.actor_height(&self.terrain);
+        let doctrine = self.doctrine_of(air.side);
+        let value_scale = self.threat_scale();
+
+        self.engageable_targets(air.side)
+            .into_iter()
+            .filter_map(|t| {
+                let state = self.target_state(t);
+                if !state.located {
+                    return None;
+                }
+                let range = los::slant_range(&self.terrain, air.pos, height, state.pos, 0.0);
+                if range > air.stats.release_range_m {
+                    return None;
+                }
+                // Rank exactly as a gun would: doctrine tier first, then value. Using the
+                // tier directly rather than a weight keeps strict ordering strict - the
+                // same reason §13.2 solves one tier at a time instead of adding a bonus.
+                let tier = doctrine.tier_of(&self.target_names(t));
+                let value = self.target_value(t, value_scale);
+                Some((tier, value, state.pos))
+            })
+            // Lowest tier first, then highest value. `total_cmp` rather than `partial_cmp`
+            // so equal values order deterministically instead of leaving it to NaN rules.
+            .min_by(|a, b| a.0.cmp(&b.0).then(b.1.total_cmp(&a.1)))
+            .map(|(_, _, pos)| pos)
     }
 
     /// Is this strike drone's assigned target currently radiating (`docs/DESIGN.md`
