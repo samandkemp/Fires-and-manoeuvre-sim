@@ -21,8 +21,8 @@ use bevy_egui::egui;
 use sim_core::doctrine::DoctrineMode;
 use sim_core::sim::Side;
 
+use super::Panel;
 use crate::state::SimRes;
-use crate::ui::Panel;
 
 impl Panel<'_, '_, '_> {
     /// Every live model dial, grouped by the subsystem it belongs to.
