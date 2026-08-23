@@ -40,5 +40,5 @@ cargo run -p app -- path/to/mine.toml  # or by path, for one kept elsewhere
 ```
 
 The schema these parse into lives in
-[`crates/sim_core/src/scenario.rs`](../crates/sim_core/src/scenario.rs); the models each
+[`crates/sim_core/src/scenario/mod.rs`](../crates/sim_core/src/scenario/mod.rs); the models each
 dial feeds are specified in [`docs/design/`](../docs/design/).

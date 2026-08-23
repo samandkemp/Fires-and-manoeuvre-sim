@@ -618,5 +618,5 @@ directory without them loads with those libraries empty, so an older scenario se
 works.
 
 The schema all of these parse into is
-[`crates/sim_core/src/scenario.rs`](../crates/sim_core/src/scenario.rs), which is the place
+[`crates/sim_core/src/scenario/mod.rs`](../crates/sim_core/src/scenario/mod.rs), which is the place
 to look when this document and the code disagree.
