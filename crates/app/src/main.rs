@@ -22,6 +22,7 @@ use bevy_egui::{egui, EguiContexts, EguiPlugin, EguiPrimaryContextPass};
 use bevy_pancam::{PanCam, PanCamPlugin};
 use sim_core::sim::{Side, Sim};
 
+mod dials;
 mod input;
 mod markers;
 mod overlays;

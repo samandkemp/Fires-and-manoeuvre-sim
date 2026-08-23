@@ -46,6 +46,7 @@ impl Panel<'_, '_, '_> {
         self.type_pickers(ui);
         self.air_section(ui);
         self.decision_section(ui);
+        self.model_dials(ui);
         self.overlay_buttons(ui);
         self.probe_readout(ui);
         self.force_summary(ui);

@@ -104,6 +104,27 @@ A planned route is drawn **dashed** and a scripted one solid, because they are d
 kinds of thing: a scripted route is a commitment, a planned one is this epoch's opinion and
 will be re-solved at the next. Setting one cancels the other, in either direction.
 
+### Model dials, live
+
+The **Model dials** section edits the model while it runs, grouped by subsystem: suppression,
+tracks, movement and planning, and doctrine. A change takes effect on the next tick.
+
+| Group | Dials |
+|---|---|
+| Suppression | probability per near miss, recovery rate, near-miss radius, suppressed fire factor |
+| Tracks | track hold, probability a track is maintained per epoch |
+| Movement and planning | default caution, fire risk weight, re-path margin, allocation horizon |
+| Doctrine | strict or weighted, per side (the priority list itself is scenario-level) |
+
+This is what a sweep cannot give you. A sweep reports what a dial is worth on average over
+hundreds of trials; it says nothing about what the dial *does*. Watching suppression recovery
+change how a position behaves under fire is a different kind of knowing.
+
+**Three dials are read-only**, and shown rather than hidden. `dt_s` and `epoch_s` decide what
+a tick and an epoch mean, so changing them mid-run would make the two halves of a trial answer
+different questions. `belief_cells` sizes rasters that would have to be rebuilt and re-keyed.
+All three are scenario-level.
+
 ### Overlays and inspection
 
 | Button | Shows |
@@ -121,9 +142,8 @@ the assets, so moving a sensor makes it describe where that sensor *used to be* 
 marks it **STALE**, and **keep it up to date** rebuilds it automatically when its inputs
 change, throttled so a running battle does not queue rasters faster than they finish.
 
-Live dials in the panel - fire allocation, sensor tasking, the air and decision-layer
-settings - take effect immediately, so a rule can be watched changing the battle rather than
-re-reading a CSV.
+Every live dial takes effect on the next tick, so a rule can be watched changing the battle
+rather than re-read from a CSV afterwards.
 
 ### Screenshots
 

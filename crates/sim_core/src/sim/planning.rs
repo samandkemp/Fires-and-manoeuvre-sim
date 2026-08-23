@@ -214,6 +214,17 @@ impl Sim {
         }
     }
 
+    /// Forget every side's cached risk raster, so the next epoch rebuilds it.
+    ///
+    /// Needed whenever a dial the raster depends on changes under it. The cache is keyed on
+    /// the epoch it was built for, not on its inputs, so without this a mid-run change would
+    /// silently keep using a raster that answers the previous question.
+    pub(super) fn invalidate_risk(&mut self) {
+        if let Some(p) = self.planner.as_mut() {
+            p.built_at = [None; 2];
+        }
+    }
+
     /// Rebuild one side's view of enemy observation coverage, once per epoch.
     fn refresh_risk(&mut self, side: Side) {
         let epoch = self.epochs_run;

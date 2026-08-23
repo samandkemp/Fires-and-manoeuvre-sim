@@ -6,7 +6,7 @@
 //! **tombstones** rather than shifting the asset lists, because the event logs hold
 //! indices into them (V54).
 
-use super::Sim;
+use super::{Side, Sim};
 use crate::air::{AirState, FlightPlan};
 use crate::scenario::AllocationChoice;
 use crate::suppression::Suppression;
@@ -73,6 +73,120 @@ impl Sim {
     /// already taken (§11.3).
     pub fn set_fires_need_c2(&mut self, on: bool) {
         self.fires_need_c2 = on;
+    }
+
+    /// Live model dials (`docs/DESIGN.md` §4.3, §10). Each is read fresh where it is used,
+    /// so changing one takes effect on the next tick with no state to migrate - which is
+    /// what makes watching a rule change a battle possible at all.
+    ///
+    /// **Not** here on purpose: `dt_s`, `epoch_s` and `belief_cells`. The first two decide
+    /// what a tick and an epoch *mean*, so changing them mid-run would make the first half of
+    /// a trial and the second half answer different questions; the third sizes rasters that
+    /// would have to be rebuilt and re-keyed. All three are scenario-level, and the app shows
+    /// them read-only rather than pretending otherwise.
+    pub fn set_p_suppress(&mut self, p: f32) {
+        self.p_suppress = p.clamp(0.0, 1.0);
+    }
+
+    /// Suppression recovery rate, per second.
+    pub fn set_recover_per_s(&mut self, rate: f32) {
+        self.recover_per_s = rate.max(0.0);
+    }
+
+    /// Radius within which a near miss can suppress, metres.
+    pub fn set_suppression_radius_m(&mut self, r: f32) {
+        self.suppression_radius_m = r.max(0.0);
+    }
+
+    /// How much a suppressed unit's fire is scaled.
+    pub fn set_suppressed_fire_factor(&mut self, f: f32) {
+        self.suppressed_fire_factor = f.clamp(0.0, 1.0);
+    }
+
+    /// How long a track survives without fresh observation, seconds.
+    pub fn set_track_hold_s(&mut self, s: f32) {
+        self.track_hold_s = s.max(0.0);
+    }
+
+    /// Per-epoch probability a held track is maintained.
+    pub fn set_track_maintain_p(&mut self, p: f32) {
+        self.track_maintain_p = p.clamp(0.0, 1.0);
+    }
+
+    /// How many epochs the fire-allocation objective prices (§10.6).
+    pub fn set_allocation_horizon(&mut self, epochs: u32) {
+        self.allocation_horizon = epochs.max(1);
+    }
+
+    /// How heavily enemy weapon reach counts in the movement risk raster (§5.2).
+    ///
+    /// Invalidates every side's cached raster, because the raster it built is now answering
+    /// the wrong question - without this the change would appear to do nothing until the
+    /// next epoch happened to rebuild it for another reason.
+    pub fn set_fire_risk_weight(&mut self, w: f32) {
+        self.fire_risk_weight = w.max(0.0);
+        self.invalidate_risk();
+    }
+
+    /// Default exchange rate between movement cost and exposure (§5.1).
+    pub fn set_risk_weight(&mut self, w: f32) {
+        self.risk_weight = w.max(0.0);
+    }
+
+    /// How much better a new route must be before a unit switches to it (§10.5).
+    pub fn set_repath_margin(&mut self, m: f32) {
+        self.repath_margin = m.max(0.0);
+    }
+
+    /// How a side applies its target priority (§13.2).
+    pub fn set_doctrine_mode(&mut self, side: Side, mode: crate::doctrine::DoctrineMode) {
+        self.doctrine[side as usize].mode = mode;
+    }
+
+    /// A side's target priority, highest first.
+    #[must_use]
+    pub fn doctrine_priority(&self, side: Side) -> &[String] {
+        &self.doctrine[side as usize].priority
+    }
+
+    /// How a side currently applies that priority.
+    #[must_use]
+    pub fn doctrine_mode(&self, side: Side) -> crate::doctrine::DoctrineMode {
+        self.doctrine[side as usize].mode
+    }
+
+    /// The model dials the app shows read-only, because they are scenario-level.
+    #[must_use]
+    pub fn clock_dials(&self) -> (f32, f32) {
+        (self.dt_s, self.epoch_s)
+    }
+
+    /// Current values of the live dials, for a panel to show without guessing.
+    #[must_use]
+    pub fn suppression_dials(&self) -> (f32, f32, f32, f32) {
+        (
+            self.p_suppress,
+            self.recover_per_s,
+            self.suppression_radius_m,
+            self.suppressed_fire_factor,
+        )
+    }
+
+    /// Track lifecycle dials (§10.1).
+    #[must_use]
+    pub fn track_dials(&self) -> (f32, f32) {
+        (self.track_hold_s, self.track_maintain_p)
+    }
+
+    /// Movement dials (§5.1, §10.5) and the allocation horizon (§10.6).
+    #[must_use]
+    pub fn movement_dials(&self) -> (f32, f32, f32, u32) {
+        (
+            self.risk_weight,
+            self.repath_margin,
+            self.fire_risk_weight,
+            self.allocation_horizon,
+        )
     }
 
     /// Assign a movement route (world waypoints) to a placed unit.
