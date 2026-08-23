@@ -49,6 +49,7 @@ The UI is **modeless**. Selection is a set, and the only mode is what a right-cl
 | Middle-drag / scroll | Pan / zoom |
 | **Space** | Run / pause |
 | **.** | Step one tick |
+| **E** | Open or close the experiment runner |
 
 Space and `.` are on the keyboard as well as the panel deliberately: inspecting a battle
 means keeping eyes on the map, and reaching for a button loses the moment that was paused
@@ -106,7 +107,8 @@ will be re-solved at the next. Setting one cancels the other, in either directio
 
 ### The experiment runner
 
-**Experiments...** in the panel opens a window for building, queueing and running studies.
+Press **E**, or click **Experiments...** at the top of the panel, to open a window for
+building, queueing and running studies.
 It exists because setting up *one* sweep is a command worth typing and setting up six related
 ones is an afternoon of remembering dotted paths.
 

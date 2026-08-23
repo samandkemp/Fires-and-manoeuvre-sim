@@ -41,17 +41,26 @@ impl Panel<'_, '_, '_> {
     ///
     /// A window rather than another panel section: setting up a batch is a different activity
     /// from watching a battle, and it wants the room.
+    ///
+    /// At the **top** of the panel, and on a key. It was first placed after the model dials,
+    /// fourteenth of twenty sections, which put the entry point to a main feature below the
+    /// fold of a scrolling panel - findable only by someone who already knew it was there.
     fn experiments_button(&mut self, ui: &mut egui::Ui) {
-        ui.separator();
-        if ui.button("Experiments...").clicked() {
+        if ui
+            .button("Experiments...  (E)")
+            .on_hover_text("Build, queue and run studies. Browse every dial the model exposes.")
+            .clicked()
+        {
             self.open_runner = true;
         }
+        ui.separator();
     }
 
     /// Draw the whole panel, top to bottom.
     pub fn show(&mut self, ui: &mut egui::Ui) {
         ui.heading("Fires & Manoeuvre Sim");
         ui.label(format!("t = {:.0} s", self.sim.sim.time_s()));
+        self.experiments_button(ui);
 
         self.clock(ui);
         self.scenario_picker(ui);
@@ -62,7 +71,6 @@ impl Panel<'_, '_, '_> {
         self.air_section(ui);
         self.decision_section(ui);
         self.model_dials(ui);
-        self.experiments_button(ui);
         self.overlay_buttons(ui);
         self.probe_readout(ui);
         self.force_summary(ui);

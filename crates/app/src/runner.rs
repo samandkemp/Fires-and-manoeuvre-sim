@@ -124,12 +124,20 @@ impl Runner {
 pub fn runner_window(
     mut contexts: bevy_egui::EguiContexts,
     mut runner: ResMut<Runner>,
+    keys: Res<ButtonInput<KeyCode>>,
     sim: Res<SimRes>,
 ) {
     let Ok(ctx) = contexts.ctx_mut() else {
         return;
     };
     drive_queue(&mut runner);
+
+    // `E` toggles the window. Not while egui wants the keyboard, or typing a dial path into
+    // the runner's own filter would close it under the cursor.
+    if keys.just_pressed(KeyCode::KeyE) && !ctx.wants_keyboard_input() {
+        runner.open = !runner.open;
+    }
+
     // The screenshot rig captures a frame a few seconds in; open the window there so a
     // capture shows it rather than an empty map.
     if std::env::var_os("FIRES_SIM_SHOW_RUNNER").is_some() {
