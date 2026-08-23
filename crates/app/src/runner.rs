@@ -134,7 +134,7 @@ pub fn runner_window(
 
     // `E` toggles the window. Not while egui wants the keyboard, or typing a dial path into
     // the runner's own filter would close it under the cursor.
-    if keys.just_pressed(KeyCode::KeyE) && !ctx.wants_keyboard_input() {
+    if keys.just_pressed(KeyCode::KeyE) && !ctx.egui_wants_keyboard_input() {
         runner.open = !runner.open;
     }
 
