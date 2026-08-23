@@ -521,3 +521,78 @@ elevation_m = 0.0
         assert_eq!(plain.default_seed, patched.default_seed);
     }
 }
+
+/// The value a dial currently holds, as a number.
+///
+/// Needed wherever a range is expressed **relative** to what a library says - a glimpse rate
+/// of 0.6 and one of 4.0 are both plausible, so "a quarter to four times its value" is the
+/// only range that means the same thing for both. An interface listing dials wants the same
+/// reading, to show what a slider starts from.
+///
+/// `None` when the path names nothing, or names something that is not a number. A dial that
+/// is absent is genuinely different from one that is zero, and the caller usually wants to
+/// say so rather than substitute a default.
+#[must_use]
+pub fn current_value(path: &str, scenario_text: &str, dir: &Path) -> Option<f64> {
+    let head = path.split('.').next()?;
+    let (text, rest) = match LIBRARY_FILES.into_iter().find(|f| *f == head) {
+        Some(file) => (
+            std::fs::read_to_string(dir.join(format!("{file}.toml"))).ok()?,
+            path.split_once('.')?.1.to_owned(),
+        ),
+        None => (scenario_text.to_owned(), path.to_owned()),
+    };
+    let doc: toml::Value = toml::from_str(&text).ok()?;
+    let mut node = &doc;
+    for key in rest.split('.') {
+        node = node.get(key)?;
+    }
+    match node {
+        toml::Value::Float(f) => Some(*f),
+        toml::Value::Integer(i) => Some(*i as f64),
+        _ => None,
+    }
+}
+
+#[cfg(test)]
+mod current_value_tests {
+    use super::*;
+
+    fn dir() -> std::path::PathBuf {
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../scenarios")
+    }
+
+    #[test]
+    fn a_library_dial_reads_back_its_shipped_value() {
+        let d = dir();
+        if !d.exists() {
+            return;
+        }
+        let v = current_value("sensors.mast_optical.lambda0_per_s", "", &d);
+        assert!(
+            v.is_some_and(|v| v > 0.0),
+            "a shipped sensor rate should read"
+        );
+    }
+
+    #[test]
+    fn a_scenario_dial_reads_from_the_scenario_not_a_library() {
+        let text = "[sim]\nrisk_weight = 123.5\n";
+        assert_eq!(current_value("sim.risk_weight", text, &dir()), Some(123.5));
+    }
+
+    /// An integer dial is still a number. Without this, every `Integer` dial would look
+    /// unreadable and a meta-analysis would quietly skip it.
+    #[test]
+    fn an_integer_dial_reads_as_a_number() {
+        let text = "[sim]\nbelief_cells = 48\n";
+        assert_eq!(current_value("sim.belief_cells", text, &dir()), Some(48.0));
+    }
+
+    #[test]
+    fn a_missing_dial_is_none_rather_than_a_default() {
+        let text = "[sim]\ndt_s = 1.0\n";
+        assert_eq!(current_value("sim.not_a_dial", text, &dir()), None);
+        assert_eq!(current_value("nonsense.at.all", text, &dir()), None);
+    }
+}

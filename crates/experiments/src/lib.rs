@@ -33,6 +33,7 @@
 
 pub mod csv;
 pub mod design;
+pub mod dials;
 pub mod findings;
 pub mod outcome;
 pub mod patch;

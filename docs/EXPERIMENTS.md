@@ -567,6 +567,53 @@ sim.allocation --values optimal,greedy,independent` is the same comparison, pair
 standard errors) and `risk_path` (§10.5 put least-risk pathing *in the loop*, and V73 gates
 it). A demo that the engine has since absorbed is a maintenance cost, not a feature.
 
+## `meta` - which of *all* the dials does the answer rest on?
+
+`sweep` and `factorial` need to be told which dials to vary. `sensitivity` needs a study file
+naming them. All three assume the interesting dials are already known, which is the assumption
+worth testing.
+
+```
+cargo run -p experiments --release --bin meta -- air_raid --metric air_leakers
+```
+
+`meta` enumerates **every** dial the loaded libraries expose - 123 of them on the shipped set -
+and screens them all by Morris elementary effects.
+
+```
+  dial                                                        mu*      sigma
+  air.strike_uas.release_range_m                           3.4375     1.3419
+  air_defence.ciws.max_range_m                             1.3125     1.0327
+  air.strike_uas.cruise_speed_m_s                          1.1250     1.1250
+  sensors.ciws_radar.max_range_m                           1.0625     1.5675
+  ...
+  9 of 123 dials carry 90% of the total effect.
+```
+
+**Screening, not decomposition.** Sobol costs `n(k+2)` design points; at 123 dials that is
+millions of trials. Morris costs `(k+1) x trajectories` - a few thousand - and answers the
+question that comes first: *what can be ignored?* Take the survivors to `sensitivity` for the
+variance decomposition, which is the standard two-stage practice.
+
+`--emit FILE` writes the screened dial space as a `studies/*.toml`, each row carrying the
+dial's meaning, unit and design section, so the second stage does not have to be retyped.
+
+**What it leaves out, and says so.** Flags and named choices have no gradient and no
+midpoint - `optimal` is not halfway between `greedy` and `independent` - so they are excluded
+and listed rather than silently dropped. They belong in a `factorial`. So are dials whose
+current value is zero, since a relative range around nothing is nothing.
+
+### The dial registry
+
+`meta` is possible because [`experiments::dials`](../crates/experiments/src/dials.rs)
+enumerates what exists. `sweep --param` takes any dotted path and patches the TOML behind it,
+which is flexible and completely blind - nothing knew what dials existed or what a sensible
+range for one was.
+
+The registry is maintained by hand with a test that fails when it drifts from the schema, the
+same posture `gates.rs` takes toward the validation suite. It caught a missing dial the first
+time it ran.
+
 ## Findings have to be re-run, not just recorded
 
 A measured finding is a claim about a model at a moment. The model then changes, and unless
