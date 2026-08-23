@@ -25,6 +25,7 @@ use sim_core::sim::{Side, Sim};
 mod input;
 mod markers;
 mod overlays;
+mod runner;
 mod selection;
 mod state;
 mod terrain_view;
@@ -56,7 +57,7 @@ fn main() {
                 apply_scenario_load,
             ),
         )
-        .add_systems(EguiPrimaryContextPass, ui_panel);
+        .add_systems(EguiPrimaryContextPass, (ui_panel, runner::runner_window));
 
     // Opt-in framebuffer capture: FIRES_SIM_SCREENSHOT=<path.png> saves one shot a few
     // frames in (and pre-runs the sim briefly so detections are visible).
@@ -86,6 +87,13 @@ fn setup(mut commands: Commands, mut images: ResMut<Assets<Image>>) {
     });
     let mut sim = Sim::new(&data.scenario, &data.libs, data.scenario.default_seed)
         .expect("default scenario should resolve");
+
+    // The runner enumerates every dial once, from the libraries already loaded for the map.
+    commands.insert_resource(runner::Runner::new(
+        &data.libs,
+        terrain_view::list_scenarios(),
+        &requested,
+    ));
 
     let terrain = sim.terrain();
     let handle = images.add(terrain_view::terrain_image(terrain));
@@ -297,6 +305,7 @@ fn ui_panel(
     mut probe: ResMut<Probe>,
     mut overlay: ResMut<Overlay>,
     mut pending_load: ResMut<PendingLoad>,
+    mut runner: ResMut<runner::Runner>,
     mut commands: Commands,
 
     buttons: Res<ButtonInput<MouseButton>>,
@@ -313,11 +322,15 @@ fn ui_panel(
         overlay: &mut overlay,
         commands: &mut commands,
         reset: ResetKind::None,
+        open_runner: false,
     };
     egui::SidePanel::left("controls")
         .min_width(230.0)
         .show(&ctx, |ui| panel.show(ui));
     let reset = panel.reset;
+    if panel.open_runner {
+        runner.open = true;
+    }
 
     ui::apply_reset(
         reset,

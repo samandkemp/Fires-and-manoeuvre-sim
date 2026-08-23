@@ -37,6 +37,7 @@ pub mod dials;
 pub mod findings;
 pub mod outcome;
 pub mod patch;
+pub mod runner;
 pub mod sensitivity;
 pub mod stats;
 pub mod study;

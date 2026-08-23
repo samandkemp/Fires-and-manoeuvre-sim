@@ -104,6 +104,33 @@ A planned route is drawn **dashed** and a scripted one solid, because they are d
 kinds of thing: a scripted route is a commitment, a planned one is this epoch's opinion and
 will be re-solved at the next. Setting one cancels the other, in either direction.
 
+### The experiment runner
+
+**Experiments...** in the panel opens a window for building, queueing and running studies.
+It exists because setting up *one* sweep is a command worth typing and setting up six related
+ones is an afternoon of remembering dotted paths.
+
+| Part | What it does |
+|---|---|
+| **Dial browser** | Every dial the loaded libraries expose - 137 on the shipped set - filterable, each with its meaning, unit and design section. `use` puts one into the study being built, pre-filled with its own range |
+| **Study builder** | Scenario, metric, kind (sweep / factorial / batch), seeds, horizon, and dials pinned for every arm |
+| **Queue** | Runs one after another on a background thread. The map stays live, and one failure does not abandon the rest |
+| **Finished** | What each run reported, with the command that produced it |
+
+**It shows the command it will run**, live, as the form is filled in - and refuses to queue a
+study that is malformed, naming what to fix rather than what is wrong. The failure worth
+preventing is a batch left running overnight whose third run had no second value to compare.
+
+**Save as script** writes the whole queue as a shell script, in order. That file is the
+record: whatever was set up by hand, it repeats it. **Save as TOML** writes the same thing in
+a form the runner can reload.
+
+> **The rule it is built to.** The runner is not a second way of doing experiments; it is a
+> way of writing down the existing one. Every study it runs is a `sweep`, `factorial` or
+> `batch` invocation that could have been typed, and the window shows which. An experiment
+> that exists only as clicks is not reproducible, and every finding this project keeps depends
+> on being able to re-run it.
+
 ### Model dials, live
 
 The **Model dials** section edits the model while it runs, grouped by subsystem: suppression,

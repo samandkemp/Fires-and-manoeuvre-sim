@@ -32,9 +32,22 @@ pub struct Panel<'a, 'w, 's> {
     pub commands: &'a mut Commands<'w, 's>,
     /// Set by a section, carried out by [`apply_reset`] once egui lets go of the sim.
     pub reset: ResetKind,
+    /// Raised when the panel asks for the experiment runner; the caller owns that resource.
+    pub open_runner: bool,
 }
 
 impl Panel<'_, '_, '_> {
+    /// The way into the experiment runner.
+    ///
+    /// A window rather than another panel section: setting up a batch is a different activity
+    /// from watching a battle, and it wants the room.
+    fn experiments_button(&mut self, ui: &mut egui::Ui) {
+        ui.separator();
+        if ui.button("Experiments...").clicked() {
+            self.open_runner = true;
+        }
+    }
+
     /// Draw the whole panel, top to bottom.
     pub fn show(&mut self, ui: &mut egui::Ui) {
         ui.heading("Fires & Manoeuvre Sim");
@@ -49,6 +62,7 @@ impl Panel<'_, '_, '_> {
         self.air_section(ui);
         self.decision_section(ui);
         self.model_dials(ui);
+        self.experiments_button(ui);
         self.overlay_buttons(ui);
         self.probe_readout(ui);
         self.force_summary(ui);

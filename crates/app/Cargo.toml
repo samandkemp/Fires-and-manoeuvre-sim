@@ -13,6 +13,9 @@ publish = false
 
 [dependencies]
 sim_core = { path = "../sim_core" }
+# The runner renders experiment specs; the specs themselves live in `experiments`, where
+# they are testable without a window. sim_core stays free of both.
+experiments = { path = "../experiments" }
 bevy = { version = "0.19", features = ["dynamic_linking"] }
 # bevy_egui pinned to 0.40 (not 0.41): bevy_pancam's egui integration - don't pan the
 # map while the cursor is over a panel - requires ^0.40.
