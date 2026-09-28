@@ -1,4 +1,4 @@
-//! The coordinated air-defence assignment (`docs/DESIGN.md` §11.2).
+//! The coordinated air-defence assignment (`docs/THEORY.md` §11.2).
 //!
 //! One assignment **per side**: rows are free engagement channels, columns are slots on
 //! each engageable airframe, and the payoff is `P(kill before release) × value`. A post
@@ -15,16 +15,15 @@ impl Sim {
     /// splits the raid instead of each battery independently taking whatever is nearest.
     ///
     /// **Each free channel is a row.** A two-channel CIWS contributes two rows, so
-    /// `channels` falls out of the assignment structure rather than needing a special
-    /// case - and a battery with none contributes nothing, which is exactly right.
+    /// `channels` falls out of the assignment structure rather than needing a special case,
+    /// and a battery with no free channel contributes nothing.
     ///
-    /// **One side per call.** The side is passed in rather than read off the first battery:
-    /// coordination is a relationship between a post and *its own* batteries, so a group
-    /// spanning both sides has no single doctrine to be scored under, and no single
+    /// **One side per call**, passed in rather than read off the first battery: a group
+    /// spanning both sides has no single doctrine to be scored under and no single
     /// `max_batteries_per_air_target` budget to spend.
     ///
-    /// Draws no randomness: this decides *who shoots at what*, and the shooting itself is
-    /// resolved by `resolve_due` on a later tick, in battery index order as before.
+    /// Draws no randomness - this decides who shoots at what; the shooting is resolved by
+    /// `resolve_due` on a later tick, in battery index order.
     pub(super) fn open_coordinated(
         &mut self,
         coordinated: &[CoordinatedBattery],
@@ -103,7 +102,7 @@ impl Sim {
     }
 
     /// Split the engageable airframes into doctrine tiers, with the value multiplier each
-    /// group carries (`docs/DESIGN.md` §13.2).
+    /// group carries (`docs/THEORY.md` §13.2).
     ///
     /// One group at weight 1 when the side has no doctrine, or when its mode is
     /// `Weighted` - in the weighted case the multipliers ride on the per-target value
@@ -240,7 +239,7 @@ impl Sim {
     }
 
     /// Probability this battery destroys this airframe **before it releases** - the
-    /// payoff air-defence allocation maximises (`docs/DESIGN.md` §11.2).
+    /// payoff air-defence allocation maximises (`docs/THEORY.md` §11.2).
     ///
     /// The deadline that matters is the release point, not the envelope edge: a drone
     /// that leaves the envelope having already dropped its munition has won. So the

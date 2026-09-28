@@ -58,7 +58,7 @@ id = "arty-1"
 type = "sp_gun"
 pos = [4500.0, 5000.0]
 
-# Air (docs/DESIGN.md §9). A Red strike drone runs in on the Blue gun line from the
+# Air (docs/THEORY.md §9). A Red strike drone runs in on the Blue gun line from the
 # north-east at 500 m AMSL - high enough that the hills between it and Blue do not mask
 # it, which is exactly what makes it detectable early. A Red recce drone orbits in depth.
 [[red.air]]

@@ -1,4 +1,4 @@
-//! Belief-state estimation over enemy position. Spec: `docs/DESIGN.md` §8.
+//! Belief-state estimation over enemy position. Spec: `docs/THEORY.md` §8.
 //! Gates: V41 (Tiger problem), V42-V43 (spatial negative information).
 //!
 //! Once EW degrades detection an observer never knows the truth, so it keeps a

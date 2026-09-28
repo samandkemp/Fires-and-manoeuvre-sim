@@ -1,19 +1,19 @@
 //! Drones: a third asset class beside units and sensors.
-//! Spec: `docs/DESIGN.md` §9. Gates: V44, V46, V47.
+//! Spec: `docs/THEORY.md` §9. Gates: V44, V46, V47.
 //!
 //! An airframe has an altitude (AGL or AMSL), a heading and a speed, and flies either a
 //! waypoint path or a transit-then-orbit. It can carry a sensor, a strike payload, or
 //! both. Flight is pure and draws no randomness - that lives in detection (§3) and
 //! air-defence engagement (§9.4).
 
-use crate::fires::WeaponType;
 use crate::sensing::{Modality, SensorType};
 use crate::sim::Side;
 use crate::terrain::TerrainGrid;
+use crate::weapon_effects::WeaponType;
 use glam::Vec2;
 use std::collections::BTreeMap;
 
-/// What `altitude_m` is measured from (`docs/DESIGN.md` §9.1). This is the dial that
+/// What `altitude_m` is measured from (`docs/THEORY.md` §9.1). This is the dial that
 /// decides whether terrain can mask the airframe.
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default, serde::Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -29,7 +29,7 @@ pub enum AltitudeRef {
 
 /// How a flight plan ends. The orbit centre is always the final waypoint, so "fly this
 /// path" is `Hold` and "go here and orbit at radius R" is one waypoint plus `Orbit` -
-/// both requested behaviours from one structure (`docs/DESIGN.md` §9.2).
+/// both requested behaviours from one structure (`docs/THEORY.md` §9.2).
 #[derive(Clone, Copy, PartialEq, Debug, Default, serde::Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Terminal {
@@ -87,12 +87,9 @@ impl FlightPlan {
 /// selection is deferred to the kill-chain work.
 #[derive(Clone, Debug, PartialEq)]
 pub enum TargetSpec {
-    /// A named **ground asset** - a unit, an air-defence battery, or a C2 post. Ids are
-    /// unique within a scenario, so one namespace covers all three, and the aim point
-    /// tracks the asset if it moves.
-    ///
-    /// Naming a battery or a post is what makes SEAD expressible without new syntax
-    /// (`docs/DESIGN.md` §12).
+    /// A named **ground asset** - unit, air-defence battery or C2 post. Ids are unique
+    /// within a scenario, so one namespace covers all three and SEAD needs no new syntax
+    /// (§12). The aim point tracks the asset if it moves.
     Named(String),
     /// A fixed ground point.
     Point(Vec2),
@@ -130,16 +127,14 @@ pub struct AirType {
     #[serde(default)]
     pub munitions: u32,
     /// May this airframe attack a target it finds itself, rather than only the one a
-    /// scenario named (`docs/DESIGN.md` §9.3)?
+    /// scenario named (`docs/THEORY.md` §9.3)?
     ///
-    /// `false` - the default, and every airframe's behaviour before this existed - means the
-    /// drone strikes its assigned target or nothing. `true` lets it release on a located
-    /// enemy that comes inside release range when it has no assigned target left, ranked by
+    /// `false`, the default, strikes the assigned target or nothing. `true` releases on a
+    /// located enemy that comes inside release range when no assignment is left, ranked by
     /// the side's own doctrine and value function rather than a second targeting model.
     ///
-    /// It does **not** divert: the flight plan is unchanged, so this is opportunism on the
-    /// route it was given rather than a hunt. Diverting couples targeting to path planning,
-    /// which is a larger change and a separate question.
+    /// It does **not** divert - the flight plan is unchanged, so this is opportunism along
+    /// the route it was given. Diverting would couple targeting to path planning.
     #[serde(default)]
     pub autonomous: bool,
     /// Is the airframe consumed by its own attack (a one-way attack munition)?
@@ -149,15 +144,15 @@ pub struct AirType {
     #[serde(default = "default_release_range")]
     pub release_range_m: f32,
     /// How much shooting this airframe down is worth, for air-defence allocation
-    /// (`docs/DESIGN.md` §11.2). Omit and it is derived from what the airframe can do.
+    /// (`docs/THEORY.md` §11.2). Omit and it is derived from what the airframe can do.
     ///
-    /// The derived default already ranks a loaded strike drone above a recce one; set
-    /// this to overrule that - a cheap decoy that must *not* soak up an interceptor is
-    /// the case the derivation cannot know about.
+    /// The derivation already ranks a loaded strike drone above a recce one. Set this to
+    /// overrule it - a cheap decoy that must *not* soak up an interceptor is the case the
+    /// derivation cannot know about.
     #[serde(default)]
     pub value: Option<f32>,
     /// Free-form role this asset answers to in a target-priority list
-    /// (`docs/DESIGN.md` §13). Optional: the class `air` always matches anyway, so
+    /// (`docs/THEORY.md` §13). Optional: the class `air` always matches anyway, so
     /// this is only needed to say something finer than that.
     #[serde(default)]
     pub role: Option<String>,
@@ -200,13 +195,12 @@ impl Default for AirType {
 }
 
 impl AirType {
-    /// What destroying this airframe is worth to the defender (`docs/DESIGN.md` §11.2).
+    /// What destroying this airframe is worth to the defender (`docs/THEORY.md` §11.2).
     ///
-    /// The `value` dial wins when set. Otherwise it is derived from what the airframe can
-    /// still do: a strike drone is worth its remaining munitions, a recce drone a flat
-    /// amount for the picture it is feeding back, and an empty airframe very little. So
-    /// an unscored stat block still ranks a loaded bomber above a spent one without
-    /// anybody writing a number.
+    /// The `value` dial wins when set; otherwise derived from what the airframe can still
+    /// do - remaining munitions for a strike drone, a flat amount for the picture a recce
+    /// drone feeds back, very little for an empty one. So an unscored stat block still ranks
+    /// a loaded bomber above a spent one.
     #[must_use]
     pub fn threat_value(&self, munitions_left: u32) -> f32 {
         if let Some(v) = self.value {
@@ -376,7 +370,7 @@ impl AirState {
 
     /// Advance flight by `dt_s` seconds. Pure: no RNG, no terrain interaction - position
     /// integrates from the heading, and the heading steers toward the current steering
-    /// point at up to `max_turn_rate_deg_s`. `docs/DESIGN.md` §9.2.
+    /// point at up to `max_turn_rate_deg_s`. `docs/THEORY.md` §9.2.
     pub fn advance(&mut self, dt_s: f32) {
         if !self.alive || dt_s <= 0.0 {
             return;

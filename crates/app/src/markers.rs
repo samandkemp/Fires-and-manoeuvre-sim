@@ -6,13 +6,13 @@
 
 use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
-use sim_core::air::Terminal;
+use sim_core::airframes::Terminal;
 use sim_core::los;
 use sim_core::sim::Side;
 use sim_core::suppression::Suppression;
 
+use crate::resources::{Probe, SimRes, UiState, PROBE_HEIGHT_M};
 use crate::selection;
-use crate::state::{Probe, SimRes, UiState, PROBE_HEIGHT_M};
 
 /// Force markers: sensors as circles, units as diamonds; blue/red by side; a white
 /// ring marks units the enemy has detected. Sizes scale with zoom.
@@ -95,7 +95,7 @@ pub fn draw_markers(
 
     // C2 posts: the coordination radius, drawn under everything else because it is the
     // largest ring on the map and would otherwise bury the envelopes inside it. Every
-    // battery within it allocates as one group (docs/DESIGN.md §11) - so this circle is
+    // battery within it allocates as one group (docs/THEORY.md §11) - so this circle is
     // literally the boundary of who is cooperating with whom.
     for post in sim.sim.c2() {
         let alive = post.alive();
@@ -107,7 +107,7 @@ pub fn draw_markers(
         // Two rings, because the net has two radii and only one of them is the dial.
         // Faint: the nominal `coordination_range_m`. Solid: the radius the model actually
         // tests, `coordination_range_m × link_quality`, which an enemy jammer pulls in
-        // (DESIGN §11.2, V62). Drawing only the nominal ring made EW's whole effect on
+        // (§11.1, V62). Drawing only the nominal ring made EW's whole effect on
         // coordination invisible on the map - a battery would silently drop out of the net
         // while still sitting well inside the circle.
         let quality = sim.sim.link_quality_at(post.pos, post.side);
@@ -162,7 +162,7 @@ pub fn draw_markers(
         gizmos.circle_2d(Isometry2d::from_translation(ad.pos), 9.0 * px, c);
         gizmos.circle_2d(Isometry2d::from_translation(ad.pos), 5.0 * px, c);
         // Battle damage: a battery is N launchers, and losing some is not the same as
-        // losing all of them (docs/DESIGN.md §12).
+        // losing all of them (docs/THEORY.md §12).
         if ad.elements < ad.stats.element_count {
             strength_bar(
                 &mut gizmos,
@@ -232,7 +232,7 @@ pub fn draw_markers(
         // sensor that has one - an all-round sensor would just be a circle, and the
         // whole point of the wedge is to show what is *not* being watched. With
         // `[sim] sensor_tasking` on, this is where the belief-driven search is visible:
-        // the wedges swing about between epochs (docs/DESIGN.md §10.3).
+        // the wedges swing about between epochs (docs/THEORY.md §10.3).
         if let Some(width) = s.stats.for_width_deg {
             let reach = s.stats.max_range_m;
             let facing = s.facing_deg.to_radians();

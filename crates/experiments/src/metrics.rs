@@ -63,18 +63,18 @@ pub struct Outcome {
     pub ground_casualties_from_air: f64,
     /// Air-defence shots taken (§9.4). The denominator for "how many rounds per kill".
     pub ad_shots: f64,
-    /// Interceptors left across all batteries with a finite magazine. Phase 11 found that
-    /// C2 coordination buys **ammunition**, not kills, which is invisible without this.
+    /// Interceptors left across all batteries with a finite magazine. C2 coordination buys
+    /// **ammunition** rather than kills (§11.2), which is invisible without this column.
     pub ad_rounds_left: f64,
     /// Batteries and posts reduced to zero elements (§12) - what SEAD is trying to do.
     pub ad_batteries_killed: f64,
     pub c2_posts_killed: f64,
     /// When a side's last ground element died; the run length if it never did.
     ///
-    /// Usually the metric that answers "was this better?", because losses saturate. Once
+    /// Usually the metric that answers "was this better?", because losses saturate: once
     /// everything on one side is dead by 600 s in every arm, `red_losses` is the same
-    /// number everywhere and only the *time* distinguishes them - which is exactly how
-    /// the Phase 10 allocation result was measured (`docs/DESIGN.md` §10.2).
+    /// number everywhere and only the *time* distinguishes them. That is how the allocation
+    /// result is measured (`docs/THEORY.md` §10.2).
     pub blue_cleared_s: f64,
     pub red_cleared_s: f64,
     /// Decision epochs resolved: the run's length in the units decisions happen on.

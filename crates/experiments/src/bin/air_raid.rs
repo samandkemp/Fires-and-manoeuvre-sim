@@ -1,5 +1,5 @@
 //! How much of a drone raid leaks through an air defence, and what decides it.
-//! Model: `docs/DESIGN.md` §9.5.
+//! Model: `docs/THEORY.md` §9.5.
 //!
 //! The cueing clock starts at *detection*, not envelope entry. For a drone detected `D`
 //! seconds before it enters and spending `W` seconds inside,
@@ -14,10 +14,10 @@
 //! Run: `cargo run -p experiments --release --bin air_raid`
 
 use glam::Vec2;
-use sim_core::air::{AirType, AltitudeRef, FlightPlan};
 use sim_core::air_defence::{
     critical_latency_s, effective_window_s, p_leak_gun, AdEngagement, AirDefenceType, RadarPosture,
 };
+use sim_core::airframes::{AirType, AltitudeRef, FlightPlan};
 use sim_core::scenario::{Libraries, Scenario};
 use sim_core::sensing::{Modality, SensorType, UnitType};
 use sim_core::sim::{Side, Sim};
@@ -167,7 +167,7 @@ fn main() {
         (horizontal_at_slant(AD_RANGE) - horizontal_at_slant(RELEASE_RANGE)) / DRONE_SPEED;
     let l_star = critical_latency_s(window_s, 0.0, REACTION_S);
 
-    println!("=== Counter-air sweep (docs/DESIGN.md §9.4-§9.5) ===");
+    println!("=== Counter-air sweep (docs/THEORY.md §9.4-§9.5) ===");
     println!(
         "gun kill rate {KILL_RATE}/s, envelope {AD_RANGE:.0} m slant, release at \
          {RELEASE_RANGE:.0} m slant, drone {DRONE_SPEED:.0} m/s at {DRONE_ALT:.0} m"

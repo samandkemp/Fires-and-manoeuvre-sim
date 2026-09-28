@@ -1,25 +1,20 @@
-//! V68 - the overkill discount replaces the overkill cap. `docs/DESIGN.md` §11.4.
+//! V68 - the overkill discount replaces the overkill cap. `docs/THEORY.md` §11.4.
 //!
-//! §10.2 prices the *k*-th shooter on a target at `(1 - q̄)^k`: the extra shooter only helps
-//! if every one before it failed. A hard cap on top of that - `max_shooters_per_target`,
-//! now removed - did not *discourage* piling on, it **truncated** the option, and a shooter
-//! with nothing else to engage was assigned nothing at all.
+//! §10.2 prices the *k*-th shooter on a target at `(1 - q̄)^k`: the extra shooter only
+//! helps if every one before it failed. A hard cap on top of that truncated the option
+//! rather than discouraging it, leaving a shooter with nothing else to engage assigned
+//! nothing at all - and, applying once per fire-control problem, it made a side split by
+//! `fires_need_c2` fight measurably better than a coordinated one.
 //!
-//! That is the wrong trade whenever targets are scarcer than shooters, which for indirect
-//! fire is most of the opening: a target has to be tracked before it can be shot at. It was
-//! visible as an inversion - on `fires_c2.toml`, splitting a side in two with
-//! `fires_need_c2` made it fight *better*, because the cap applied once per fire-control
-//! problem and a split side therefore got two of them.
-//!
-//! Two properties pin the replacement, and they pull in opposite directions, which is why
-//! both are needed: fire must not idle when there is only one thing to shoot, and it must
-//! still spread when there is more than one. The first is what the cap got wrong; the
-//! second is what the cap was *for*, and the discount has to keep delivering it alone.
+//! Fixture: three guns and one target, then three guns and a target each. The two pull in
+//! opposite directions, which is why both are needed - fire must not idle when there is
+//! only one thing to shoot, and must still spread when there is more than one. The second
+//! is what the cap was *for*, and the discount now has to deliver it alone.
 
-use sim_core::fires::{WeaponClass, WeaponType};
 use sim_core::scenario::{Libraries, Scenario};
 use sim_core::sensing::UnitType;
 use sim_core::sim::Sim;
+use sim_core::weapon_effects::{WeaponClass, WeaponType};
 use std::collections::{BTreeMap, BTreeSet};
 use validation::scenario_params;
 

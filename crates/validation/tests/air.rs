@@ -1,14 +1,10 @@
 //! Air and counter-air: flight, air defence, and the sensor-to-shooter timeline
 //! (V44-V52).
 //!
-//! One test binary over several suites. Cargo builds every `tests/*.rs` as its own
-//! binary linking `sim_core` afresh; files under `tests/air/` are modules of this
-//! one instead, which is why the suite relinks once here rather than 2 times.
-//! Each module below is the file it always was, moved rather than rewritten.
-//!
-//! The `#[path]` attributes are not decoration: a test binary is a *crate root*, so a
-//! bare `mod flight;` would look for `tests/flight.rs` -- back at the top level, where it
-//! would become its own binary again and undo the grouping.
+//! One test binary over several suites: each `tests/*.rs` is its own link unit, so
+//! the files under `tests/air/` are modules of this one rather than binaries of their
+//! own. `#[path]` is required because a test binary is a crate root - a bare `mod x;`
+//! would look for `tests/x.rs` and become a separate binary again.
 
 #[path = "air/counter_air.rs"]
 mod counter_air;

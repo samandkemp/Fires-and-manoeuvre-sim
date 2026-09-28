@@ -1,4 +1,4 @@
-# The radar buys its own accuracy (docs/design/12-sead.md §12.3)
+# The radar buys its own accuracy (docs/THEORY.md §12.3)
 #
 # One Blue SEAD drone carrying an anti-radiation missile, against one Red gun battery. The
 # missile homes on a **transmitting** radar: `cep_m` 15 m against a battery whose radar is
@@ -98,7 +98,7 @@ pos = [1600.0, 1500.0]
 # --- Blue: the SEAD drone -----------------------------------------------------------
 #
 # `target` names the battery. A named target resolves across units, batteries and posts
-# (docs/design/12-sead.md §12.1), so aiming at air defence needs no special syntax - and
+# (docs/THEORY.md §12.1), so aiming at air defence needs no special syntax - and
 # the aim point exists whether or not the radar is transmitting. What the transmission
 # changes is the CEP the missile lands with, which is exactly the V64 statement.
 

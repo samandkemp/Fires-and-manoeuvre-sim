@@ -1,4 +1,4 @@
-//! V56 - fire allocation. `docs/DESIGN.md` §10.2.
+//! V56 - fire allocation. `docs/THEORY.md` §10.2.
 //!
 //! Two halves. The solver is checked against an exhaustive optimum on instances small
 //! enough to enumerate, which is the only reference an assignment algorithm has. The sim
@@ -7,10 +7,10 @@
 //! nearest-enemy rule sent everyone at whichever happened to be closer.
 
 use sim_core::allocation::{self, ineligible, is_eligible, Solver};
-use sim_core::fires::{WeaponClass, WeaponType};
 use sim_core::scenario::{AllocationChoice, Libraries, Scenario};
 use sim_core::sensing::UnitType;
 use sim_core::sim::Sim;
+use sim_core::weapon_effects::{WeaponClass, WeaponType};
 use std::collections::BTreeMap;
 use validation::scenario_params;
 
@@ -211,7 +211,7 @@ fn targets_engaged_first_epoch(allocation: AllocationChoice) -> Vec<usize> {
 
 // V56 (sim half): a coordinated side spreads its fire. Two guns that can both reach two
 // six-element targets should engage one each in the same epoch, rather than both piling
-// onto the nearer - which is exactly what the pre-Phase-10 "nearest enemy" rule did. The
+// onto the nearer - which is what the uncoordinated "nearest enemy" rule does. The
 // independent solver reproduces that old behaviour, so the two together show precisely
 // what changed.
 #[test]

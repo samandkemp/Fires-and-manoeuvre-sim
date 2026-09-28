@@ -1,16 +1,16 @@
-//! Releasing a munition (`docs/DESIGN.md` §9.3, §12.3).
+//! Releasing a munition (`docs/THEORY.md` §9.3, §12.3).
 //!
 //! A drone within `release_range_m` of its aim point drops one, which then resolves as an
 //! ordinary §2.3 indirect round through [`super::damage`]. What the aim point *is*, and
 //! whether the target is radiating for an anti-radiation seeker to ride, are decided here.
 
-use crate::air::TargetSpec;
+use crate::airframes::TargetSpec;
 use crate::sim::{Sim, StrikeEvent};
-use crate::{fires, los};
+use crate::{los, weapon_effects};
 use glam::Vec2;
 
 impl Sim {
-    /// Strike release (`docs/DESIGN.md` §9.3): a drone within `release_range_m` of its
+    /// Strike release (`docs/THEORY.md` §9.3): a drone within `release_range_m` of its
     /// aim point drops one munition, which resolves exactly as a §2.3 indirect round.
     pub(in crate::sim) fn resolve_strikes(&mut self) {
         if self.air.is_empty() {
@@ -37,8 +37,8 @@ impl Sim {
             // hits depends on whether that signal is there (§12.3). For every other weapon
             // `cep_against` returns `cep_m` whatever this says.
             let emitting = self.target_is_emitting(a_idx);
-            let sigma = fires::sigma_from_cep(weapon.cep_against(emitting));
-            let burst = fires::sample_burst(aim, sigma, &mut self.rng);
+            let sigma = weapon_effects::sigma_from_cep(weapon.cep_against(emitting));
+            let burst = weapon_effects::sample_burst(aim, sigma, &mut self.rng);
             let casualties = self.apply_area_damage(burst, &weapon, side);
 
             let air = &mut self.air[a_idx];
@@ -57,27 +57,16 @@ impl Sim {
     }
 
     /// A strike drone's aim point: its assigned target if it still exists, otherwise the
-    /// final waypoint of its flight plan (`docs/DESIGN.md` §9.3).
+    /// final waypoint of its flight plan (`docs/THEORY.md` §9.3).
     ///
     /// A named target that is already dead yields `None` **unless** the airframe is
     /// `autonomous`, in which case it looks for something else worth hitting within release
     /// range. Assignment still wins: a drone with a live assigned target goes for that one,
     /// so orders are not quietly overridden by opportunity.
     pub(super) fn strike_aim_point(&self, air_idx: usize) -> Option<Vec2> {
-        // Precedence, and every branch of it is load-bearing.
-        //
-        // A **named** target that no longer exists yields no release at all, for anyone
-        // without autonomy. That is not an oversight to tidy away: it is the §7.4 identity
-        // half of V60, which says naming a target that is not there must behave exactly as
-        // it did before batteries and posts became targetable. An earlier cut of this
-        // function let a missing named target fall through to the flight plan's
-        // destination, and V60 failed - correctly.
-        //
-        // No assignment **at all** is the different case, and there the destination has
-        // always been the fallback.
-        //
-        // Autonomy slots into both, and never ahead of a live assignment: orders are not
-        // overridden by opportunity.
+        // A dead **named** target must yield no release without autonomy - the §7.4
+        // identity half of V60. Only the unassigned arm falls through to the flight plan's
+        // destination; doing so for a named target would break that identity.
         let autonomous = self.air[air_idx].stats.autonomous;
         match &self.air[air_idx].target {
             Some(TargetSpec::Point(p)) => Some(*p),
@@ -93,16 +82,14 @@ impl Sim {
 
     /// The best thing this drone could hit from where it is, or `None` if nothing qualifies.
     ///
-    /// Three constraints, and each is deliberate:
+    /// Three constraints:
     ///
-    /// * The target must be **located** by the drone's own side. A drone cannot attack what
-    ///   nobody has found; autonomy here means acting on the side's picture without waiting
-    ///   to be told, not seeing through terrain.
-    /// * It must already be within `release_range_m`. The drone does not divert, so this is
-    ///   opportunism along the route it was given.
-    /// * The choice is ranked by the **same** value function and doctrine the ground fires
-    ///   use, so a side that has been ordered to kill command posts first does that with its
-    ///   drones too. Before this, doctrine stopped at the ground shooters (§13.3).
+    /// * the target must be **located** by the drone's own side - autonomy means acting on
+    ///   the side's picture without waiting to be told, not seeing through terrain;
+    /// * it must already be within `release_range_m`, since the drone does not divert. This
+    ///   is opportunism along the route it was given;
+    /// * the choice is ranked by the **same** value function and doctrine the ground fires
+    ///   use, so a side ordered to kill command posts first does it with drones too (§13.3).
     ///
     /// Deterministic: ties break on the fixed target-list order, and no randomness is drawn.
     fn opportune_target(&self, air_idx: usize) -> Option<Vec2> {
@@ -135,21 +122,19 @@ impl Sim {
             .map(|(_, _, pos)| pos)
     }
 
-    /// Is this strike drone's assigned target currently radiating (`docs/DESIGN.md`
+    /// Is this strike drone's assigned target currently radiating (`docs/THEORY.md`
     /// §12.3)?
     ///
-    /// True only for a **named air-defence battery** that is alive, has an organic radar,
-    /// and is using it. Everything else is `false`, which is the honest answer rather than
-    /// a permissive one: a unit, a command post or a bare map point emits nothing an ARM
-    /// could ride, so an ARM aimed at one is flying blind by definition.
+    /// True only for a **named air-defence battery** that is alive, has an organic radar
+    /// and is using it. A unit, a post or a bare map point emits nothing an ARM could ride,
+    /// so an ARM aimed at one is blind by definition.
     ///
-    /// `emitting` is therefore the counter, and it costs the radar: a battery under EMCON
-    /// detects nothing through it, so it cannot cue itself and contributes no coverage.
-    /// Survive the missile, or see the raid coming - not both.
+    /// `emitting` is the counter and it costs the radar: a battery under EMCON detects
+    /// nothing through it, cannot cue itself and contributes no coverage. Survive the
+    /// missile, or see the raid coming - not both.
     ///
-    /// Deliberately **not** `self_cue`, which the two used to share. `self_cue` says who a
-    /// battery listens to; sharing one flag let it take the missile protection of going
-    /// dark while its radar carried on seeing everything (§12.5, V69).
+    /// Not `self_cue`, which says only whose track the battery acts on. One flag for both
+    /// would let it take the protection of going dark while still seeing (§12.5, V69).
     fn target_is_emitting(&self, air_idx: usize) -> bool {
         let Some(TargetSpec::Named(id)) = &self.air[air_idx].target else {
             return false;
@@ -167,7 +152,7 @@ impl Sim {
     /// Searches units, then air-defence batteries, then C2 posts. Ids are unique within a
     /// scenario, so one namespace is enough - and it means naming a SAM or a command post
     /// as a strike target simply works, which is what makes SEAD expressible in a
-    /// scenario file rather than needing new syntax (`docs/DESIGN.md` §12).
+    /// scenario file rather than needing new syntax (`docs/THEORY.md` §12).
     fn named_ground_asset(&self, id: &str) -> Option<Vec2> {
         if let Some(u) = self.units.iter().find(|u| u.id == id && u.alive()) {
             return Some(u.pos);

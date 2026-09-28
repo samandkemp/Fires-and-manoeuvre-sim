@@ -1,33 +1,21 @@
 //! Which dials actually drive a result, and which are noise?
 //!
-//! Every number in this project is an abstract placeholder. That is deliberate - the models
-//! are the product - but it leaves one question over every finding: **does it matter that
-//! these numbers are invented?** A `sweep` cannot answer it, because it varies one dial with
-//! the rest pinned wherever the scenario happened to leave them.
+//! Morris screening then Sobol decomposition over a whole dial space, where a `sweep` can
+//! only cut one slice through it. The estimators and their cost are in
+//! [`experiments::sensitivity`]; spec `docs/THEORY.md` §14.3.
 //!
 //! ```text
 //! sensitivity studies/sensing.toml --seeds 40
 //! ```
 //!
 //! The study is a file rather than a pile of flags, because a dial space is a *design* -
-//! something to be committed, reviewed and re-run, not retyped. See `studies/README.md`.
+//! committed, reviewed and re-run, not retyped. See `studies/README.md`.
 //!
-//! # Two passes, cheap then thorough
-//!
-//! **Morris** screens: `r · (k + 1)` design points, ranking dials by `mu_star` and flagging
-//! non-linearity with `sigma`. Its job is to say what can be ignored.
-//!
-//! **Sobol** decomposes the variance: `n · (k + 2)` points giving `S1` (what a dial explains
-//! alone) and `ST` (what it is involved in altogether). `ST − S1` is the share of a dial's
-//! influence that runs through interactions - invisible to a one-dial sweep, by
-//! construction.
-//!
-//! Cost is the product of design points and simulation seeds, so `--seeds` is deliberately
-//! small here: a design point is an *average over seeds*, and the variance being decomposed
-//! is the one across the dial space, not across the dice.
+//! `--seeds` is small here: a design point is an *average over seeds*, and the variance
+//! being decomposed is the one across the dial space, not across the dice.
 
-use experiments::outcome::{Outcome, COLUMNS};
-use experiments::patch::{self, scenario_with_overrides, Override};
+use experiments::metrics::{Outcome, COLUMNS};
+use experiments::overrides::{self, scenario_with_overrides, Override};
 use experiments::sensitivity::{
     morris_design, morris_indices, sobol_design, sobol_indices, Dial, Index, Point,
 };
@@ -181,7 +169,7 @@ fn main() {
             .collect()
     };
 
-    let base_libs = match patch::libraries_with_overrides(&dir, &[]) {
+    let base_libs = match overrides::libraries_with_overrides(&dir, &[]) {
         Ok(l) => l,
         Err(e) => {
             eprintln!("could not load stat blocks: {e}");
@@ -257,8 +245,8 @@ fn point_scenario(
             value: toml::Value::Float(d.at(u)),
         })
         .collect();
-    let (lib_overrides, scenario_overrides) = patch::split(&overrides);
-    let libs = match patch::libraries_with_overrides(dir, &lib_overrides) {
+    let (lib_overrides, scenario_overrides) = overrides::split(&overrides);
+    let libs = match overrides::libraries_with_overrides(dir, &lib_overrides) {
         Ok(l) => l,
         Err(e) => {
             eprintln!("design point rejected: {e}");

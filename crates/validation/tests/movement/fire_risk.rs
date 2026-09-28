@@ -1,19 +1,18 @@
-//! V77 - fire in the movement risk raster. `docs/DESIGN.md` §5.2.
+//! V77 - fire in the movement risk raster. `docs/THEORY.md` §5.2, §10.5.
 //!
-//! The planner's risk raster was enemy *observation* only, so a unit would happily route
-//! through a beaten zone it could not be seen from. "Least-risk" meant "least-observed",
-//! which is not what a reader assumes and not what a commander means.
+//! At `fire_risk_weight = 0` the raster is enemy *observation* only, so a unit routes
+//! happily through a beaten zone it cannot be seen from. Above zero, ground within an
+//! enemy weapon's reach is priced too.
 //!
-//! The decisive fixture separates the two facts completely: a gun that can reach a corridor
-//! it cannot see into, and no enemy sensor anywhere. Under observation-only risk that
-//! corridor is free; under fire risk it is the most dangerous ground on the map. Nothing but
-//! the new term can produce the difference.
+//! Fixture, separating the two facts completely: an indirect gun covering a corridor it
+//! cannot see into, and **no enemy sensor anywhere**. Observation risk is then identically
+//! zero, so nothing but the new term can move the route.
 
 use glam::Vec2;
-use sim_core::fires::{WeaponClass, WeaponType};
 use sim_core::scenario::{Libraries, Scenario};
 use sim_core::sensing::UnitType;
 use sim_core::sim::Sim;
+use sim_core::weapon_effects::{WeaponClass, WeaponType};
 use std::collections::BTreeMap;
 use validation::scenario_params;
 
@@ -110,7 +109,7 @@ fn deviation(fire_weight: f32) -> f32 {
     worst
 }
 
-// The identity. At weight zero the raster is observation only, exactly as before - and with
+// The identity. At weight zero the raster is observation only - and with
 // no enemy sensor on the map there is nothing to avoid, so the route is straight.
 #[test]
 fn v77_at_zero_weight_fire_does_not_enter_the_raster() {

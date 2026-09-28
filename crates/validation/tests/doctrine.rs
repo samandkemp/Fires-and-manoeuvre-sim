@@ -1,29 +1,22 @@
 //! V66 - the kill chain: what a side has been *told* to shoot first.
-//! `docs/DESIGN.md` §13.
+//! `docs/THEORY.md` §13.
 //!
-//! §10.2 allocates fire by maximising `P(kill) × value`, which is what an omniscient
-//! optimiser would do. Real crews are not omniscient optimisers: they do not hold a
-//! kill-probability table, they hold orders, and they follow them whether or not the shot
-//! is a good one.
+//! Fixture: built so the payoff-optimal rule and the directed one disagree as loudly as
+//! possible. One gun, two targets - a **tank** close in that it hits about half the time
+//! and that scores highly on derived threat, and a **SAM** near the edge of range that it
+//! hits about three times in a hundred.
 //!
-//! So the fixture is built to make the two rules disagree as loudly as possible. One gun,
-//! two targets:
-//!
-//! - a **tank** close in, which it hits about half the time and which scores highly on the
-//!   derived threat value - the payoff-optimal choice by a wide margin;
-//! - a **SAM** near the edge of range, which it hits about three times in a hundred.
-//!
-//! Undirected, the gun takes the tank every time. Told `priority = ["air_defence"]`, it
-//! must take the SAM - a fifteen-fold worse shot - because that is what it was told to do.
-//! Nothing in between would prove the ordering is actually strict.
+//! Undirected, the gun takes the tank every time. Told `priority = ["air_defence"]` it must
+//! take the SAM, a fifteen-fold worse shot. Nothing narrower would prove the ordering is
+//! strict rather than merely weighted.
 
-use sim_core::air::AirType;
 use sim_core::air_defence::{AdEngagement, AirDefenceType};
+use sim_core::airframes::AirType;
 use sim_core::c2::C2Type;
-use sim_core::fires::{WeaponClass, WeaponType};
 use sim_core::scenario::{Libraries, Scenario};
 use sim_core::sensing::{Modality, SensorType, UnitType};
 use sim_core::sim::{FireTarget, Sim};
+use sim_core::weapon_effects::{WeaponClass, WeaponType};
 use std::collections::BTreeMap;
 use validation::scenario_params;
 
@@ -406,7 +399,7 @@ fn v66_air_defence_follows_the_same_doctrine() {
 
 // ---------------------------------------------------------------------------------------
 // V66 (eligibility and locks). LOS and range **block** a pairing rather than merely
-// lowering its score, and a shooter that takes a target holds it. `docs/DESIGN.md` Â§13.4.
+// lowering its score, and a shooter that takes a target holds it. `docs/THEORY.md` Â§13.4.
 // ---------------------------------------------------------------------------------------
 
 /// Indirect-fire fixture for the lock tests: expected damage per round does not vary with

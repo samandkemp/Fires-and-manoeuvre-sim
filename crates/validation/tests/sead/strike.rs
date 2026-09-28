@@ -1,22 +1,18 @@
-//! V60 - SEAD: air defence and C2 are attritable. `docs/DESIGN.md` §12.
+//! V60 - SEAD: air defence and C2 are attritable. `docs/THEORY.md` §12.
 //!
-//! Before this, a battery was immortal and a post could only be removed by calling
-//! `Sim::remove_c2` from outside the simulation. Neither could be *attacked*, so the
-//! §11 finding - that a command post is the thing worth killing first - was a claim the
-//! model could not actually demonstrate.
+//! Fixture: the whole chain in-simulation - a strike drone assigned a named air-defence
+//! asset flies to its release point, drops, and the asset dies.
 //!
-//! These gates run the whole chain instead: a strike drone is assigned a named air-defence
-//! asset, flies to its release point, drops, and the asset dies. What follows from the
-//! death is the part that matters - a battery's radar goes dark with it, and a post's
-//! group decoheres.
+//! What follows from the death is the part that matters: a battery's radar goes dark with
+//! it, and a post's group decoheres while costing no battery, magazine or envelope.
 
-use sim_core::air::AirType;
 use sim_core::air_defence::{AdEngagement, AirDefenceType};
+use sim_core::airframes::AirType;
 use sim_core::c2::C2Type;
-use sim_core::fires::{WeaponClass, WeaponType};
 use sim_core::scenario::{Libraries, Scenario};
 use sim_core::sensing::{Modality, SensorType};
 use sim_core::sim::Sim;
+use sim_core::weapon_effects::{WeaponClass, WeaponType};
 use std::collections::BTreeMap;
 use validation::scenario_params;
 

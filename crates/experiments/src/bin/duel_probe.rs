@@ -18,7 +18,7 @@ fn main() {
     let sim = Sim::new(&scenario, &libs, scenario.default_seed).expect("resolve scenario");
     let terrain = sim.terrain();
 
-    // Ranges are **slant** ranges throughout (docs/DESIGN.md §9.1) - the same convention
+    // Ranges are **slant** ranges throughout (docs/THEORY.md §9.1) - the same convention
     // the sim's gates use, so what this prints and what the sim decides cannot disagree.
     println!("=== pairwise geometry (blue sensors → red units, slant ranges) ===");
     for (i, s) in sim

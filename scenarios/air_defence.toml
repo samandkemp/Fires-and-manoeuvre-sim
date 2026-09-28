@@ -1,4 +1,4 @@
-# Air-defence stat blocks. Abstract placeholder dials - see docs/DESIGN.md §9.4-§9.5.
+# Air-defence stat blocks. Abstract placeholder dials - see docs/THEORY.md §9.4-§9.5.
 #
 # Two engagement models, because time-to-kill is distributed differently in each:
 #   gun      - a Poisson kill process while the target is in envelope: TTK ~ Exp(λ),

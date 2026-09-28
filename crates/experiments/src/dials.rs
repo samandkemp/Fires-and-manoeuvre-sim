@@ -2,31 +2,26 @@
 //!
 //! # Why a registry
 //!
-//! `sweep --param` takes an arbitrary dotted path and patches the TOML behind it, which is
-//! flexible and completely blind: nothing knows what dials exist, what they mean, or what a
-//! reasonable range for one is. That is fine when a person types the path and already knows
-//! the answer, and useless for three things this project now wants - a meta-analysis that
-//! sweeps *everything*, an interface that lets a dial be browsed rather than remembered, and
-//! any check that a study file names dials that are real.
+//! `sweep --param` patches whatever dotted path it is given, which is flexible and blind:
+//! nothing knows what dials exist or what range is reasonable. Three things need the list -
+//! a meta-analysis that sweeps *everything*, a browsable dial picker, and any check that a
+//! study file names dials that are real.
 //!
 //! # Two kinds of dial
 //!
-//! **Scenario dials** (`sim.*`) are a fixed set: sixteen of them, each with a natural domain.
-//! A probability lives in `[0, 1]` whatever the scenario says.
+//! **Scenario dials** (`sim.*`) are a fixed set with natural domains - a probability lives
+//! in `[0, 1]` whatever the scenario says.
 //!
-//! **Stat-block dials** (`sensors.<id>.<field>`) are the cross product of the field and every
-//! type in the loaded libraries, so `lambda0_per_s` is as many dials as there are sensor
-//! types. Their sensible range is **relative** to whatever the library says: a glimpse rate
-//! of 0.6 and one of 4.0 are both plausible, and an absolute range would be wrong for one of
-//! them. Sweeping a quarter to four times the shipped value asks the useful question - what
-//! if this were much worse, or much better - without pretending to know the units.
+//! **Stat-block dials** (`sensors.<id>.<field>`) are the cross product of the field and
+//! every type in the loaded libraries. Their range is **relative** to the shipped value: a
+//! glimpse rate of 0.6 and one of 4.0 are both plausible, so a quarter to four times asks
+//! "much worse, or much better" without pretending to know the units.
 //!
 //! # Maintaining it
 //!
-//! By hand, with a test that fails when it drifts. That is the same posture `gates.rs` takes
-//! toward the validation suite, and for the same reason: a registry that silently misses a
-//! dial is worse than no registry, because a meta-analysis would report that everything has
-//! been swept when something has not.
+//! By hand, with a test that fails when it drifts - the posture `gates.rs` takes toward the
+//! validation suite. A registry that silently misses a dial is worse than none, because a
+//! meta-analysis would report everything swept when something was not.
 
 use sim_core::scenario::Libraries;
 

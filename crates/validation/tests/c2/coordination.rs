@@ -1,10 +1,9 @@
-//! V59 - C2-coordinated air defence. `docs/DESIGN.md` §11.
+//! V59 - C2-coordinated air defence. `docs/THEORY.md` §11.
 //!
-//! The fixture reproduces the failure mode deterministically. Three single-channel
-//! batteries sit in a line; the three drones are placed so that **one of them is the
-//! nearest to all three**. Nearest-first therefore sends every battery at that same drone
-//! while the other two fly on untouched - the classic point-defence failure, and entirely
-//! a coordination problem: same batteries, same envelopes, same magazines.
+//! Fixture: three single-channel batteries in a line, and three drones placed so that
+//! **one is nearest to all three**. Nearest-first sends every battery at that same drone
+//! while the other two fly on untouched - entirely a coordination failure, since the
+//! batteries, envelopes and magazines are identical either way.
 //!
 //! A C2 post covering the line is the only thing that changes.
 
@@ -40,7 +39,7 @@ fn libraries() -> Libraries {
         )]),
         air: BTreeMap::from([(
             "drone".to_owned(),
-            sim_core::air::AirType {
+            sim_core::airframes::AirType {
                 height_m: 2.0,
                 cruise_speed_m_s: 0.0, // stationary: the geometry must not drift
                 signature: BTreeMap::from([("optical".to_owned(), 0.9)]),
@@ -260,7 +259,7 @@ const RED_AD: (f32, f32) = (3400.0, 1500.0);
 /// Libraries for the two-sided fixture: the V59 gun and radar, plus two drone types that
 /// differ **only** in what they are worth, so the doctrine test cannot be passed by luck.
 fn valued_libraries() -> Libraries {
-    let drone = |value: f32| sim_core::air::AirType {
+    let drone = |value: f32| sim_core::airframes::AirType {
         height_m: 2.0,
         cruise_speed_m_s: 0.0,
         signature: BTreeMap::from([("optical".to_owned(), 0.9)]),

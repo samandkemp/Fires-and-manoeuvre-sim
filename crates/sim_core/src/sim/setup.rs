@@ -6,15 +6,15 @@
 //! comparable across runs.
 
 use super::{JammerState, SensorState, Side, Sim, UnitState};
-use crate::air::{AirState, AirType, FlightPlan, TargetSpec};
 use crate::air_defence::{AirDefenceState, AirDefenceType, RadarPosture};
+use crate::airframes::{AirState, AirType, FlightPlan, TargetSpec};
 use crate::c2::{C2State, C2Type};
 use crate::doctrine::{Doctrine, Vocabulary};
 use crate::ew::Jammer;
-use crate::fires::WeaponType;
 use crate::scenario::{Libraries, Scenario, ScenarioError, TargetConfig};
 use crate::sensing::{SensorType, UnitType};
 use crate::suppression::Suppression;
+use crate::weapon_effects::WeaponType;
 use crate::SimRng;
 use glam::Vec2;
 use rand::SeedableRng;
@@ -111,7 +111,7 @@ impl Sim {
     }
 
     /// Clear every placed asset and re-place the scenario, **keeping the terrain** and
-    /// reseeding the RNG (`docs/DESIGN.md` §1.3).
+    /// reseeding the RNG (`docs/THEORY.md` §1.3).
     ///
     /// Batch Monte-Carlo needs this to be honest as well as fast. [`Sim::new`] derives
     /// both the terrain and the RNG stream from one seed, so looping it over seeds varies
@@ -253,7 +253,7 @@ impl Sim {
     }
 
     /// Every priority entry and every order must name something on the field
-    /// (`docs/DESIGN.md` §13.1).
+    /// (`docs/THEORY.md` §13.1).
     ///
     /// A tier that matches nothing is not an empty tier - it is a doctrine nobody is
     /// following, and it fails silently: the run succeeds and simply answers a different
@@ -362,7 +362,7 @@ impl Sim {
         side: Side,
         pos: Vec2,
         altitude_m: f32,
-        altitude_ref: crate::air::AltitudeRef,
+        altitude_ref: crate::airframes::AltitudeRef,
         heading_deg: f32,
         stats: AirType,
         sensor: Option<SensorType>,
@@ -393,7 +393,7 @@ impl Sim {
         idx
     }
 
-    /// Place a C2 post, returning its index in `Sim::c2` (`docs/DESIGN.md` §11).
+    /// Place a C2 post, returning its index in `Sim::c2` (`docs/THEORY.md` §11).
     pub fn add_c2(&mut self, id: &str, side: Side, pos: Vec2, stats: C2Type) -> usize {
         self.c2.push(C2State::new(id, side, pos, stats));
         self.c2.len() - 1

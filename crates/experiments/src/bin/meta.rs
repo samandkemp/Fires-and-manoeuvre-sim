@@ -9,27 +9,25 @@
 //!
 //! # Why screening first
 //!
-//! A full variance decomposition over every dial is not affordable and would not be worth it
-//! if it were. Sobol costs `n(k+2)` design points for `k` dials; at the sixty-odd dials a
-//! shipped library set produces, and twenty seeds each, that is millions of trials.
+//! Sobol costs `n(k+2)` design points for `k` dials, which over every dial a shipped
+//! library set produces is millions of trials. Morris elementary effects cost
+//! `(k+1) x trajectories` instead - a few thousand - and answer the question that comes
+//! first: **which dials can be ignored?**
 //!
-//! Morris elementary effects cost `(k+1) x trajectories` instead - a few thousand - and
-//! answer the question that actually comes first: **which dials can be ignored?** That is the
-//! standard two-stage practice in sensitivity analysis, and this command is the first stage
-//! over everything, with `sensitivity` remaining the second stage over the survivors.
-//!
-//! So the output is a ranking, not a decomposition. It says what to study next.
+//! That is the standard two-stage practice: this command is the first stage over
+//! everything, `sensitivity` the second over the survivors. So the output is a ranking
+//! rather than a decomposition - it says what to study next.
 //!
 //! # What is left out, and why
 //!
 //! Flags and named choices. Morris perturbs a continuous input and reads the gradient; a
-//! boolean has no gradient and `optimal` is not halfway between `greedy` and `independent`.
-//! Those belong in a factorial design, and the report says so rather than quietly dropping
-//! them.
+//! boolean has no gradient, and `optimal` is not halfway between `greedy` and
+//! `independent`. They belong in a factorial design, and the report lists them rather than
+//! dropping them silently.
 
 use experiments::dials::{self, Dial, Range};
-use experiments::outcome::COLUMNS;
-use experiments::patch::{self, scenario_with_overrides, Override};
+use experiments::metrics::COLUMNS;
+use experiments::overrides::{self, scenario_with_overrides, Override};
 use experiments::sensitivity::{morris_design, morris_indices, Dial as SweepDial, Point};
 use experiments::study::{run_design, StudyConfig};
 use experiments::{flag, flag_or};
@@ -186,8 +184,8 @@ fn main() {
                     },
                 })
                 .collect();
-            let (lib_over, scn_over) = patch::split(&overrides);
-            let libs = patch::libraries_with_overrides(&dir, &lib_over).unwrap_or_else(|e| {
+            let (lib_over, scn_over) = overrides::split(&overrides);
+            let libs = overrides::libraries_with_overrides(&dir, &lib_over).unwrap_or_else(|e| {
                 eprintln!("design point rejected: {e}");
                 std::process::exit(2);
             });
@@ -267,7 +265,7 @@ fn resolve(dial: &Dial, scenario_text: &str, dir: &Path) -> Option<(f64, f64)> {
         Range::Absolute(lo, hi) => Some((lo, hi)),
         Range::Integer(lo, hi) => Some((lo as f64, hi as f64)),
         Range::Relative(lo, hi) => {
-            let current = experiments::patch::current_value(&dial.path, scenario_text, dir)?;
+            let current = experiments::overrides::current_value(&dial.path, scenario_text, dir)?;
             (current != 0.0).then_some((current * lo, current * hi))
         }
         Range::Flag | Range::Choice(_) => None,

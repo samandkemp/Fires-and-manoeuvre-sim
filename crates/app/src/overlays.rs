@@ -12,7 +12,7 @@ use sim_core::sensing;
 use sim_core::terrain::TerrainGrid;
 use std::sync::Arc;
 
-use crate::state::{
+use crate::resources::{
     overlay_fingerprint, Overlay, OverlayKind, OverlayRaster, OverlayRequest, SimRes,
 };
 use crate::terrain_view;
@@ -287,7 +287,7 @@ pub fn clear_overlay(overlay: &mut Overlay, commands: &mut Commands) {
 }
 
 /// In screenshot mode, compute the belief overlay once (a few frames in) so the capture
-/// shows the Phase 8 partial-observability picture.
+/// shows the partial-observability picture.
 pub fn screenshot_belief(
     sim: Res<SimRes>,
     mut overlay: ResMut<Overlay>,

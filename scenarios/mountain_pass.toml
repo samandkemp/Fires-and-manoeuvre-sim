@@ -1,4 +1,4 @@
-# A composable terrain recipe (docs/DESIGN.md §1.3): the same map described rather than
+# A composable terrain recipe (docs/THEORY.md §1.3): the same map described rather than
 # picked from a menu. A rolling base, a ridge driven through the middle, woodland on the
 # flanks, then a small town in the valley - layers applied in the order written.
 #

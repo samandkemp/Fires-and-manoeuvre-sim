@@ -72,8 +72,8 @@ fn main() {
         libs.weapons.insert(
             format!("{class}_w"),
             if class == "gun" {
-                sim_core::fires::WeaponType {
-                    class: sim_core::fires::WeaponClass::Direct,
+                sim_core::weapon_effects::WeaponType {
+                    class: sim_core::weapon_effects::WeaponClass::Direct,
                     rof_rounds_per_min: 60.0,
                     max_range_m: 4000.0,
                     dispersion_mrad: 3.0,
@@ -81,8 +81,8 @@ fn main() {
                     ..Default::default()
                 }
             } else {
-                sim_core::fires::WeaponType {
-                    class: sim_core::fires::WeaponClass::Indirect,
+                sim_core::weapon_effects::WeaponType {
+                    class: sim_core::weapon_effects::WeaponClass::Indirect,
                     rof_rounds_per_min: 30.0,
                     max_range_m: 6000.0,
                     cep_m: 60.0,

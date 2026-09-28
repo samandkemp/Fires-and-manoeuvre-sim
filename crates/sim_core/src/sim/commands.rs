@@ -7,13 +7,13 @@
 //! indices into them (V54).
 
 use super::{Side, Sim};
-use crate::air::{AirState, FlightPlan};
+use crate::airframes::{AirState, FlightPlan};
 use crate::scenario::AllocationChoice;
 use crate::suppression::Suppression;
 use glam::Vec2;
 
 impl Sim {
-    /// Which allocation rule the sides are using (`docs/DESIGN.md` §10.2).
+    /// Which allocation rule the sides are using (`docs/THEORY.md` §10.2).
     #[must_use]
     pub fn allocation(&self) -> AllocationChoice {
         self.allocation
@@ -21,14 +21,14 @@ impl Sim {
 
     /// Switch allocation rule mid-run.
     ///
-    /// Safe between ticks and genuinely useful: running the same battle under `optimal`
-    /// and `independent` is how the value of coordinating is *seen* rather than argued.
-    /// The decision layer holds no state across epochs, so there is nothing to migrate.
+    /// Safe between ticks: the decision layer holds no state across epochs, so there is
+    /// nothing to migrate. Running the same battle under `optimal` and `independent` is how
+    /// the value of coordinating is seen rather than argued.
     pub fn set_allocation(&mut self, choice: AllocationChoice) {
         self.allocation = choice;
     }
 
-    /// Are steerable sensors re-pointing themselves (`docs/DESIGN.md` §10.3)?
+    /// Are steerable sensors re-pointing themselves (`docs/THEORY.md` §10.3)?
     #[must_use]
     pub fn sensor_tasking(&self) -> bool {
         self.sensor_tasking
@@ -41,7 +41,7 @@ impl Sim {
     }
 
     /// Most air-defence batteries that may be assigned to one airframe
-    /// (`docs/DESIGN.md` §11.2).
+    /// (`docs/THEORY.md` §11.2).
     #[must_use]
     pub fn max_batteries_per_air_target(&self) -> u32 {
         self.max_batteries_per_air_target
@@ -49,16 +49,14 @@ impl Sim {
 
     /// Set the air-defence overkill cap, clamped to at least 1 as the ground one is.
     ///
-    /// Worth having live: 10,000 paired trials on `ad_c2` found the default of 2 buys no
-    /// extra kills over 1 and costs a quarter of a round (§11.2), so this is a dial whose
-    /// measured value is "none, on this scenario" - and watching a raid under 1, 2 and 3 is
-    /// how that stops being a table and starts being obvious.
+    /// Worth having live: the default of 2 is measurably worth nothing over 1 on `ad_c2`
+    /// (§11.2), and watching a raid under 1, 2 and 3 is how that stops being a table.
     pub fn set_max_batteries_per_air_target(&mut self, cap: u32) {
         self.max_batteries_per_air_target = cap.max(1);
     }
 
     /// Must a ground shooter be under a live friendly C2 post to join its side's
-    /// coordinated fire plan (`docs/DESIGN.md` §11.3)?
+    /// coordinated fire plan (`docs/THEORY.md` §11.3)?
     #[must_use]
     pub fn fires_need_c2(&self) -> bool {
         self.fires_need_c2
@@ -66,24 +64,20 @@ impl Sim {
 
     /// Turn the ground fire-control net requirement on or off mid-run.
     ///
-    /// Safe between ticks: the split into netted and loose shooters is recomputed from
-    /// scratch each epoch, so there is no state to migrate. Flipping it live shows what
-    /// the net is worth: a side split into netted and loose shooters solves two smaller
-    /// fire-control problems, and a loose shooter cannot avoid a target a netted one has
-    /// already taken (§11.3).
+    /// Safe between ticks: the split into netted and loose shooters is recomputed each
+    /// epoch, so there is no state to migrate. On, a side solves two smaller fire-control
+    /// problems, and a loose shooter cannot avoid a target a netted one took (§11.3).
     pub fn set_fires_need_c2(&mut self, on: bool) {
         self.fires_need_c2 = on;
     }
 
-    /// Live model dials (`docs/DESIGN.md` §4.3, §10). Each is read fresh where it is used,
-    /// so changing one takes effect on the next tick with no state to migrate - which is
-    /// what makes watching a rule change a battle possible at all.
+    /// Live model dials (`docs/THEORY.md` §4.3, §10). Each is read fresh where it is used, so
+    /// a change takes effect on the next tick with no state to migrate.
     ///
-    /// **Not** here on purpose: `dt_s`, `epoch_s` and `belief_cells`. The first two decide
-    /// what a tick and an epoch *mean*, so changing them mid-run would make the first half of
-    /// a trial and the second half answer different questions; the third sizes rasters that
-    /// would have to be rebuilt and re-keyed. All three are scenario-level, and the app shows
-    /// them read-only rather than pretending otherwise.
+    /// **Not** here: `dt_s`, `epoch_s` and `belief_cells`. The first two decide what a tick
+    /// and an epoch *mean*, so changing them mid-run would make the two halves of a trial
+    /// answer different questions; the third sizes rasters that would need rebuilding and
+    /// re-keying. All three are scenario-level, and the app shows them read-only.
     pub fn set_p_suppress(&mut self, p: f32) {
         self.p_suppress = p.clamp(0.0, 1.0);
     }
@@ -204,11 +198,10 @@ impl Sim {
 
     /// Give a unit an objective to plan its own way to, or `None` to stop it planning.
     ///
-    /// The mirror of [`Sim::set_route`], and it clears the route for the same reason: from
-    /// here on the planner owns it, and leaving the old waypoints in place would make the
-    /// unit briefly follow a route nothing intends to maintain. Clearing rather than
-    /// keeping also means the first planned route is computed against the *current* risk
-    /// raster rather than inheriting a stale one.
+    /// The mirror of [`Sim::set_route`], clearing the route for the same reason: the planner
+    /// owns it from here, and stale waypoints would make the unit briefly follow a route
+    /// nothing maintains. It also means the first planned route is computed against the
+    /// *current* risk raster.
     pub fn set_objective(&mut self, unit_idx: usize, objective: Option<Vec2>) {
         let u = &mut self.units[unit_idx];
         u.objective = objective;
@@ -255,7 +248,7 @@ impl Sim {
         &mut self.air[air_idx]
     }
 
-    /// Force a unit's suppression state (`docs/DESIGN.md` §4.3).
+    /// Force a unit's suppression state (`docs/THEORY.md` §4.3).
     ///
     /// The suppression chain is normally driven by near-miss volume, but pinning a unit
     /// directly is what lets a caller isolate the *effect* of a state from the process
@@ -285,7 +278,7 @@ impl Sim {
         self.air[air_idx].alive = false;
     }
 
-    /// Destroy a C2 post (`docs/DESIGN.md` §11).
+    /// Destroy a C2 post (`docs/THEORY.md` §11).
     ///
     /// Tombstoned like every other removal. The interesting part is what it does *not*
     /// do: no battery is lost, no magazine emptied, no envelope shrunk. What is lost is
@@ -296,7 +289,7 @@ impl Sim {
         self.c2[c2_idx].elements = 0;
     }
 
-    /// Destroy an air-defence battery (`docs/DESIGN.md` §12), tombstoned like the rest.
+    /// Destroy an air-defence battery (`docs/THEORY.md` §12), tombstoned like the rest.
     ///
     /// Two things go at once, which is what makes SEAD worth doing: the launchers stop
     /// engaging, **and** the organic radar goes dark - [`Sim::sensor_active`] already knows
@@ -327,7 +320,7 @@ impl Sim {
 
     /// The scenario id of whatever a fire event hit.
     ///
-    /// Ground fires can now land on three different lists (`docs/DESIGN.md` §12.4), and
+    /// Ground fires can now land on three different lists (`docs/THEORY.md` §12.4), and
     /// every reader that wants to *name* the target - the app's feed, an experiment's
     /// report - would otherwise repeat the same three-armed match.
     #[must_use]

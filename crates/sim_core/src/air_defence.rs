@@ -1,4 +1,4 @@
-//! Air defence, the counter-drone half of `docs/DESIGN.md` §9. Gates: V48-V51.
+//! Air defence, the counter-drone half of `docs/THEORY.md` §9. Gates: V48-V51.
 //!
 //! Two engagement models. Time-to-kill is distributed differently in each, which is what
 //! makes guns and missiles trade off against a raid:
@@ -78,32 +78,28 @@ pub struct AirDefenceType {
     /// Organic sensor type id (key into the sensor library), if the battery has its own.
     #[serde(default)]
     pub sensor: Option<String>,
-    /// How many launchers/mounts the battery is made of. Attrition removes them one at a
-    /// time, exactly as a unit's sub-elements do (§4.1), so a near miss degrades a
-    /// battery rather than only ever destroying or sparing it (`docs/DESIGN.md` §12).
+    /// How many launchers the battery is made of. Attrition removes them one at a time as a
+    /// unit's sub-elements do (§4.1), so a near miss degrades a battery rather than only
+    /// destroying or sparing it (§12).
     #[serde(default = "default_ad_elements")]
     pub element_count: u32,
-    /// Height above ground as a *target*, metres. A battery is something the enemy will
-    /// want to find and kill, so it needs a silhouette of its own - `mount_height_m` is
-    /// where its *sensor* sits, which is a different question.
+    /// Height above ground as a *target*, metres. Distinct from `mount_height_m`, which is
+    /// where its sensor sits.
     #[serde(default = "default_ad_height")]
     pub height_m: f32,
     /// Silhouette width as a target, metres.
     #[serde(default = "default_ad_width")]
     pub silhouette_width_m: f32,
-    /// How much destroying this is worth to enemy **ground** fires (`docs/DESIGN.md`
+    /// How much destroying this is worth to enemy **ground** fires (`docs/THEORY.md`
     /// §12.4). Omit and it scores 1.0 per element.
     ///
-    /// There is no derivation to fall back on, unlike a unit's. A battery's danger is to
-    /// **aircraft**, which is not measurable on the same scale as a unit's
-    /// `rof × lethality × reach`, so the model declines to invent a conversion and leaves
-    /// the judgement to the scenario. Setting this is how "counter-battery before the
-    /// tanks" gets expressed.
+    /// No derivation to fall back on, unlike a unit's: a battery's danger is to **aircraft**,
+    /// which is not measurable on a unit's `rof × lethality × reach` scale, so the judgement
+    /// is left to the scenario. This is how "counter-battery before the tanks" is said.
     #[serde(default)]
     pub value: Option<f32>,
-    /// Free-form role this asset answers to in a target-priority list
-    /// (`docs/DESIGN.md` §13). Optional: the class `air_defence` always matches anyway, so
-    /// this is only needed to say something finer than that.
+    /// Free-form role this asset answers to in a target-priority list (§13). Optional - the
+    /// class `air_defence` always matches, so this only says something finer.
     #[serde(default)]
     pub role: Option<String>,
 }
@@ -192,29 +188,25 @@ pub struct AirDefenceState {
     /// Interceptors/bursts remaining (`u32::MAX` stands for an unlimited magazine).
     pub magazine_left: u32,
     /// Launchers/mounts remaining. Zero means destroyed: the battery stops engaging and
-    /// its organic radar goes dark with it (`docs/DESIGN.md` §12).
+    /// its organic radar goes dark with it (`docs/THEORY.md` §12).
     pub elements: u32,
     /// Open engagements; never longer than `stats.channels`.
     pub engagements: Vec<Engagement>,
     /// Earliest time the next shot may be launched (reload gate), seconds.
     pub ready_at_s: f64,
     /// Sim time this battery last had an engagement **resolve**, if ever
-    /// (`docs/DESIGN.md` §12.4).
+    /// (`docs/THEORY.md` §12.4).
     ///
-    /// This is how counter-battery finds it: a site that has been shooting can be tracked
-    /// back along its own rounds. Kept as a field rather than recovered by scanning the
-    /// air-defence event log, which is what [`crate::sim::Sim::emplacement_is_located`] used
-    /// to do - that scan sat inside a per-shooter, per-target loop over a log that grows for
-    /// the whole run, so its cost rose with elapsed time rather than with the size of the
-    /// battle.
+    /// How counter-battery finds it: a site that has been shooting can be tracked back
+    /// along its own rounds. A field rather than a scan of the event log, which would sit
+    /// inside a per-shooter, per-target loop and cost more the longer the battle had run.
     ///
-    /// Note it records a **resolution**, not a trigger pull. For a missile battery those are
-    /// the same thing; for a gun, `resolve_due` only logs a tick that killed, so a gun that
-    /// has been firing without effect is not yet located. That is the pre-existing rule,
-    /// preserved deliberately - see §12.4.
+    /// **Records a resolution, not a trigger pull.** The same thing for a missile battery;
+    /// for a gun `resolve_due` logs only a tick that killed, so a gun firing without effect
+    /// is not yet located - a stated limitation (§12.6), not an oversight.
     pub last_fired_s: Option<f64>,
     /// When this battery's C2 link becomes usable, seconds - `None` when it is not under
-    /// a live friendly post at all (`docs/DESIGN.md` §11.2).
+    /// a live friendly post at all (`docs/THEORY.md` §11.2).
     ///
     /// Set to `now + link_latency_s` the moment the battery comes under coverage, and
     /// cleared the moment it drops out - so a battery that is jammed out of the net and
@@ -222,8 +214,8 @@ pub struct AirDefenceState {
     /// intermittent jamming worse than its duty cycle suggests.
     pub net_ready_at_s: Option<f64>,
     /// Seam for mounting the launcher on a *unit*, so a battery could ride a vehicle and
-    /// move with it. Still unused: batteries are standalone. Attritability no longer needs
-    /// it - Phase 12 gave the battery its own `elements`, so SEAD kills it directly (§12).
+    /// move with it. Unused: batteries are standalone, and a battery carries its own
+    /// `elements`, so SEAD kills it directly (§12).
     pub carrier: Option<usize>,
 }
 

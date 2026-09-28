@@ -1,26 +1,21 @@
-//! V62 - the C2 link can be degraded, not only destroyed. `docs/DESIGN.md` §11.2.
+//! V62 - the C2 link degrades as well as dies. `docs/THEORY.md` §11.1.
 //!
-//! §11 made coordination an asset you can lose by having it killed. That left the link
-//! itself binary and instant: inside the radius or not, from the first tick. Two things
-//! now bear on it.
+//! Fixture: V59's, unchanged - three single-channel batteries in a line and three drones,
+//! one of them nearest to all three. Nearest-first sends every battery at that same drone;
+//! a working post makes them cover one each, so the count of distinct drones under
+//! engagement reads directly as whether the net is working.
 //!
-//! **Jamming pulls the radius in.** An enemy jammer near the post scales its effective
-//! coordination range by the [`sim_core::ew`] factor, so the batteries on the flanks fall
-//! out of the net first while the one sitting on top of the post keeps talking. That is the
-//! right shape - a link degrades with range against a noise floor, and raising the floor is
-//! what a jammer does - and it gives the raid a *soft* counter beside SEAD's hard one.
+//! Two things bear on the link besides the post being alive:
 //!
-//! **Joining costs time.** `link_latency_s` is how long a battery must have been inside the
-//! radius before it is actually in the net. Zero by default, so the pre-latency behaviour
-//! is exactly recovered and a sweep can isolate either effect from the other.
-//!
-//! The fixture is V59's, unchanged: three single-channel batteries in a line, three drones
-//! placed so one of them is nearest to all three. Nearest-first sends every battery at that
-//! same drone; a working C2 post makes them cover one each. So "how many distinct drones
-//! are under engagement" reads directly as "is the net working".
+//! * **jamming pulls the radius in** - an enemy jammer scales the coordination range by the
+//!   [`sim_core::ew`] factor, so the flanking batteries drop out while the one on top of
+//!   the post keeps talking. A soft counter beside SEAD's hard one;
+//! * **joining costs time** - `link_latency_s` is how long a battery must have been inside
+//!   the radius before it is in the net. Zero by default, so either effect can be swept
+//!   without the other confounding it.
 
-use sim_core::air::AirType;
 use sim_core::air_defence::{AdEngagement, AirDefenceType};
+use sim_core::airframes::AirType;
 use sim_core::c2::C2Type;
 use sim_core::scenario::{Libraries, Scenario};
 use sim_core::sensing::{Modality, SensorType};

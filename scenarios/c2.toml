@@ -1,4 +1,4 @@
-# C2 post stat blocks. Abstract placeholder dials - see docs/DESIGN.md §11.
+# C2 post stat blocks. Abstract placeholder dials - see docs/THEORY.md §11.
 #
 # A C2 post does not shoot, sense, or move. Its only effect is that air-defence batteries
 # within `coordination_range_m` allocate as one group instead of each independently taking
@@ -23,7 +23,7 @@ silhouette_width_m = 3.0
 [ad_forward_cp.signature]
 optical = 0.45
 
-# A ground fire-direction net (docs/design/11-command-and-control.md §11.3). Same asset,
+# A ground fire-direction net (docs/THEORY.md §11.3). Same asset,
 # different job: with `[sim] fires_need_c2 = true`, artillery inside this radius joins the
 # side-wide fire plan and artillery outside it picks targets for itself.
 #

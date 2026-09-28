@@ -3,22 +3,10 @@
 //! # Why this exists
 //!
 //! A measured finding is a claim about a model at a moment. The model then changes, and
-//! nothing re-runs the claim - so a number that was right when written goes on being quoted
-//! after it stopped being true. This has now happened three times here:
-//!
-//! * The fire-allocation comparison read "no measurable difference" for two phases after an
-//!   unrelated change to the overkill cap made the difference significant. Six documents
-//!   carried the stale figure, including the project's own headline example, where the
-//!   conclusion had inverted.
-//! * The `default` tick cost was quoted at 13.9 µs long after the scenario gained two
-//!   drones and began costing ~36. Nothing had regressed; the figure had simply stopped
-//!   describing the thing it named.
-//! * An earlier version of the allocation finding claimed the opposite result from unpaired
-//!   means with no standard errors.
-//!
-//! None of these is a modelling error. All three are the same bookkeeping failure, and it is
-//! the kind that quietly discredits every other number in a project that trades on its
-//! numbers.
+//! unless something re-runs the claim a number that was right when written goes on being
+//! quoted after it stopped being true. That is a bookkeeping failure rather than a
+//! modelling one, and it is the kind that quietly discredits every other number in a
+//! project that trades on its numbers.
 //!
 //! # What a check is
 //!
@@ -28,12 +16,12 @@
 //! the prose around it stops being true - not a confidence interval, which the run computes
 //! for itself.
 //!
-//! Findings are deliberately *paired arm against arm*, never each against a shared baseline.
+//! Findings are paired *arm against arm*, never each against a shared baseline.
 //! Reading a difference across two baselines overstates its error roughly fivefold, and that
 //! is exactly how the allocation effect stayed hidden.
 
-use crate::outcome::COLUMNS;
-use crate::patch::{self, scenario_with_overrides, Override};
+use crate::metrics::COLUMNS;
+use crate::overrides::{self, scenario_with_overrides, Override};
 use crate::stats::{self, Paired};
 use crate::study::{column, run_study, StudyConfig};
 use serde::Deserialize;
@@ -58,7 +46,7 @@ pub struct Finding {
     /// Exactly two arms, checked at load. The expected difference is the second minus the
     /// first.
     ///
-    /// A `Vec` rather than `[String; 2]` on purpose: the TOML deserializer **silently
+    /// A `Vec` rather than `[String; 2]`: the TOML deserializer **silently
     /// truncates** a longer list into a fixed-size array, so a three-arm manifest would
     /// quietly measure the first two and report a confident answer to a question nobody
     /// asked. The length is enforced in [`parse_manifest`] instead, where it can say so.
@@ -228,10 +216,10 @@ pub fn check(finding: &Finding, dir: &Path) -> Checked {
         let mut overrides = fixed.clone();
         overrides.push(Override {
             path: finding.param.clone(),
-            value: patch::parse_value(arm),
+            value: overrides::parse_value(arm),
         });
-        let (lib_overrides, scenario_overrides) = patch::split(&overrides);
-        let libs = match patch::libraries_with_overrides(dir, &lib_overrides) {
+        let (lib_overrides, scenario_overrides) = overrides::split(&overrides);
+        let libs = match overrides::libraries_with_overrides(dir, &lib_overrides) {
             Ok(l) => l,
             Err(e) => return fail(format!("{}={arm}: {e}", finding.param)),
         };

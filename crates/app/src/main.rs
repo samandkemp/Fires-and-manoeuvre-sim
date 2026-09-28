@@ -8,7 +8,7 @@
 //! | Module | What it does |
 //! |---|---|
 //! | this file | app wiring, startup, the clock, scenario switching |
-//! | [`state`] | the resources and shared types |
+//! | [`resources`] | the resources and shared types |
 //! | [`ui`] | the control panel, one method per section |
 //! | [`input`] | mouse and keyboard on the map |
 //! | [`selection`] | what is selected, and commanding it |
@@ -25,13 +25,13 @@ use sim_core::sim::{Side, Sim};
 mod input;
 mod markers;
 mod overlays;
-mod runner;
+mod resources;
+mod runner_panel;
 mod selection;
-mod state;
 mod terrain_view;
 mod ui;
 
-use state::{
+use resources::{
     Breakpoints, CameraFrameQuery, CameraQuery, ClickMode, MapSprite, MapSpriteQuery, Overlay,
     PendingLoad, Probe, ResetKind, SimRes, UiState, WindowQuery, COVERAGE_EXPOSURE_S,
     DEFAULT_SPEED_X, MAX_FRAME_DELTA_S, MAX_TICKS_PER_FRAME,
@@ -57,7 +57,10 @@ fn main() {
                 apply_scenario_load,
             ),
         )
-        .add_systems(EguiPrimaryContextPass, (ui_panel, runner::runner_window));
+        .add_systems(
+            EguiPrimaryContextPass,
+            (ui_panel, runner_panel::runner_window),
+        );
 
     // Opt-in framebuffer capture: FIRES_SIM_SCREENSHOT=<path.png> saves one shot a few
     // frames in (and pre-runs the sim briefly so detections are visible).
@@ -89,7 +92,7 @@ fn setup(mut commands: Commands, mut images: ResMut<Assets<Image>>) {
         .expect("default scenario should resolve");
 
     // The runner enumerates every dial once, from the libraries already loaded for the map.
-    commands.insert_resource(runner::Runner::new(
+    commands.insert_resource(runner_panel::Runner::new(
         &data.libs,
         terrain_view::list_scenarios(),
         &requested,
@@ -131,7 +134,7 @@ fn setup(mut commands: Commands, mut images: ResMut<Assets<Image>>) {
 
     let screenshot_mode = std::env::var_os("FIRES_SIM_SCREENSHOT").is_some();
     if screenshot_mode {
-        // A Red EW bubble for the Phase 8 capture (belief overlay lights it up).
+        // A Red EW bubble for the capture (the belief overlay lights it up).
         sim.add_jammer(Side::Red, Vec2::new(6800.0, 6500.0), 0.9, 1000.0);
     }
     commands.insert_resource(Probe {
@@ -249,17 +252,15 @@ fn apply_scenario_load(
 /// Advance the sim clock at the panel's playback speed.
 ///
 /// The rate is in **sim seconds per real second**, accumulated into a budget and spent in
-/// whole `dt_s` ticks. Two consequences worth being explicit about:
+/// whole `dt_s` ticks. Two consequences:
 ///
-/// - The wall clock only decides *when* a tick happens, never how big it is, so playback
-///   speed cannot change the outcome of a run. Slowing down to 0.2× to watch a duel gives
-///   the same event log as running it at 60×.
-/// - The leftover fraction of a tick carries to the next frame, so a speed that does not
-///   divide the frame time evenly (0.7× at 60 fps) still advances at the right *average*
-///   rate instead of rounding down to nothing.
+/// - the wall clock decides only *when* a tick happens, never how big it is, so playback
+///   speed cannot change a run's outcome - 0.2× and 60× give the same event log;
+/// - the leftover fraction carries to the next frame, so a speed that does not divide the
+///   frame time evenly still advances at the right *average* rate.
 ///
-/// Armed breakpoints stop the clock on the tick that tripped them, so a moment lasting
-/// one tick can be looked at.
+/// Armed breakpoints stop the clock on the tick that tripped them, so a moment lasting one
+/// tick can be looked at.
 fn advance_sim(mut sim: ResMut<SimRes>, mut ui: ResMut<UiState>, time: Res<Time>) {
     if !ui.running {
         return;
@@ -276,7 +277,7 @@ fn advance_sim(mut sim: ResMut<SimRes>, mut ui: ResMut<UiState>, time: Res<Time>
     };
     let breakpoints = ui.breakpoints;
     for _ in 0..ticks {
-        let mark = state::LogMarks::take(&sim.sim);
+        let mark = resources::LogMarks::take(&sim.sim);
         sim.sim.step_one();
         if breakpoints.any() && mark.tripped(&sim.sim, breakpoints) {
             ui.running = false;
@@ -305,7 +306,7 @@ fn ui_panel(
     mut probe: ResMut<Probe>,
     mut overlay: ResMut<Overlay>,
     mut pending_load: ResMut<PendingLoad>,
-    mut runner: ResMut<runner::Runner>,
+    mut runner: ResMut<runner_panel::Runner>,
     mut commands: Commands,
 
     buttons: Res<ButtonInput<MouseButton>>,

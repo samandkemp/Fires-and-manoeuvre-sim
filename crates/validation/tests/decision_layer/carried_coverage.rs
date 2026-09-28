@@ -1,16 +1,14 @@
-//! V61 - a carried sensor's coverage informs belief. `docs/DESIGN.md` §10.3.
+//! V61 - a carried sensor's coverage informs belief. `docs/THEORY.md` §10.3.
 //!
-//! Until now the tasking layer skipped carried sensors entirely, so a recce drone could
-//! fly the length of the map, see nothing, and leave its side's belief about that ground
-//! completely unchanged. That is wrong in a specific and interesting way: **not finding
-//! anything is evidence**. Negative information is the whole point of the POMDP layer
-//! (V43), and the most mobile observer on the field was the one asset excluded from it.
+//! **Not finding anything is evidence** (V43), so the most mobile observer on the field
+//! must reach the belief layer too: a recce drone that overflies ground and sees nothing
+//! drains its side's belief out of that ground.
 //!
-//! The fixture is deliberately stark: **no emplaced sensors at all**, so any change in
-//! belief must have come from the drone. Flat ground, so nothing is masked and the only
-//! thing deciding what is covered is where the drone has been.
+//! Fixture, deliberately stark: **no emplaced sensors at all**, so any change in belief
+//! must have come from the drone, over flat ground so that nothing is masked and only where
+//! the drone has been decides what is covered.
 
-use sim_core::air::AirType;
+use sim_core::airframes::AirType;
 use sim_core::scenario::{Libraries, Scenario};
 use sim_core::sensing::{Modality, SensorType, UnitType};
 use sim_core::sim::{Side, Sim};

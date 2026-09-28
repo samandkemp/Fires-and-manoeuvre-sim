@@ -1,17 +1,17 @@
 //! V58 - the decision layer is an identity when there is nothing to decide.
-//! `docs/DESIGN.md` §10.4.
+//! `docs/THEORY.md` §10.4.
 //!
-//! Phase 10 added three phases to the epoch: track maintenance, sensor tasking and fire
-//! allocation. All three are *deterministic* - they read state and write decisions, and
-//! draw no random numbers. This gate holds them to that in the way the project has held
-//! every other added phase (V40 for EW, V52 for air):
+//! Track maintenance, sensor tasking and fire allocation are all deterministic: they read
+//! state and write decisions, drawing no random numbers. This gate holds them to that, as
+//! V40 does for EW and V52 for air.
 //!
-//! - a scenario with one shooter and one possible target must produce the identical fire
-//!   log under every allocation rule, because there is only one answer;
+//! Fixture, two halves:
+//!
+//! - one shooter and one possible target must produce an identical fire log under every
+//!   allocation rule, because there is only one answer;
 //! - a scenario with no steerable sensor must be unaffected by tasking being switched on.
 //!
-//! If any of them ever drew from the RNG, the streams would diverge and both halves would
-//! fail immediately.
+//! Were any of them to draw from the RNG the streams would diverge and both halves fail.
 
 use sim_core::scenario::{AllocationChoice, Libraries, Scenario};
 use sim_core::sensing::{Modality, SensorType, UnitType};
@@ -92,8 +92,8 @@ fn duel(allocation: &str, tasking: bool) -> Sim {
         ]),
         weapons: BTreeMap::from([(
             "cannon".to_owned(),
-            sim_core::fires::WeaponType {
-                class: sim_core::fires::WeaponClass::Direct,
+            sim_core::weapon_effects::WeaponType {
+                class: sim_core::weapon_effects::WeaponClass::Direct,
                 rof_rounds_per_min: 12.0,
                 max_range_m: 3000.0,
                 dispersion_mrad: 0.6,

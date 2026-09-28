@@ -1,38 +1,26 @@
 //! Global sensitivity analysis: which dials actually drive the answer?
 //!
-//! Every number in this project is an abstract placeholder. That is a deliberate choice -
-//! the models are the product and the numbers are knobs - but it leaves one question
-//! hanging over every result: **does it matter that these numbers are invented?**
+//! Spec: `docs/THEORY.md` §14.3. Gates: V71.
 //!
-//! A `sweep` cannot answer it. It varies one dial with the rest held at whatever the
-//! scenario happened to say, so it measures a slice through a space it never explores. If
-//! two dials interact, or if the scenario's own values sit somewhere unrepresentative, the
-//! slice can be badly unlike the whole.
+//! Every number here is an abstract placeholder, which leaves one question over every
+//! result: **does it matter that they are invented?** A `sweep` cannot answer it, because
+//! it varies one dial with the rest wherever the scenario left them.
 //!
-//! Two estimators here, cheap-then-thorough:
+//! Two estimators, cheap then thorough:
 //!
-//! * **Morris elementary effects** - a screening design. One-factor-at-a-time steps along
-//!   random trajectories through the dial space. `mu_star` ranks influence, `sigma` flags a
-//!   dial whose effect is non-linear or depends on the others. Cost is `r * (k + 1)` runs
-//!   for `k` dials, so it is affordable first and its job is to say what to ignore.
-//! * **Sobol indices** - a variance decomposition, via Saltelli sampling. `S1` is the
-//!   fraction of output variance a dial explains alone; `ST` includes everything it is
-//!   involved in. `ST - S1` is therefore how much of a dial's influence runs *through* its
-//!   interactions, which is exactly what a one-dial sweep is blind to.
+//! * **Morris elementary effects**, screening. `mu_star` ranks influence, `sigma` flags a
+//!   dial whose effect depends on where the others sit. Cost `r * (k + 1)`, so it runs
+//!   first and its job is to say what to ignore.
+//! * **Sobol indices**, a variance decomposition by Saltelli sampling. `ST - S1` is the
+//!   share of a dial's influence running *through* interactions, which is what a one-dial
+//!   sweep is blind to.
 //!
-//! # Why this is its own tool
+//! # Sampling, and why it is not the simulation's RNG
 //!
-//! A Sobol study is a different object from a paired comparison. Different sampling
-//! (Saltelli, not a shared seed set), different output (a variance decomposition, not a
-//! difference with an error bar), different question. Folding it into `sweep` would force
-//! one report format to serve two incompatible purposes.
-//!
-//! # Sampling, and why it is not the seeded RNG
-//!
-//! The dial-space sample is drawn from its own seeded `ChaCha8Rng`, separate from the
-//! simulation's. A study must be reproducible in *both* - the same study seed gives the
-//! same design, and each design point still runs the same simulation seeds. Mixing them
-//! would make a design point's dial values depend on how many trials ran before it.
+//! The dial-space sample uses its own seeded `ChaCha8Rng`. A study must be reproducible in
+//! both: the same study seed gives the same design, and each design point still runs the
+//! same simulation seeds. Sharing one stream would make a point's dial values depend on how
+//! many trials ran before it.
 
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha8Rng;

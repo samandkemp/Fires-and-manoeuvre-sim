@@ -1,23 +1,19 @@
 //! Writing the two files every study produces.
 //!
-//! **Per-trial rows** (`<name>.csv`): one line per run, every metric. This is the file to
-//! load into anything else - a histogram of one column answers questions a mean cannot,
-//! such as whether a bimodal outcome is being averaged into a middle that never happens.
+//! **Per-trial rows** (`<name>.csv`): one line per run, every metric - the file to load
+//! elsewhere, since a histogram of one column answers what a mean cannot, such as whether a
+//! bimodal outcome is being averaged into a middle that never happens.
 //!
-//! **A summary** (`summary.csv`): one line per arm, mean and standard error for every
-//! metric. Never a mean without its error bar; see [`crate::stats`].
+//! **A summary** (`summary.csv`): one line per arm, mean and standard error per metric.
 //!
-//! Deliberately hand-rolled rather than a CSV crate: the metric columns are all numbers,
-//! and the only fields that can hold anything else are the caller's **key** columns, which
-//! [`field`] quotes when they need it.
-//!
-//! Those keys did once need nothing. `sweep` then began passing the swept *value* as a key,
-//! and its documented usage includes list-valued dials such as
-//! `--values '["c2","air_defence"]'`, which carry commas. An unquoted row for that arm
-//! has extra fields and silently
-//! misaligns every column after it, which is worse than failing: the file still loads.
+//! Hand-rolled rather than a CSV crate, because the metric columns are all numbers. The
+//! only fields that can hold anything else are the caller's **key** columns, which `field`
+//! quotes when needed: `sweep` passes the swept value as a key, and a list-valued dial such
+//! as `--values '["c2","air_defence"]'` carries commas. An unquoted row would gain fields
+//! and silently misalign every column after it - worse than failing, because the file still
+//! loads.
 
-use crate::outcome::{Outcome, COLUMNS};
+use crate::metrics::{Outcome, COLUMNS};
 use crate::stats::{tidy, Summary};
 use std::borrow::Cow;
 use std::fmt::Write as _;

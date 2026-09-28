@@ -1,5 +1,5 @@
 //! Direct-fire hit probability, indirect-fire dispersion and area effect.
-//! Spec: `docs/DESIGN.md` §2. Gates: V19-V24.
+//! Spec: `docs/THEORY.md` §2. Gates: V19-V24.
 //!
 //! Pure functions only - `sim` drives them into a battle.
 
@@ -57,7 +57,7 @@ pub struct WeaponType {
     /// dual-role autocannon.
     #[serde(default)]
     pub engages_air: bool,
-    /// Does this munition home on a **transmitting** emitter (`docs/DESIGN.md` §12.3)?
+    /// Does this munition home on a **transmitting** emitter (`docs/THEORY.md` §12.3)?
     ///
     /// An anti-radiation missile rides the radar's own signal down, so its accuracy is
     /// bought with the target's emissions. Switching the radar off should therefore be a
@@ -80,7 +80,7 @@ pub struct WeaponType {
 
 impl WeaponType {
     /// The dispersion this munition lands with against a target that is or is not
-    /// currently transmitting (`docs/DESIGN.md` §12.3).
+    /// currently transmitting (`docs/THEORY.md` §12.3).
     ///
     /// For everything that is not an ARM this is `cep_m` regardless - the emitter state is
     /// simply not part of a dumb shell's accuracy - which is what makes the whole mechanism

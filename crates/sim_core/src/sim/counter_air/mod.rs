@@ -1,4 +1,4 @@
-//! The air phases of the tick (`docs/DESIGN.md` §9): detecting airborne targets,
+//! The air phases of the tick (`docs/THEORY.md` §9): detecting airborne targets,
 //! air-defence engagement, and strike release.
 //!
 //! These are appended to the tick per §9.6 and draw no RNG at all when the air and
@@ -16,10 +16,10 @@
 //! | [`damage`] | the Carleton kernel against batteries, posts and units (§2.3, §12) |
 //!
 //! All five are grandchildren of `sim`, so they still reach [`Sim`](crate::sim::Sim)'s
-//! private fields - Rust makes a private item visible to the defining module *and its
-//! descendants*, which is what let this split cost nothing in encapsulation. The one
-//! consequence is spelling: a method `sim/mod.rs` calls needs `pub(in crate::sim)`, because
-//! `pub(super)` from one level deeper now means "visible in `counter_air`".
+//! private fields: Rust makes a private item visible to the defining module *and its
+//! descendants*, so the split costs nothing in encapsulation. One consequence in spelling -
+//! a method `sim/mod.rs` calls needs `pub(in crate::sim)`, since `pub(super)` one level
+//! deeper means "visible in `counter_air`".
 
 mod coordinate;
 mod damage;
@@ -28,7 +28,7 @@ mod engage;
 mod strike;
 
 /// Longest window the air-defence payoff will score a target over, seconds
-/// (`docs/DESIGN.md` §11.2).
+/// (`docs/THEORY.md` §11.2).
 const AD_PLANNING_HORIZON_S: f32 = 60.0;
 
 /// One coordinated battery's entry in its side's assignment: which battery it is, which

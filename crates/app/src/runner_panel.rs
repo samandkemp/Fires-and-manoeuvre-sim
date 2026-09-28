@@ -1,29 +1,28 @@
-//! The experiment runner: browse the dials, build a study, queue a batch, watch it run.
+//! The experiment runner window: browse the dials, build a study, queue a batch, watch it
+//! run. The spec it builds lives in [`experiments::experiment`]; this is only its face.
 //!
-//! # What it is for
-//!
-//! Setting up a batch of related experiments. One sweep is a command worth typing; six
-//! related sweeps is an afternoon of remembering dotted paths, and that is the job this does.
+//! One sweep is a command worth typing; six related sweeps is an afternoon of remembering
+//! dotted paths, which is the job this does.
 //!
 //! # The rule it is built to
 //!
-//! It **shows the command it is about to run**, and a queue can be saved as a shell script.
-//! Nothing here is a second way of doing experiments - it is a way of writing down the
-//! existing one. An experiment that exists only as clicks is not reproducible, and every
-//! finding this project keeps depends on being able to re-run it.
+//! It **shows the command it is about to run**, and a queue saves as a shell script. This is
+//! not a second way of doing experiments but a way of writing down the existing one: an
+//! experiment that exists only as clicks is not reproducible, and every finding this project
+//! keeps depends on being able to re-run it.
 //!
-//! So [`experiments::runner::RunSpec`] is the real object, and it lives in `experiments`
-//! where it can be tested without a window. This file renders it.
+//! So [`experiments::experiment::RunSpec`] is the real object, living in `experiments` where it
+//! can be tested without a window; this file renders it.
 
 use bevy::prelude::*;
 use bevy::tasks::{block_on, futures_lite::future::poll_once, AsyncComputeTaskPool, Task};
 use bevy_egui::egui;
 use experiments::dials::{self, Dial, Range};
-use experiments::outcome::COLUMNS;
-use experiments::runner::{Batch, Kind, RunSpec};
+use experiments::experiment::{Batch, Kind, RunSpec};
+use experiments::metrics::COLUMNS;
 use sim_core::scenario::Libraries;
 
-use crate::state::SimRes;
+use crate::resources::SimRes;
 
 /// Everything the runner window holds between frames.
 #[derive(Resource)]
@@ -101,7 +100,7 @@ impl Runner {
             .collect();
         match &mut self.draft.kind {
             Kind::Sweep { values, .. } => {
-                *values = experiments::patch::split_values(&self.values_text)
+                *values = experiments::overrides::split_values(&self.values_text)
                     .into_iter()
                     .filter(|v| !v.trim().is_empty())
                     .collect();
@@ -157,7 +156,7 @@ pub fn runner_window(
             runner.sync_draft();
             build_section(ui, &mut runner);
             ui.separator();
-            // Above the queue on purpose: finding the dial is the first thing anyone does,
+            // Above the queue: finding the dial is the first thing anyone does,
             // and it is the reason to open this window rather than type the command.
             dial_browser(ui, &mut runner);
             ui.separator();
@@ -445,7 +444,7 @@ fn log_section(ui: &mut egui::Ui, runner: &Runner) {
 
 /// Start the next queued run on the task pool.
 ///
-/// Shelling out to the binary rather than calling `run_study` in-process, deliberately: the
+/// Shells out to the binary rather than calling `run_study` in-process: the
 /// command shown is then the command run, with no second execution path that could drift
 /// from it. It costs a process spawn per run, which against thousands of trials is nothing.
 fn start_next(runner: &mut Runner) {

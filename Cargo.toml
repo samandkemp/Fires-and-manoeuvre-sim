@@ -2,7 +2,7 @@
 resolver = "2"
 members = ["crates/sim_core", "crates/app", "crates/experiments", "crates/validation"]
 
-# Fast iterative builds (SETUP.md step 4): our code compiles unoptimised (fast),
+# Fast iterative builds (docs/GUIDE.md §1.3): our code compiles unoptimised (fast),
 # dependencies compile optimised (so the sim runs at usable speed while iterating).
 # Dependencies also skip debug symbols - we debug our own code, not Bevy's, and the
 # symbols roughly double the size of target/ (which filled the disk once already).

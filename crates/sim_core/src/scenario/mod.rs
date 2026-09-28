@@ -1,13 +1,13 @@
 //! Scenario loading: TOML to structs to a deterministic [`TerrainGrid`]. The only I/O
-//! the engine does. Spec: `docs/DESIGN.md` §1.
+//! the engine does. Spec: `docs/THEORY.md` §1.
 
-use crate::air::{AirType, AltitudeRef, Terminal};
 use crate::air_defence::AirDefenceType;
+use crate::airframes::{AirType, AltitudeRef, Terminal};
 use crate::c2::C2Type;
 use crate::doctrine::{Doctrine, Order};
-use crate::fires::WeaponType;
 use crate::sensing::{SensorType, UnitType};
 use crate::terrain::{TerrainGrid, TerrainParamsTable, TerrainSource};
+use crate::weapon_effects::WeaponType;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
@@ -52,7 +52,7 @@ pub struct Scenario {
     pub default_seed: u64,
     /// Terrain grid definition.
     pub terrain: TerrainConfig,
-    /// Sim clock configuration (`docs/DESIGN.md` §3.3); defaults if absent.
+    /// Sim clock configuration (`docs/THEORY.md` §3.3); defaults if absent.
     #[serde(default)]
     pub sim: SimConfig,
     /// Blue force starting assets.
@@ -63,7 +63,7 @@ pub struct Scenario {
     pub red: Force,
 }
 
-/// Sim clock + suppression dials (`docs/DESIGN.md` §3.3, §4.3).
+/// Sim clock + suppression dials (`docs/THEORY.md` §3.3, §4.3).
 #[derive(Debug, Clone, Copy, serde::Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct SimConfig {
@@ -86,56 +86,53 @@ pub struct SimConfig {
     #[serde(default = "default_suppressed_fire_factor")]
     pub suppressed_fire_factor: f32,
     /// How long a track survives without being re-observed, seconds
-    /// (`docs/DESIGN.md` §10.1). This is what lets EW *break* a track rather than only
+    /// (`docs/THEORY.md` §10.1). This is what lets EW *break* a track rather than only
     /// prevent one: jam a tracked unit, nobody re-observes it, and the track lapses.
     #[serde(default = "default_track_hold")]
     pub track_hold_s: f32,
     /// How readily a sensor must still be able to see a target to *hold* its track:
     /// the track refreshes when `P(at least one glimpse this epoch) >= this`
-    /// (`docs/DESIGN.md` §10.1). Jamming, concealment, range and LOS all feed the rate,
+    /// (`docs/THEORY.md` §10.1). Jamming, concealment, range and LOS all feed the rate,
     /// so this is what lets EW degrade a sensor enough to break an existing track.
     #[serde(default = "default_track_maintain_p")]
     pub track_maintain_p: f32,
-    /// How fire allocation is solved each epoch (`docs/DESIGN.md` §10.2):
-    /// `"optimal"` (Hungarian, the default), `"greedy"`, or `"independent"` - the
-    /// pre-Phase-10 rule where every shooter chose for itself.
+    /// How fire allocation is solved each epoch (`docs/THEORY.md` §10.2):
+    /// `"optimal"` (Hungarian, the default), `"greedy"`, or `"independent"` - every shooter
+    /// choosing for itself.
     ///
-    /// A dial rather than a constant so the cost of *not* coordinating is measurable on
-    /// any scenario; `sweep --param sim.allocation` compares all three, paired.
+    /// A dial rather than a constant so the cost of *not* coordinating is measurable on any
+    /// scenario; `sweep --param sim.allocation` compares all three, paired.
     #[serde(default)]
     pub allocation: AllocationChoice,
     /// Most **air-defence batteries** that may be assigned to one airframe
-    /// (`docs/DESIGN.md` §11.2).
+    /// (`docs/THEORY.md` §11.2).
     ///
-    /// A separate dial from the ground cap, because they answer different questions with
-    /// different natural answers. A ground target is a multi-element unit that genuinely
-    /// absorbs several shooters; an airframe is one object, so a second battery is
-    /// insurance against the first missing and a third is nearly always waste.
+    /// Air only - ground fires have no cap (§11.4). A ground target is a multi-element unit
+    /// that genuinely absorbs several shooters; an airframe is one object, so a second
+    /// battery is insurance against the first missing and a missile is a countable round
+    /// that can be wasted.
     #[serde(default = "default_max_batteries_per_air_target")]
     pub max_batteries_per_air_target: u32,
     /// Must a ground shooter be under a live friendly C2 post to join its side's
-    /// coordinated fire plan (`docs/DESIGN.md` §11.3)?
+    /// coordinated fire plan (`docs/THEORY.md` §11.3)?
     ///
-    /// **Off by default.** With it off, ground fires coordinate side-wide for free - the
-    /// §10.2 assumption, defensible for a battlegroup sharing one fire-control net. With it
-    /// on, a shooter inside a live post's (jammed) radius joins the side-wide assignment
-    /// and a shooter outside falls back to picking for itself, exactly as air defence
-    /// already works (§11.1).
+    /// **Off by default**, so ground fires coordinate side-wide for free - the §10.2
+    /// assumption, defensible for a battlegroup sharing one fire-control net. On, a shooter
+    /// inside a live post's (jammed) radius joins the side-wide assignment and one outside
+    /// picks for itself, as air defence already works (§11.1).
     ///
-    /// A dial rather than a change of rule, because flipping it unconditionally would
-    /// silently turn every existing scenario into `independent` - re-baselining the Phase
-    /// 10 allocation result, V56 and V39 at once, for a reason invisible in the scenario
-    /// files. As a dial the cost of losing the net is *measurable* instead: sweep it.
+    /// A dial rather than a change of rule: flipping it unconditionally would reduce every
+    /// existing scenario to `independent`, re-baselining the §10.2 allocation result, V56
+    /// and V39 at once. As a dial, the cost of losing the net is a number instead.
     #[serde(default)]
     pub fires_need_c2: bool,
     /// Should steerable sensors re-point themselves each epoch to maximise expected
-    /// information gain (`docs/DESIGN.md` §10.3)?
+    /// information gain (`docs/THEORY.md` §10.3)?
     ///
-    /// **Off by default, deliberately.** A `facing_deg` written in a scenario is a
-    /// statement of intent, and silently overriding it would change what every existing
-    /// scenario means. It would also dissolve the §6.3 interdiction game, whose Blue
-    /// strategies *are* committed postures - a sensor that re-points itself is no longer
-    /// playing a strategy (V39 catches exactly this).
+    /// **Off by default.** A `facing_deg` written in a scenario is a statement of intent,
+    /// and overriding it would change what every existing scenario means. It would also
+    /// dissolve the §6.3 interdiction game, whose Blue strategies *are* committed postures -
+    /// a sensor that re-points itself is not playing a strategy (V39 catches this).
     ///
     /// Only affects sensors with a finite `for_width_deg`; an all-round sensor has no
     /// decision to make.
@@ -143,27 +140,23 @@ pub struct SimConfig {
     pub sensor_tasking: bool,
     /// How many decision epochs the fire-allocation objective looks ahead (§10.2).
     ///
-    /// `1` scores only the epoch being decided, which is what the objective always did and
-    /// is an exact identity. Above 1, a target's threat is weighted by how long it would go
-    /// on being dangerous if it survived, so killing a shooter is preferred to damaging
-    /// several bystanders.
+    /// `1` scores only the epoch being decided, and is an exact identity (V75). Above 1, a
+    /// target's threat is weighted by how long it would go on being dangerous if it
+    /// survived, so killing a shooter is preferred to damaging several bystanders.
     ///
-    /// The reason this dial exists: solving a single-epoch objective *exactly* is myopically
-    /// right and measurably worse over a whole engagement than a greedy rule that happens to
-    /// spread fire. Optimising a surrogate harder does not improve what the surrogate stands
-    /// for; the surrogate has to be made to stand for more.
+    /// The dial exists because solving a single-epoch objective *exactly* is myopically
+    /// right and measurably worse over an engagement than a greedy rule that spreads fire.
     #[serde(default = "default_allocation_horizon")]
     pub allocation_horizon: u32,
     /// How heavily being *shootable* counts against being *observable* in the movement
     /// planner's risk raster (§5.2).
     ///
-    /// `0` - the default and an exact identity - makes risk purely a matter of enemy
-    /// observation, which is what it has always been. Above zero, ground inside an enemy
-    /// weapon's reach is priced as well, so "least-risk" stops meaning "least-observed".
+    /// `0` - the default and an exact identity - makes risk purely enemy observation. Above
+    /// zero, ground inside an enemy weapon's reach is priced too, so "least-risk" stops
+    /// meaning "least-observed".
     ///
-    /// The two are separate terms rather than one blended raster because they are separate
-    /// facts: a unit can be watched from ground that nothing can shoot, and shelled from
-    /// ground nothing can see. Collapsing them would make the dial mean neither.
+    /// Two terms rather than one blended raster, because they are separate facts: a unit can
+    /// be watched from ground nothing can shoot, and shelled from ground nothing can see.
     #[serde(default)]
     pub fire_risk_weight: f32,
     /// Default exchange rate between movement cost and exposure for a unit with an
@@ -175,16 +168,16 @@ pub struct SimConfig {
     /// fraction of the held route's cost (§10.5).
     ///
     /// Without it a unit re-deciding every epoch dithers between two near-equal routes as
-    /// tiny cost differences wobble - the movement analogue of the target-lock problem
-    /// (§13.4), and it gets the same answer: switching is itself a decision with a cost, so
-    /// it takes something changing on the ground rather than a rounding difference.
+    /// costs wobble - the movement analogue of the target lock (§13.4), and it takes the
+    /// same answer: switching is itself a decision with a cost, so it should need something
+    /// to change on the ground rather than a rounding difference.
     #[serde(default = "default_repath_margin")]
     pub repath_margin: f32,
-    /// Edge length of the coarse belief grid, in cells (`docs/DESIGN.md` §10.3).
+    /// Edge length of the coarse belief grid, in cells (`docs/THEORY.md` §10.3).
     ///
-    /// Belief runs at this resolution regardless of terrain size: tasking chooses between
-    /// twelve 30° sectors and does not need 10 m fidelity to do it. The cost of the
-    /// coverage raster behind it scales as the square of this.
+    /// Belief runs at this resolution whatever the terrain size - tasking chooses between
+    /// twelve 30° sectors and does not need 10 m fidelity to do it. Also the movement
+    /// planner's grid (§10.5). The coverage raster behind it costs the square of this.
     #[serde(default = "default_belief_cells")]
     pub belief_cells: usize,
 }
@@ -305,23 +298,23 @@ pub struct Force {
     /// Placed jammers (protect this side's units from enemy detection).
     #[serde(default)]
     pub jammers: Vec<JammerInstance>,
-    /// Placed air assets - drones (`docs/DESIGN.md` §9).
+    /// Placed air assets - drones (`docs/THEORY.md` §9).
     #[serde(default)]
     pub air: Vec<AirInstance>,
-    /// Placed air-defence batteries (`docs/DESIGN.md` §9.4).
+    /// Placed air-defence batteries (`docs/THEORY.md` §9.4).
     #[serde(default)]
     pub air_defence: Vec<AirDefenceInstance>,
-    /// Placed C2 posts, which coordinate nearby air defence (`docs/DESIGN.md` §11).
+    /// Placed C2 posts, which coordinate nearby air defence (`docs/THEORY.md` §11).
     #[serde(default)]
     pub c2: Vec<C2Instance>,
-    /// What this side has been told to shoot first (`docs/DESIGN.md` §13).
+    /// What this side has been told to shoot first (`docs/THEORY.md` §13).
     ///
     /// **Always present.** Omitting the block gives `priority = ["all"]` - one tier holding
     /// every target, which *is* the undirected §10.2 behaviour. So there is no "doctrine or
     /// not" branch anywhere downstream; the undirected case is simply the one-tier case.
     #[serde(default)]
     pub doctrine: Doctrine,
-    /// Engagements ordered outright, bypassing the assignment (`docs/DESIGN.md` §13.3).
+    /// Engagements ordered outright, bypassing the assignment (`docs/THEORY.md` §13.3).
     #[serde(default)]
     pub orders: Vec<Order>,
 }
@@ -371,13 +364,13 @@ pub struct AirInstance {
     #[serde(default)]
     pub terminal: Terminal,
     /// Assigned strike target: `{ unit = "id" }` or `{ point = [x, y] }`. Omitted means
-    /// the aim point is the final waypoint (`docs/DESIGN.md` §9.3).
+    /// the aim point is the final waypoint (`docs/THEORY.md` §9.3).
     #[serde(default)]
     pub target: Option<TargetConfig>,
 }
 
 /// A strike drone's assigned target, in scenario form (the runtime form is
-/// [`crate::air::TargetSpec`], which carries a `Vec2`).
+/// [`crate::airframes::TargetSpec`], which carries a `Vec2`).
 #[derive(Debug, Clone, serde::Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum TargetConfig {
@@ -428,7 +421,7 @@ fn default_true() -> bool {
     true
 }
 
-/// A placed jammer (`docs/DESIGN.md` §8): position + degradation dials.
+/// A placed jammer (`docs/THEORY.md` §8): position + degradation dials.
 #[derive(Debug, Clone, serde::Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct JammerInstance {
@@ -479,9 +472,9 @@ pub struct UnitInstance {
     /// re-plans each decision epoch against the live risk raster, so a sensor placed on its
     /// path changes where it goes - which a scripted route cannot express.
     ///
-    /// Declaring **neither** is a static unit, exactly as before. That is what makes the
-    /// identity structural rather than dial-gated: a scenario with no objective anywhere
-    /// does no planning at all, rather than having a branch switched off.
+    /// Declaring **neither** is a static unit. That is what makes the identity structural
+    /// rather than dial-gated: a scenario with no objective anywhere does no planning at
+    /// all, rather than having a branch switched off (V72).
     #[serde(default)]
     pub objective: Option<[f32; 2]>,
     /// How many metres of movement cost this unit will spend to avoid one unit of exposure
@@ -577,10 +570,10 @@ impl Scenario {
     }
 }
 
-mod contract;
+mod input_contract;
 mod loading;
 
-use contract::{require_non_negative, require_positive};
+use input_contract::{require_non_negative, require_positive};
 use loading::read_to_string;
 
 pub use loading::*;

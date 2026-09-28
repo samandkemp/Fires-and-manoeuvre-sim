@@ -1,4 +1,4 @@
-//! The interdiction game (Phase 6 capstone). Blue chooses an overwatch *position*
+//! The interdiction game. Blue chooses an overwatch *position*
 //! (sensor + co-located observed-indirect mortar); Red chooses a *route* across the map.
 //! The zero-sum payoff is Red's expected attrition as it traverses while Blue detects and
 //! bombards it - estimated by short headless Monte-Carlo battles. Fictitious play then
@@ -9,11 +9,11 @@
 
 use glam::Vec2;
 use ndarray::Array2;
-use sim_core::fires::{WeaponClass, WeaponType};
-use sim_core::game::solve_zero_sum;
+use sim_core::game_theory::solve_zero_sum;
 use sim_core::scenario::Scenario;
 use sim_core::sensing::{Modality, SensorType, UnitType};
 use sim_core::sim::{Side, Sim};
+use sim_core::weapon_effects::{WeaponClass, WeaponType};
 use std::collections::BTreeMap;
 
 const SEEDS: u64 = 60; // Monte-Carlo battles per matrix cell

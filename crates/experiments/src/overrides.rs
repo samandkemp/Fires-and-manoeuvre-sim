@@ -1,36 +1,23 @@
 //! Overriding a dial in a scenario before it is parsed.
 //!
-//! A sweep needs to ask "what if `track_hold_s` were 20 instead of 45?" without ten copies
-//! of a scenario file differing by one line. The patch happens on the **TOML**, not on the
-//! parsed [`Scenario`]: the file is read as a `toml::Value`, the named leaf is replaced,
-//! and the result is handed back to `Scenario::from_toml_str`.
-//!
-//! Doing it that way means the sweep needs no knowledge of the scenario schema at all -
-//! any field reachable by a dotted path is sweepable, including ones added later - and,
-//! more importantly, the patched scenario goes through **exactly the same validation** as
-//! one loaded from disk. A typo'd path or an out-of-range value fails at load with the
-//! normal error, not silently.
+//! The override is applied to the **TOML**, not to the parsed [`Scenario`]: the file is read
+//! as a `toml::Value`, the named leaf replaced, and the result handed to
+//! `Scenario::from_toml_str`. So a sweep needs no knowledge of the schema - any field
+//! reachable by a dotted path is sweepable, including ones added later - and the patched
+//! scenario passes through **exactly the same validation** as one loaded from disk.
 //!
 //! ```text
-//! sim.track_hold_s = 20        # a [sim] dial
-//! sim.allocation = greedy      # a string-valued dial
-//! red.air.0.altitude_m = 250   # numeric segments index into an array
-//! ```
-//!
-//! **Stat-block libraries too.** A path whose first segment names a library file is applied
-//! to that file instead - so a sensor's detection rate and a weapon's dispersion are as
-//! sweepable as a `[sim]` dial:
-//!
-//! ```text
-//! sensors.mast_optical.lambda0_per_s = 0.4
-//! weapons.mortar.cep_m = 60
+//! sim.track_hold_s = 20                       # a [sim] dial
+//! sim.allocation = greedy                     # a string-valued dial
+//! red.air.0.altitude_m = 250                  # numeric segments index an array
+//! sensors.mast_optical.lambda0_per_s = 0.4    # a stat-block library
 //! terrain_types.trees.concealment = 0.8
 //! ```
 //!
-//! The first segment is unambiguous: a scenario's top level is `name`, `default_seed`,
-//! `terrain`, `sim`, `blue` and `red`, none of which is a library file name. Drone and
-//! air-defence *instances* live under `blue`/`red`, so `air.recce.speed_m_s` (the stat
-//! block) never collides with `red.air.0.speed_m_s` (one airframe's override of it).
+//! **The first segment picks the file**, and the two namespaces cannot collide: a
+//! scenario's top level is `name`, `default_seed`, `terrain`, `sim`, `blue` and `red`, none
+//! of which is a library name. So `air.recce.speed_m_s` is the stat block and
+//! `red.air.0.speed_m_s` is one airframe's override of it.
 
 use sim_core::scenario::{library_from_toml_str, Libraries, Scenario, ScenarioError};
 use std::path::Path;
@@ -110,20 +97,17 @@ pub fn split_values(list: &str) -> Vec<String> {
 
 /// Turn a command-line word into the TOML type it most obviously is.
 ///
-/// Integer **before** float, deliberately: `max_batteries_per_air_target` is a `u32` and
-/// would refuse a float, whereas every float dial in the schema accepts an integer (serde's
-/// numeric visitors widen). So `2` must stay an integer and `2.0` must stay a float.
+/// Integer **before** float: `max_batteries_per_air_target` is a `u32` and would refuse a
+/// float, whereas every float dial accepts an integer (serde's numeric visitors widen). So
+/// `2` stays an integer and `2.0` stays a float.
 ///
-/// Anything opening with `[` or `{` is parsed as a **TOML value expression**, so arrays and
-/// inline tables can be set from the command line:
+/// Anything opening with `[` or `{` is parsed as a TOML value expression, so list-valued
+/// dials - a priority, a position, a route - are reachable from the command line:
 ///
 /// ```text
 /// --set 'blue.doctrine.priority=["c2", "air_defence"]'
 /// --set 'red.units.0.pos=[4800.0, 1500.0]'
 /// ```
-///
-/// Without this, list-valued dials - a target priority, a position, a route - would be the
-/// one part of the schema a sweep could not reach.
 #[must_use]
 pub fn parse_value(text: &str) -> toml::Value {
     if let Ok(i) = text.parse::<i64>() {

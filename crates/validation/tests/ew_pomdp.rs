@@ -1,4 +1,4 @@
-//! V40-V43 - electronic warfare and the POMDP belief layer (docs/DESIGN.md §8).
+//! V40-V43 - electronic warfare and the POMDP belief layer (docs/THEORY.md §8).
 //!
 //! Fixtures come from the `validation` crate; the gates reach sim_core through its
 //! public API only.

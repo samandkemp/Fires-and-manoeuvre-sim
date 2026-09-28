@@ -1,4 +1,4 @@
-//! V76 - autonomous strike targeting. `docs/DESIGN.md` §9.3.
+//! V76 - autonomous strike targeting. `docs/THEORY.md` §9.3.
 //!
 //! A strike drone attacked the asset its scenario named and nothing else, even when its own
 //! side had found something better on the way. The same limitation was recorded independently
@@ -7,11 +7,11 @@
 //!
 //! Three properties, and the first is the one that keeps every existing result standing.
 
-use sim_core::air::AirType;
-use sim_core::fires::{WeaponClass, WeaponType};
+use sim_core::airframes::AirType;
 use sim_core::scenario::{Libraries, Scenario};
 use sim_core::sensing::{Modality, SensorType, UnitType};
 use sim_core::sim::Sim;
+use sim_core::weapon_effects::{WeaponClass, WeaponType};
 use std::collections::BTreeMap;
 use validation::scenario_params;
 

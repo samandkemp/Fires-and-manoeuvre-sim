@@ -1,12 +1,12 @@
-//! What a burst does to the ground (`docs/DESIGN.md` §2.3, §12).
+//! What a burst does to the ground (`docs/THEORY.md` §2.3, §12).
 //!
 //! Batteries, posts and units take the **same** Carleton kernel - they are all vehicles
 //! sitting on the ground, and nothing about the maths cares which list they live in. That
 //! is what made air defence SEAD-able rather than immortal.
 
-use crate::fires;
-use crate::fires::WeaponType;
 use crate::sim::{Side, Sim};
+use crate::weapon_effects;
+use crate::weapon_effects::WeaponType;
 use glam::Vec2;
 use rand::Rng;
 
@@ -18,12 +18,11 @@ impl Sim {
     /// Assets beyond `3·R_L` are skipped: the kernel is below 1.2e-4 there, so the cutoff
     /// keeps the sweep `O(assets)` without changing the model in any observable way.
     ///
-    /// Batteries and posts take the same kernel as a unit - they are vehicles sitting on
-    /// the ground, and nothing about the maths cares which list they live in. That is what
-    /// makes them SEAD-able (§12); before it, a battery was simply immortal.
+    /// Batteries and posts take the same kernel as a unit, which is what makes them
+    /// SEAD-able (§12); nothing in the maths cares which list an asset lives in.
     ///
     /// **The three lists are swept in a fixed order** (batteries, posts, units) because
-    /// each roll draws from the shared stream: reordering them would re-baseline every
+    /// each roll draws from the shared stream - reordering them would re-baseline every
     /// scenario fielding more than one kind of ground asset.
     pub(super) fn apply_area_damage(
         &mut self,
@@ -100,13 +99,11 @@ impl Sim {
     /// Roll one burst against one ground asset: `None` if it is beyond the cutoff (no draw
     /// taken), else the number of its elements destroyed.
     ///
-    /// The one place the §2.3 kernel meets the dice, shared by all three asset lists. They
-    /// had three copies of this loop, which had already begun to drift - only the unit copy
-    /// applied suppression, correctly, but as an absence rather than a decision.
+    /// The one place the §2.3 kernel meets the dice, shared by all three asset lists, so
+    /// they cannot drift apart over whether suppression applies.
     ///
-    /// **One draw per surviving element, in element order**, exactly as before: the caller
-    /// still visits the lists in the order `apply_area_damage` documents, so the RNG stream
-    /// is untouched.
+    /// **One draw per surviving element, in element order.** The caller visits the lists in
+    /// the order `apply_area_damage` documents, which is what keeps the RNG stream stable.
     fn roll_area_damage(
         &mut self,
         burst: Vec2,
@@ -120,7 +117,7 @@ impl Sim {
             return None;
         }
         let cover = self.cover_at(pos);
-        let damage = fires::carleton_damage(miss, weapon.lethal_radius_m) * (1.0 - cover);
+        let damage = weapon_effects::carleton_damage(miss, weapon.lethal_radius_m) * (1.0 - cover);
         let mut killed = 0u32;
         for _ in 0..elements {
             if self.rng.random::<f32>() < damage {

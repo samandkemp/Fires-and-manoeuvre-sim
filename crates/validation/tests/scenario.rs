@@ -1,5 +1,5 @@
 //! Scenario and stat-block loading, and the guarantee that every shipped scenario
-//! resolves against the libraries (docs/DESIGN.md §1.3).
+//! resolves against the libraries (docs/THEORY.md §1.3).
 
 use sim_core::scenario::*;
 use sim_core::terrain::TerrainType;
@@ -176,7 +176,7 @@ fn builds_terrain_deterministically_from_scenario() {
     );
 }
 
-// --- V67: the input contract (docs/DESIGN.md §7.6) ------------------------------------
+// --- V67: the input contract (docs/THEORY.md §7.6) ------------------------------------
 //
 // `deny_unknown_fields` already refuses a key the schema does not know. These refuse a
 // *value* the model cannot run on. The two clock dials are the ones that matter: they do
@@ -240,6 +240,14 @@ fn v67_a_dial_outside_its_domain_is_refused_at_load() {
         "recover_per_s = -0.1",
         "suppression_radius_m = -1.0",
         "belief_cells = 0",
+        // The movement and allocation dials are refused on the same terms. A zero
+        // `allocation_horizon` is the one that does not fail loudly: it multiplies the
+        // threat term, so it would price every target at its size alone - a different
+        // objective, arrived at silently.
+        "allocation_horizon = 0",
+        "risk_weight = -1.0",
+        "fire_risk_weight = -0.5",
+        "repath_margin = -0.1",
     ] {
         let err = with_sim_dial(bad).expect_err("should be refused");
         let dial = bad.split(' ').next().unwrap();
@@ -250,12 +258,18 @@ fn v67_a_dial_outside_its_domain_is_refused_at_load() {
     }
     // A probability at either end of its range is legitimate and must still load.
     assert!(with_sim_dial("p_suppress = 0.0\ntrack_maintain_p = 1.0").is_ok());
+    // So is the floor of each dial above: a horizon of 1 scores only this epoch, zero
+    // caution takes the short way, and a zero margin switches route on any improvement.
+    assert!(with_sim_dial(
+        "allocation_horizon = 1\nrisk_weight = 0.0\nfire_risk_weight = 0.0\nrepath_margin = 0.0"
+    )
+    .is_ok());
 }
 
 #[test]
 fn v67_a_stat_block_that_would_evaluate_to_nan_is_refused() {
-    use sim_core::fires::{WeaponClass, WeaponType};
     use sim_core::sensing::{Modality, SensorType};
+    use sim_core::weapon_effects::{WeaponClass, WeaponType};
     use std::collections::BTreeMap;
 
     let sensor = |range_half_m: f32| SensorType {

@@ -1,4 +1,4 @@
-# What is a drone allowed to decide for itself? (docs/design/09-air-and-counter-air.md 9.3)
+# What is a drone allowed to decide for itself? (docs/THEORY.md 9.3)
 #
 # A Red strike drone flies a fixed route across a Blue battle position. It is given **no
 # target**: before autonomous targeting existed, that meant it flew the route, aimed its

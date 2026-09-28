@@ -1,4 +1,4 @@
-//! V28-V31 - the suppression Markov chain (docs/DESIGN.md §4).
+//! V28-V31 - the suppression Markov chain (docs/THEORY.md §4).
 //!
 //! Fixtures come from the `validation` crate; the gates reach sim_core through its
 //! public API only.

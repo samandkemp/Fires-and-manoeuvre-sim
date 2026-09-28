@@ -1,5 +1,5 @@
 //! Deciding whether a battery may shoot, and resolving the shots that are due
-//! (`docs/DESIGN.md` §9.4-§9.5, §11.2).
+//! (`docs/THEORY.md` §9.4-§9.5, §11.2).
 //!
 //! The envelope and cueing gates live here; *who shoots at what*, once a side is
 //! coordinated, lives in [`super::coordinate`].
@@ -142,22 +142,21 @@ impl Sim {
         }
     }
 
-    /// Refresh every battery's C2 link (`docs/DESIGN.md` §11.2).
+    /// Refresh every battery's C2 link (`docs/THEORY.md` §11.2).
     ///
-    /// Two things can take a battery out of the net without touching the battery:
+    /// Two things take a battery out of the net without touching the battery:
     ///
-    /// - **The post dies** - `covers_jammed` is false for a dead post, so the group
-    ///   decoheres from the next tick (§12.2).
-    /// - **The link is jammed** - an enemy jammer near the post pulls its effective radius
-    ///   in, so the batteries on the flanks fall out first and the ones sitting on top of
-    ///   it keep talking. SEAD hard-kills the post; EW soft-kills its reach.
+    /// - **the post dies** - `covers_jammed` is false for a dead post, so the group
+    ///   decoheres from the next tick (§12.2);
+    /// - **the link is jammed** - an enemy jammer pulls the effective radius in, so the
+    ///   flanking batteries fall out first while those on top of the post keep talking.
+    ///   SEAD hard-kills the post; EW soft-kills its reach.
     ///
-    /// Coming *into* coverage is not instantaneous: the battery is in the net at
-    /// `now + link_latency_s`, and dropping out clears that, so a battery jammed out and
-    /// back in pays the joining cost again.
+    /// Joining is not instantaneous: a battery is in the net at `now + link_latency_s`, and
+    /// dropping out clears that, so one jammed out and back in pays the cost again.
     ///
-    /// Draws no randomness, and is exactly a no-op when there are no posts - which is what
-    /// keeps a post-free scenario bit-identical to the pre-C2 engine (V59).
+    /// Draws no randomness, and is a no-op with no posts, which keeps a post-free scenario
+    /// bit-identical (V59).
     pub(in crate::sim) fn update_c2_links(&mut self) {
         if self.c2.is_empty() {
             return;
@@ -198,7 +197,7 @@ impl Sim {
     }
 
     /// Is this battery in a live friendly C2 net *and* through its joining latency
-    /// (`docs/DESIGN.md` §11)?
+    /// (`docs/THEORY.md` §11)?
     fn coordinated(&self, ad_idx: usize) -> bool {
         self.air_defence[ad_idx]
             .net_ready_at_s

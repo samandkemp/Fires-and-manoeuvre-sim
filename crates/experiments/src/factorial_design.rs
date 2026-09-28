@@ -1,26 +1,20 @@
 //! Factorial designs: vary several dials at once and ask whether they interact.
 //!
-//! [`crate::study`] runs one arm. `sweep` runs several arms of **one** dial and reports each
-//! against the first. This runs the full Cartesian product of several dials and reports two
-//! things a one-dial sweep cannot produce:
+//! Spec: `docs/THEORY.md` §14.4.
+//!
+//! The full Cartesian product of several dials, reporting what a one-dial sweep cannot:
 //!
 //! * a **main effect** - what a factor does, averaged over every level of the others;
-//! * an **interaction** - whether the effect of one factor *depends* on another's level.
+//! * an **interaction** - whether one factor's effect *depends* on another's level.
 //!
-//! The second is the reason this exists. The `fires_c2` investigation needed a 2×2 over the
-//! overkill cap and acquisition speed, it was hand-stitched from four separate sweeps, and
-//! the interaction turned out to be the dominant effect: the cap mattered enormously when
-//! targets were scarce and hardly at all when they were not. A design that can only vary one
-//! dial cannot see that, and reporting two main effects would have described neither.
+//! The interaction is the reason this exists, and on this model it has more than once been
+//! the dominant term - in which case a main effect quoted alone is a sentence with a
+//! missing clause.
 //!
-//! # Everything stays paired
-//!
-//! Every cell runs the **same seed set**, so a contrast is formed seed by seed and only then
-//! averaged. That is what gives a main effect and an interaction an honest standard error
-//! rather than the difference of two independent means. It is the same discipline
-//! [`crate::stats`] enforces for `sweep`, applied to a harder shape.
+//! Every cell runs the **same seed set**, so a contrast is formed seed by seed and only
+//! then averaged: the [`crate::stats`] pairing discipline applied to a harder shape.
 
-use crate::outcome::Outcome;
+use crate::metrics::Outcome;
 use crate::stats::{from_diffs, Paired};
 use std::fmt::Write as _;
 
@@ -46,7 +40,7 @@ impl Factor {
         let (path, list) = arg
             .split_once('=')
             .ok_or_else(|| format!("--factor needs PATH=v1,v2 (got '{arg}')"))?;
-        let levels = crate::patch::split_values(list);
+        let levels = crate::overrides::split_values(list);
         if levels.len() < 2 {
             return Err(format!(
                 "--factor {path} needs at least two levels to be a factor (got {})",
@@ -347,11 +341,11 @@ mod tests {
 
     /// Run one cell the way `bin/factorial.rs` does: patch, load, study.
     fn cell_outcomes(text: &str, libs: &Libraries, path: &str, value: &str) -> Vec<Outcome> {
-        let ov = [crate::patch::Override {
+        let ov = [crate::overrides::Override {
             path: path.to_owned(),
-            value: crate::patch::parse_value(value),
+            value: crate::overrides::parse_value(value),
         }];
-        let scn = crate::patch::scenario_with_overrides(text, &ov).expect("patches");
+        let scn = crate::overrides::scenario_with_overrides(text, &ov).expect("patches");
         run_study(
             &scn,
             libs,
@@ -429,15 +423,15 @@ mod tests {
         let cs = cells(&factors);
         let mut outcomes = Vec::new();
         for c in &cs {
-            let ov: Vec<crate::patch::Override> = c
+            let ov: Vec<crate::overrides::Override> = c
                 .iter()
                 .enumerate()
-                .map(|(fi, &li)| crate::patch::Override {
+                .map(|(fi, &li)| crate::overrides::Override {
                     path: factors[fi].path.clone(),
-                    value: crate::patch::parse_value(&factors[fi].levels[li]),
+                    value: crate::overrides::parse_value(&factors[fi].levels[li]),
                 })
                 .collect();
-            let scn = crate::patch::scenario_with_overrides(&text, &ov).expect("patches");
+            let scn = crate::overrides::scenario_with_overrides(&text, &ov).expect("patches");
             outcomes.push(
                 run_study(
                     &scn,
@@ -478,7 +472,7 @@ mod tests {
         assert_eq!(f.levels, vec!["greedy", "optimal"]);
     }
 
-    // List-valued dials survive, which is what `patch::split_values` is for.
+    // List-valued dials survive, which is what `overrides::split_values` is for.
     #[test]
     fn a_list_valued_level_is_not_split_on_its_own_commas() {
         let f = Factor::parse(r#"blue.doctrine.priority=["c2","all"],["all"]"#).expect("parses");

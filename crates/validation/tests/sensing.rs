@@ -1,4 +1,4 @@
-//! V14-V18 - the glimpse-rate detection model (docs/DESIGN.md §3).
+//! V14-V18 - the glimpse-rate detection model (docs/THEORY.md §3).
 //!
 //! Fixtures come from the `validation` crate; the gates reach sim_core through its
 //! public API only.

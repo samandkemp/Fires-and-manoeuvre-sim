@@ -1,5 +1,5 @@
 //! V1-V4 - the terrain grid, its derived layers, and procedural generation
-//! (docs/DESIGN.md §1.1, §1.3).
+//! (docs/THEORY.md §1.1, §1.3).
 
 use glam::Vec2;
 use ndarray::Array2;
@@ -159,7 +159,7 @@ fn flat_source_is_constant_and_open() {
     assert!(g.terrain_type().iter().all(|&t| t == TerrainType::Open));
 }
 
-// ---- V53: composable terrain recipes (docs/DESIGN.md §1.3) -------------------------
+// ---- V53: composable terrain recipes (docs/THEORY.md §1.3) -------------------------
 // A recipe is only useful if it does what it says, reproducibly, and if the order of its
 // layers is meaningful. These check each layer's own invariant plus the two properties
 // that make a recipe a *description* of a map rather than a lucky seed.

@@ -1,4 +1,4 @@
-//! Finding an airframe (`docs/DESIGN.md` §9.1).
+//! Finding an airframe (`docs/THEORY.md` §9.1).
 //!
 //! The ground glimpse loop with two changes: the target's actor height comes from its
 //! altitude, and it contributes no terrain concealment - it is not standing in the cell

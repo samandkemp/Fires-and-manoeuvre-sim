@@ -1,8 +1,8 @@
 //! Vary several dials at once and report whether they interact.
 //!
 //! `sweep` answers "what does this dial do". This answers "what do these dials do, and does
-//! either one's answer depend on the other" - which is a different question, and on this
-//! model it has more than once been the more important one.
+//! either one's answer depend on the other" - a different question, and on this model more
+//! than once the more important one.
 //!
 //! ```text
 //! # The 2x2 that explained the fires_c2 inversion: an overkill cap against how fast
@@ -18,21 +18,14 @@
 //!                 --seeds 1000 --metric ad_rounds_left
 //! ```
 //!
-//! # What it reports, and why in that order
-//!
-//! **Main effects** first, each averaged over every level of the other factors, so a factor
-//! is described by what it does across the design rather than at one corner of it.
-//!
-//! **Interactions** second, and the closing line says whether any is significant - because
-//! that decides whether the main effects above may be read on their own. If two dials
-//! interact, "this one is worth −11 s" is a sentence with a missing clause.
-//!
-//! Every cell runs the same seed set, so every contrast is formed seed by seed. See
-//! [`experiments::design`].
+//! **Main effects** first, each averaged over every level of the other factors.
+//! **Interactions** second, and the closing line says whether any is significant - which
+//! decides whether the main effects above may be read alone. Every cell runs the same seed
+//! set, so every contrast is formed seed by seed. See [`experiments::factorial_design`].
 
-use experiments::design::{cells, Factor, Factorial};
-use experiments::outcome::{Outcome, COLUMNS};
-use experiments::patch::{self, scenario_with_overrides, Override};
+use experiments::factorial_design::{cells, Factor, Factorial};
+use experiments::metrics::{Outcome, COLUMNS};
+use experiments::overrides::{self, scenario_with_overrides, Override};
 use experiments::study::{run_study, StudyConfig};
 use experiments::{csv, flag, flag_or, flags, has_flag};
 use std::path::{Path, PathBuf};
@@ -141,11 +134,11 @@ fn main() {
         for (fi, &li) in cell.iter().enumerate() {
             overrides.push(Override {
                 path: factors[fi].path.clone(),
-                value: patch::parse_value(&factors[fi].levels[li]),
+                value: overrides::parse_value(&factors[fi].levels[li]),
             });
         }
-        let (lib_overrides, scenario_overrides) = patch::split(&overrides);
-        let libs = match patch::libraries_with_overrides(&dir, &lib_overrides) {
+        let (lib_overrides, scenario_overrides) = overrides::split(&overrides);
+        let libs = match overrides::libraries_with_overrides(&dir, &lib_overrides) {
             Ok(l) => l,
             Err(e) => {
                 eprintln!("  cell {}: {e}", labels.join(" "));

@@ -1,4 +1,4 @@
-//! Jamming as a modifier on the sensing channel. Spec: `docs/DESIGN.md` §8. Gate: V40.
+//! Jamming as a modifier on the sensing channel. Spec: `docs/THEORY.md` §8. Gate: V40.
 //!
 //! A jammer protects its own side by degrading enemy detection of it: a multiplicative
 //! factor on the glimpse rate λ. With no jammers the factor is exactly 1, so EW-off is

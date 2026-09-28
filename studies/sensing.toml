@@ -58,7 +58,7 @@ design_seed = 1
 
 [dials]
 # How well the early-warning radar sees. The SAM has no organic sensor, so this is the only
-# thing standing between it and being blind (docs/design/09-air-and-counter-air.md §9.5).
+# thing standing between it and being blind (docs/THEORY.md §9.5).
 "sensors.mast_optical.lambda0_per_s" = [0.05, 1.0]
 
 # How long a track survives unobserved. Short enough and the cueing chain never completes.

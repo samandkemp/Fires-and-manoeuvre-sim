@@ -1,7 +1,7 @@
 //! Seeing and being seen: the glimpse process, the EW modifier, and the track lifecycle.
-//! Spec: `docs/DESIGN.md` §3.2, §8.1, §10.1. Gates: V14-V18, V40, V55.
+//! Spec: `docs/THEORY.md` §3.2, §8.1, §10.1. Gates: V14-V18, V40, V55.
 //!
-//! Three stages, and they are worth keeping distinct:
+//! Three stages, kept distinct:
 //!
 //! 1. **Acquisition** - stochastic. One seeded draw per (sensor, unseen target) pair per
 //!    tick, at rate `λ`. This is where a track is born.
@@ -41,13 +41,12 @@ impl Sim {
 
     /// Is this sensor currently able to sense at all?
     ///
-    /// Two ways for a sensor to go dark, and both matter beyond the detection loop -
-    /// coverage and belief rasters must drop it too:
+    /// Two ways to go dark, and both matter beyond the detection loop - coverage and belief
+    /// rasters must drop the sensor too:
     ///
     /// - a **carried** sensor dies with its airframe (a shot-down recce drone);
-    /// - an **organic radar** dies with the battery that owns it (§12), which is what
-    ///   makes SEAD worth more than the launchers it destroys: killing a self-cueing
-    ///   battery also removes an emitter the rest of the network was using.
+    /// - an **organic radar** dies with its battery (§12), which is what makes SEAD worth
+    ///   more than the launchers it destroys: it removes an emitter the network was using.
     #[must_use]
     pub fn sensor_active(&self, sensor_idx: usize) -> bool {
         if let Some(a) = self.sensors[sensor_idx].carrier {
@@ -65,10 +64,9 @@ impl Sim {
 
     /// Copy each carried sensor's position and facing back from its airframe.
     ///
-    /// The airframe is the source of truth and [`Sim::sensor_view`] reads through to it,
-    /// but `SensorState.pos` is public, and leaving it frozen at the placement point made
-    /// overlays and `duel_probe` plot a recce drone's sensor at its take-off point.
-    /// Syncing once per tick makes the obvious thing correct. One pass over the sensor
+    /// The airframe is the source of truth and [`Sim::sensor_view`] reads through to it, but
+    /// `SensorState.pos` is public: left frozen at the placement point, overlays and probes
+    /// would plot a recce drone's sensor at its take-off point. One pass over the sensor
     /// list, no randomness, and a no-op when nothing is carried.
     pub(super) fn sync_carried_sensors(&mut self) {
         for s_idx in 0..self.sensors.len() {
@@ -111,11 +109,10 @@ impl Sim {
     /// Communications-link quality at `pos` for an asset on `side`: the product of the
     /// **enemy's** jammers there (1 if none - the EW-off identity again).
     ///
-    /// The mirror image of [`Sim::jamming_at`], and the difference is the point. A jammer
-    /// protecting its own side degrades the *enemy's sensing of it*; a jammer degrading a
-    /// link degrades the *enemy's own* communications. Same asset, same dials, opposite
-    /// side of the argument - so a Red jammer both hides Red units from Blue eyes and cuts
-    /// the Blue C2 net (§11.2).
+    /// The mirror of [`Sim::jamming_at`], and the sign is the point: a jammer protecting its
+    /// own side degrades the *enemy's sensing of it*, while a jammer on a link degrades the
+    /// *enemy's own* communications. Same asset, same dials, opposite side of the argument -
+    /// so one Red jammer both hides Red units and cuts the Blue net (§11.1).
     #[must_use]
     pub fn link_quality_at(&self, pos: Vec2, side: Side) -> f32 {
         if self.jammers.is_empty() {
@@ -134,9 +131,8 @@ impl Sim {
     /// the §8.1 jamming factor. Zero when blocked, out of range, or outside the field of
     /// regard.
     ///
-    /// The single place the two are combined, so acquisition (a draw against this rate)
-    /// and maintenance (a threshold on it) can never disagree about what a sensor can
-    /// currently see.
+    /// The single place the two are combined, so acquisition (a draw against this rate) and
+    /// maintenance (a threshold on it) cannot disagree about what a sensor can see.
     ///
     /// Gates first, then a *cached* line-of-sight walk (see [`los_cache`]) - the gates
     /// cost ~0.1 µs and the walk ~77 µs, and the walk's answer cannot change while both
@@ -274,7 +270,7 @@ impl Sim {
         }
     }
 
-    /// Refresh and expire tracks (`docs/DESIGN.md` §10.1).
+    /// Refresh and expire tracks (`docs/THEORY.md` §10.1).
     ///
     /// Runs at the **decision epoch, not the tick**, for two reasons. Conceptually,
     /// holding a track is a decision-layer concern. Practically, the glimpse loop skips

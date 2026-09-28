@@ -5,16 +5,18 @@ units, weapons, sensors, air, air defence and C2. All numbers here are **abstrac
 placeholder dials**, never real-world performance data - the models are the product, these
 are the knobs.
 
-**The guide to writing these files is [`docs/SCENARIOS.md`](../docs/SCENARIOS.md)** - how to
-add a unit, weapon, sensor, drone, battery or post, and how to build a scenario to put them
-in.
+**The guide to writing these files is [`docs/GUIDE.md`](../docs/GUIDE.md)** - part 2 covers
+how to add a unit, weapon, sensor, drone, battery or post, and how to build a scenario to put
+them in. [`docs/REFERENCE.md`](../docs/REFERENCE.md) is the field-by-field lookup.
 
 | File | What it holds |
 |---|---|
 | `default.toml` | The main scenario: terrain generation, forces, sensor placements |
 | `fire_allocation.toml` | Four shooters that can all reach all four targets - where the allocation rule matters |
 | `sensor_search.toml` | Narrow-arc observers searching by belief (needs `sensor_tasking`) |
+| `covered_approach.toml` | Movement decisions: what a covered approach is worth as caution rises |
 | `kill_chain.toml` | Directed targeting, and ground counter-battery |
+| `hunter_uas.toml` | What a drone is allowed to decide for itself (`autonomous`) |
 | `ad_c2.toml` | Coordinated vs decentralised air defence |
 | `fires_c2.toml` | Ground fires and the net (`fires_need_c2`) - and what the overkill cap does when a side is split |
 | `sead_arm.toml` | Anti-radiation homing: what a radar's accuracy costs it, and what going silent buys |
@@ -41,4 +43,4 @@ cargo run -p app -- path/to/mine.toml  # or by path, for one kept elsewhere
 
 The schema these parse into lives in
 [`crates/sim_core/src/scenario/mod.rs`](../crates/sim_core/src/scenario/mod.rs); the models each
-dial feeds are specified in [`docs/design/`](../docs/design/).
+dial feeds are specified in [`docs/THEORY.md`](../docs/THEORY.md).

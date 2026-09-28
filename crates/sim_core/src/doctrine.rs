@@ -1,54 +1,36 @@
 //! The kill chain: what a side has been *told* to shoot first.
-//! Spec: `docs/DESIGN.md` §13. Gates: V66.
+//! Spec: `docs/THEORY.md` §13. Gates: V66.
 //!
-//! # Why this is not just another weight on the payoff
-//!
-//! §10.2 allocates fire by maximising `P(kill) × value`, which is what an omniscient
-//! optimiser would do. Real crews are not omniscient optimisers. They do not hold a
-//! kill-probability table; they hold **orders** - engage air defence before manoeuvre,
-//! shoot the command post first - and they follow them whether or not the shot is a good
-//! one.
-//!
-//! So a declared priority is **strict by default**: a shooter that can reach anything in a
-//! higher tier takes it, even at a worse kill probability than a lower-tier target offers.
-//! That is not a crude approximation of the optimiser; it is a different and, for a directed
-//! force, more faithful decision rule.
-//!
-//! Which makes the mode switch a measurable question rather than a preference. Running the
-//! same scenario under `strict` doctrine and under the payoff-optimal allocation puts a
-//! number on **what directive control costs against optimal control** - an answer this
-//! model can give and hand-waving cannot.
+//! §10.2 allocates fire by maximising `P(kill) × value` - what an omniscient optimiser
+//! would do. A crew holds orders instead, and follows them whether or not the shot is a
+//! good one, so a declared priority is **strict by default**: a shooter that can reach a
+//! higher tier takes it even at a worse kill probability. The mode switch is therefore a
+//! measurement - strict against payoff-optimal is what directive control costs against
+//! optimal control.
 //!
 //! # What a priority entry may name
 //!
-//! Three things, checked in this order and all equally valid:
+//! Four things, checked in this order:
 //!
 //! | Entry | Matches |
 //! |---|---|
 //! | an asset **id** | that one asset - how a gate pins an exact target |
 //! | a **role** | every asset whose stat block declares it (`role = "artillery"`) |
 //! | a **class** | `unit`, `air_defence`, `c2`, `air` - always available, no declaration |
-//! | [`ALL`] | anything at all - the tier that says "and then everyone else, equally" |
-//!
-//! # There is no "no doctrine"
-//!
-//! A side always has one. Omitting the block gives `priority = ["all"]`: a single tier
-//! holding every target, ranked among itself by the ordinary §10.2 payoff - which *is* the
-//! undirected behaviour. So the engine has one code path rather than two, and the identity
-//! with the pre-doctrine model holds **by construction** (one tier means one solve over
-//! every target, which is exactly what the old code did) rather than by a separate branch
-//! that has to be kept honest.
-//!
-//! `"all"` is usable mid-list too, which makes the bottom tier explicit:
-//! `["c2", "air_defence", "all"]` reads as the fire plan it is.
+//! | [`ALL`] | anything at all - the tier meaning "and then everyone else, equally" |
 //!
 //! A role never masks its class: a battery with `role = "sam"` matches both `"sam"` and
 //! `"air_defence"`, so a coarse doctrine keeps working when a stat block gets more specific.
 //!
-//! Every name is checked against the scenario when the sim is built. A priority naming
-//! nothing is a load error, not an empty tier - the same reasoning as the schema's
-//! `deny_unknown_fields`: a tier that silently matches nothing produces a study of a
-//! doctrine nobody is following.
+//! # There is no "no doctrine"
+//!
+//! Omitting the block gives `priority = ["all"]` - one tier over every target, ranked by
+//! the ordinary §10.2 payoff, which *is* the undirected behaviour. One code path rather
+//! than two, so the identity holds by construction. `"all"` is usable mid-list, making the
+//! bottom tier explicit: `["c2", "air_defence", "all"]` reads as the fire plan it is.
+//!
+//! Every name is checked when the sim is built - a priority matching nothing is a load
+//! error, since a tier that silently matches nothing answers a different question.
 
 use std::collections::BTreeSet;
 

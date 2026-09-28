@@ -1,5 +1,5 @@
 //! Line of sight. Every fires and sensing calculation goes through here.
-//! Spec: `docs/DESIGN.md` §1.4. Gates: V5-V11.
+//! Spec: `docs/THEORY.md` §1.4. Gates: V5-V11.
 //!
 //! The sightline runs between two actors at `z(endpoint) + h`. Ground and urban feature
 //! height block hard; trees attenuate, with canopy path length `L` giving transmittance
@@ -241,7 +241,7 @@ pub fn visible(terrain: &TerrainGrid, a: Vec2, h_a: f32, b: Vec2, h_b: f32) -> b
     line_of_sight(terrain, a, h_a, b, h_b).clear
 }
 
-/// True 3-D range between two actors (`docs/DESIGN.md` §9.1): the horizontal separation
+/// True 3-D range between two actors (`docs/THEORY.md` §9.1): the horizontal separation
 /// combined with the difference in absolute endpoint heights `z + h`.
 ///
 /// This is the project's one range convention - detection cutoffs and weapon range gates
@@ -257,7 +257,7 @@ pub fn slant_range(terrain: &TerrainGrid, a: Vec2, h_a: f32, b: Vec2, h_b: f32) 
     horizontal.hypot(rise)
 }
 
-/// Brute-force viewshed (`docs/DESIGN.md` §1.5): the transmittance `τ` from an observer
+/// Brute-force viewshed (`docs/THEORY.md` §1.5): the transmittance `τ` from an observer
 /// at `observer` (height `h_obs`) to a target of height `h_tgt` at every cell centre
 /// within `max_range_m`. `0.0` marks hard-blocked or out-of-range cells.
 ///
@@ -301,7 +301,7 @@ pub fn viewshed(
 /// distance** (see [`axis_crossings`]), so they are combined by an O(n) merge rather than
 /// an O(n log n) sort. On a multi-kilometre ray this buffer holds ~2000 breakpoints and
 /// the sort was a measurable share of the query - this is the micro-optimisation
-/// `docs/DESIGN.md` §1.5 flagged as outstanding. The output order is identical to the
+/// `docs/THEORY.md` §1.5 flagged as outstanding. The output order is identical to the
 /// sorted one, so results are bit-for-bit unchanged (V5-V13 are the check).
 fn fill_breakpoints(scratch: &mut Scratch, p0: Vec2, p1: Vec2, span: f32, step: f32) {
     let Scratch { xs, ys, merged } = scratch;

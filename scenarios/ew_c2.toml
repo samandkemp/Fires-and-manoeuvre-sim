@@ -1,4 +1,4 @@
-# Jamming the link: the soft kill (docs/design/11-command-and-control.md §11.2, gate V62)
+# Jamming the link: the soft kill (docs/THEORY.md §11.2, gate V62)
 #
 # `ad_c2.toml` shows what a command post is worth, and what killing it costs. This shows
 # the cheaper attack on the same asset: leave the post standing and jam it.

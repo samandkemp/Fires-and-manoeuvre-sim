@@ -5,9 +5,9 @@
 //! `counter_air`).
 
 use crate::ew::Jammer;
-use crate::fires::WeaponType;
 use crate::sensing::{SensorType, UnitType};
 use crate::suppression::Suppression;
+use crate::weapon_effects::WeaponType;
 use glam::Vec2;
 
 /// Which force an asset belongs to.
@@ -67,7 +67,7 @@ pub struct UnitState {
     ///
     /// Derived from [`UnitState::last_seen_s`] and refreshed at each decision epoch, so
     /// every reader keeps working while the underlying model is now a decaying track
-    /// rather than a permanent flag (`docs/DESIGN.md` §10.1).
+    /// rather than a permanent flag (`docs/THEORY.md` §10.1).
     pub detected: bool,
     /// Sim time this unit was last observed by the opposing side, if ever.
     pub last_seen_s: Option<f64>,
@@ -82,7 +82,7 @@ pub struct UnitState {
     /// Route waypoints (world metres); empty = no route.
     ///
     /// Either scripted by the scenario, or planned by the unit itself each epoch when it has
-    /// an `objective` (`docs/DESIGN.md` §10.5). Movement reads it the same way either way.
+    /// an `objective` (`docs/THEORY.md` §10.5). Movement reads it the same way either way.
     pub route: Vec<Vec2>,
     /// Index of the next waypoint to head for.
     pub route_idx: usize,
@@ -95,7 +95,7 @@ pub struct UnitState {
     /// This unit's own exchange rate between movement cost and exposure; `None` takes
     /// `[sim] risk_weight`.
     pub risk_weight: Option<f32>,
-    /// What this unit is currently engaging, if anything (`docs/DESIGN.md` §13.4).
+    /// What this unit is currently engaging, if anything (`docs/THEORY.md` §13.4).
     ///
     /// A **lock**, not a preference: once a shooter takes a target it stays on it until the
     /// target is dead or can no longer be engaged - masked by terrain, out of range, or its

@@ -1,21 +1,15 @@
-//! V69 - `emitting` and `self_cue` are two different decisions. `docs/DESIGN.md` §12.5.
+//! V69 - `emitting` and `self_cue` are two different decisions. `docs/THEORY.md` §12.5.
 //!
-//! §9.5 introduced `self_cue` as the **cueing timeline**: does this battery act on its own
-//! radar, or wait for a track over the net and pay `cue_latency_s`? §12.3 then reused the
-//! same flag as the **emission** test for anti-radiation homing.
-//!
-//! One flag, two meanings, and they disagree. A battery with `self_cue = false` counted as
-//! silent to a missile while its radar kept detecting perfectly well - measured on
-//! `scenarios/sead_arm.toml` at 1.000 detections with first contact at 9.3 s, statistically
-//! indistinguishable from the emitting arm. It bought the survivability of EMCON without
-//! the blindness that is supposed to pay for it.
-//!
-//! Split, the two now fail differently, and this gate holds them apart:
+//! Fixture: one battery run under each flag in turn, counting what it detects and whether
+//! an ARM can home on it. The two must fail differently:
 //!
 //! * `emitting = false` - the radar is **off**. No detections through it, no self-cue, and
 //!   nothing for an ARM to home on.
 //! * `self_cue = false` - the radar **runs**. It detects, an ARM can see it, but the
-//!   battery takes its cue from the net and pays the latency.
+//!   battery takes its cue from the net and pays `cue_latency_s`.
+//!
+//! Sharing one flag let a battery take the missile protection of going dark while still
+//! seeing everything - EMCON's survivability without the blindness that pays for it.
 
 use sim_core::scenario::{Libraries, Scenario};
 use sim_core::sim::Sim;

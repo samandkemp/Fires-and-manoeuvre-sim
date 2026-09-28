@@ -1,16 +1,12 @@
-//! V75 - the fire-allocation objective's planning horizon. `docs/DESIGN.md` §10.2.
+//! V75 - the fire-allocation objective's planning horizon. `docs/THEORY.md` §10.2.
 //!
-//! The single-epoch objective values a target for what it *is*: how many elements, how
-//! dangerous. It never prices what a survivor goes on to do, which is why solving it exactly
-//! is myopically right and measurably worse over an engagement than a greedy rule.
+//! `[sim] allocation_horizon` is how many epochs the objective prices. Two properties hold
+//! it honest, and they pull in opposite directions:
 //!
-//! `[sim] allocation_horizon` is how many epochs the objective looks ahead. Two properties
-//! hold it honest, and they pull in opposite directions:
-//!
-//! * A horizon of 1 must be an **exact identity** - the formula reduces to the original, so
-//!   every previously measured result stands without re-baselining.
-//! * Above 1 it must actually change the preference, toward killing what shoots back rather
-//!   than damaging whatever is nearest. A dial that changes nothing is worse than no dial.
+//! * a horizon of 1 must be an **exact identity** - the formula multiplies threat by 1.0,
+//!   so every previously measured result stands without re-baselining;
+//! * above 1 it must actually change the preference, toward killing what shoots back rather
+//!   than damaging whatever is largest. A dial that changes nothing is worse than no dial.
 
 use sim_core::scenario::{Libraries, Scenario};
 use sim_core::sim::Sim;

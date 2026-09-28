@@ -1,5 +1,5 @@
 //! V5-V13 and V45 - line of sight, viewshed, mobility cost and slant range
-//! (docs/DESIGN.md §1.4, §1.5, §9.1).
+//! (docs/THEORY.md §1.4, §1.5, §9.1).
 
 use glam::Vec2;
 use ndarray::Array2;
@@ -7,7 +7,7 @@ use sim_core::los::*;
 use sim_core::terrain::{TerrainGrid, TerrainParams, TerrainParamsTable, TerrainType};
 use validation::{flat_with_patch, hills, params};
 
-// V45 (docs/DESIGN.md §9.1): slant range is the true 3-D separation, reduces to the
+// V45 (docs/THEORY.md §9.1): slant range is the true 3-D separation, reduces to the
 // horizontal distance when the endpoints are at equal absolute height, and is
 // symmetric. Overhead is not point blank.
 #[test]

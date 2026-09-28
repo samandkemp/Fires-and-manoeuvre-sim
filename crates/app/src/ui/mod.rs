@@ -13,7 +13,7 @@ use bevy_egui::egui;
 use sim_core::sim::Sim;
 
 use crate::overlays;
-use crate::state::{Overlay, PendingLoad, Probe, ResetKind, SimRes, UiState};
+use crate::resources::{Overlay, PendingLoad, Probe, ResetKind, SimRes, UiState};
 
 mod air;
 mod clock;

@@ -1,25 +1,16 @@
-//! V71 - the Sobol estimator against a closed form. `docs/EXPERIMENTS.md`.
+//! V71 - the Sobol estimator against a closed form. `docs/THEORY.md` §14.8.
 //!
-//! Every number in this project is an abstract placeholder, so the question hanging over
-//! every result is whether the conclusion survives the numbers being wrong. Global
-//! sensitivity analysis answers it - but only if the estimator is itself trustworthy, and
-//! "the indices looked plausible" is not a check.
-//!
-//! The **Ishigami function** is the standard test case precisely because its Sobol indices
-//! are known exactly:
+//! Fixture: the Ishigami function, whose Sobol indices are known exactly.
 //!
 //! ```text
 //! f(x) = sin(x1) + a·sin²(x2) + b·x3⁴·sin(x1),     x ~ U(−π, π)
 //! ```
 //!
-//! Its third input is the interesting one: `S1 = 0` exactly - `x3` does **nothing** on its
-//! own - while `ST` is large, because it does a great deal *through* `x1`. A one-dial sweep
-//! of `x3` would report no effect and be wrong about the model. That gap between `S1` and
-//! `ST` is the whole reason this estimator exists, so it is the thing worth gating.
+//! Its third input carries the gate: `S1 = 0` exactly - `x3` does nothing alone - while
+//! `ST` is large, because it acts entirely through `x1`. That gap is what a one-dial sweep
+//! cannot see and what the estimator exists to expose.
 //!
-//! This is a gate on the **measuring instrument**, not on the simulation - the same kind as
-//! V27's Dijkstra-against-Bellman-Ford. An instrument that cannot recover a known answer
-//! cannot be trusted with an unknown one.
+//! A gate on the measuring instrument rather than on a model, as V27 is for Dijkstra.
 
 use experiments::sensitivity::{
     ishigami, ishigami_analytic, morris_design, morris_indices, sobol_design, sobol_indices,

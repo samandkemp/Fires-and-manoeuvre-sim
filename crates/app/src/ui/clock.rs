@@ -8,7 +8,7 @@
 use bevy::prelude::*;
 use bevy_egui::egui;
 
-use crate::state::ResetKind;
+use crate::resources::ResetKind;
 
 use super::Panel;
 

@@ -2,7 +2,7 @@
 //! grid of candidate positions for one sensor type, score each by the red units it can
 //! actually detect (clear LOS, in range) and the total detection rate it achieves, and
 //! print the best sites. A brute-force stand-in for the sensor-placement optimisation
-//! Phase 6 will make game-theoretic.
+//! the game-theoretic layer later makes adversarial.
 //!
 //! Run: `cargo run -p experiments --bin sensor_siting -- [sensor_type] [--release for speed]`
 

@@ -1,11 +1,11 @@
-//! V19-V24 - direct and indirect fires (docs/DESIGN.md §2).
+//! V19-V24 - direct and indirect fires (docs/THEORY.md §2).
 //!
 //! Fixtures come from the `validation` crate; the gates reach sim_core through its
 //! public API only.
 
 use glam::Vec2;
 use rand::SeedableRng;
-use sim_core::fires::*;
+use sim_core::weapon_effects::*;
 
 fn rng(seed: u64) -> sim_core::SimRng {
     sim_core::SimRng::seed_from_u64(seed)

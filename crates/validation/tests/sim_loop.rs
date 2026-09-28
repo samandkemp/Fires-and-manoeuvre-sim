@@ -1,20 +1,19 @@
-//! Gates that need the whole simulation loop running (docs/DESIGN.md §3.3):
-//! V14/V15, V18, V24, V30, V31, V37-V40, and the Phase 9 air integration gates.
+//! Gates that need the whole simulation loop running (docs/THEORY.md §3.3):
+//! V14/V15, V18, V24, V30, V31, V37-V40, and the air integration gates.
 //!
-//! These share heavyweight fixtures - a duel, a battle, a raid - so they live in
-//! one file rather than being split by V-number across the per-subsystem gate
-//! files. The zero-draw half of V52 is *not* here: it asserts a property of the
-//! RNG draw stream, which is internal by definition, so it stays a unit test
-//! inside `sim_core`.
+//! These share heavyweight fixtures - a duel, a battle, a raid - so they live in one file
+//! rather than being split by V-number across the per-subsystem suites. The zero-draw half
+//! of V52 is not here: it asserts a property of the RNG draw stream, which is internal, so
+//! it stays a unit test inside `sim_core`.
 
 use glam::Vec2;
-use sim_core::air::AirType;
 use sim_core::air_defence::{AdEngagement, AirDefenceType};
-use sim_core::fires::{WeaponClass, WeaponType};
+use sim_core::airframes::AirType;
 use sim_core::scenario::{Libraries, Scenario};
 use sim_core::sensing::{detection_rate, Modality, SensorType, UnitType};
 use sim_core::sim::{Side, Sim, UnitState};
 use sim_core::suppression::Suppression;
+use sim_core::weapon_effects::{WeaponClass, WeaponType};
 use std::collections::BTreeMap;
 use validation::scenario_params;
 
@@ -338,7 +337,7 @@ fn v40_ew_degrades_and_off_is_identity() {
 // real headless battles, then solves it.
 #[test]
 fn v39_interdiction_safe_route() {
-    use sim_core::game::solve_zero_sum;
+    use sim_core::game_theory::solve_zero_sum;
     let scn = Scenario::from_toml_str(
         r#"
         name = "v39"
@@ -1149,7 +1148,7 @@ fn v54_removal_tombstones_keep_logged_indices_valid() {
     sim.run_until(200.0);
 }
 
-// ---- V55: track lifecycle (docs/DESIGN.md §10.1) ------------------------------------
+// ---- V55: track lifecycle (docs/THEORY.md §10.1) ------------------------------------
 // Detection used to be permanent, which quietly meant EW could *prevent* a track but
 // never *break* one - jamming a unit already seen did nothing at all. A track now lapses
 // `track_hold_s` after its last observation, and whether a sensor still "observes" is

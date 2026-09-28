@@ -1,4 +1,4 @@
-//! The glimpse-rate detection model. Spec: `docs/DESIGN.md` §3. Gates: V14-V18.
+//! The glimpse-rate detection model. Spec: `docs/THEORY.md` §3. Gates: V14-V18.
 //!
 //! Only `optical` exists so far. `Modality` and the per-modality signature tables are
 //! the seam for acoustic and EO/IR later.
@@ -63,16 +63,15 @@ pub struct UnitType {
     #[serde(default)]
     pub weapon: Option<String>,
     /// How much killing **one element** of this unit is worth, for fire allocation
-    /// (`docs/DESIGN.md` §10.2). Omit and it is derived from size and weapon threat.
+    /// (`docs/THEORY.md` §10.2). Omit and it is derived from size and weapon threat.
     ///
-    /// Per element rather than per unit, so a half-destroyed unit is correctly worth
-    /// less than a fresh one. Set it to express doctrine the derived score cannot know -
-    /// "kill the radar first" is a `value` an unarmed sensor vehicle would never earn on
-    /// its own.
+    /// Per element, so a half-destroyed unit is worth less than a fresh one. Set it to
+    /// express what the derivation cannot know - "kill the radar first" is a value an
+    /// unarmed sensor vehicle would never earn on its own.
     #[serde(default)]
     pub value: Option<f32>,
     /// Free-form role this asset answers to in a target-priority list
-    /// (`docs/DESIGN.md` §13). Optional: the asset class always matches anyway, so this is
+    /// (`docs/THEORY.md` §13). Optional: the asset class always matches anyway, so this is
     /// only needed to say something finer than "unit".
     #[serde(default)]
     pub role: Option<String>,
@@ -135,7 +134,7 @@ impl UnitType {
 /// The instantaneous glimpse rate λ (per second) at which `sensor` at `sensor_pos`
 /// (facing `facing_deg`, maths convention: 0° = +X/east, CCW) detects a unit of type
 /// `unit_type` at `unit_pos`. Zero when hard-blocked, out of range, or outside the
-/// field of regard. `docs/DESIGN.md` §3.2.
+/// field of regard. `docs/THEORY.md` §3.2.
 #[must_use]
 pub fn detection_rate(
     terrain: &TerrainGrid,
@@ -170,13 +169,13 @@ pub fn concealment_at(terrain: &TerrainGrid, pos: Vec2) -> f32 {
     }
 }
 
-/// The general glimpse rate (`docs/DESIGN.md` §3.2), with every target property passed
+/// The general glimpse rate (`docs/THEORY.md` §3.2), with every target property passed
 /// explicitly rather than read from a [`UnitType`].
 ///
-/// This is the form air assets use: a drone has its own signature and altitude-derived
-/// actor height, and contributes `concealment = 0` because an airborne target is not
-/// standing in the cell below it (§9.1). `sensor_height_m` is explicit too - a sensor
-/// carried by a drone sits at the airframe's height, not at its own `mount_height_m`.
+/// The form air assets use: a drone brings its own signature and altitude-derived actor
+/// height, and contributes `concealment = 0`, since an airborne target is not standing in
+/// the cell below it (§9.1). `sensor_height_m` is explicit for the same reason - a carried
+/// sensor sits at the airframe's height, not its own `mount_height_m`.
 ///
 /// Composed from [`detection_gate`] and [`rate_given_los`] rather than written out, so a
 /// caller that can reuse a line-of-sight result (the sim caches them for endpoints that

@@ -1,5 +1,5 @@
 //! Ground fires: who shoots whom, and what one epoch of shooting does.
-//! Spec: `docs/DESIGN.md` §2, §4.1-§4.2, §10.2. Gates: V19-V24, V30, V31, V56.
+//! Spec: `docs/THEORY.md` §2, §4.1-§4.2, §10.2. Gates: V19-V24, V30, V31, V56.
 //!
 //! One epoch:
 //!
@@ -21,8 +21,8 @@
 use super::{FireEvent, FireTarget, Side, Sim};
 use crate::allocation::{self, Solver};
 use crate::doctrine::{Doctrine, DoctrineMode, TargetNames};
-use crate::fires::{self, WeaponClass, WeaponType};
 use crate::los;
+use crate::weapon_effects::{self, WeaponClass, WeaponType};
 use glam::Vec2;
 use rand::Rng;
 
@@ -57,7 +57,7 @@ enum Shot {
 /// Units, air-defence batteries and C2 posts differ in what they *do* and in nothing that
 /// matters to a shell. Gathering the four facts a shot depends on - where, how big, how
 /// many left, is it locatable - is what let counter-battery be added by widening a list
-/// rather than by writing a second fires model (`docs/DESIGN.md` §12.4).
+/// rather than by writing a second fires model (`docs/THEORY.md` §12.4).
 #[derive(Clone, Copy)]
 pub(super) struct TargetState {
     pub pos: Vec2,
@@ -74,7 +74,7 @@ pub(super) struct TargetState {
 }
 
 impl Sim {
-    /// The names a target answers to in a priority list (`docs/DESIGN.md` §13.1).
+    /// The names a target answers to in a priority list (`docs/THEORY.md` §13.1).
     pub(super) fn target_names(&self, t: FireTarget) -> TargetNames<'_> {
         match t {
             FireTarget::Unit(i) => TargetNames {
@@ -115,7 +115,7 @@ impl Sim {
     }
 
     /// This side's target priority. Always present - the undirected case is one tier
-    /// holding everything (`docs/DESIGN.md` §13).
+    /// holding everything (`docs/THEORY.md` §13).
     pub(super) fn doctrine_of(&self, side: Side) -> &Doctrine {
         &self.doctrine[side as usize]
     }
@@ -181,28 +181,22 @@ impl Sim {
         }
     }
 
-    /// Can the enemy put **indirect** fire on this emplacement (`docs/DESIGN.md` §12.4)?
+    /// Can the enemy put **indirect** fire on this emplacement (`docs/THEORY.md` §12.4)?
     ///
-    /// Neither batteries nor posts go through the §3.2 glimpse loop, so neither has a
-    /// track in the ordinary sense. Rather than invent one, this asks the question
-    /// counter-battery acquisition actually asks: **has it given itself away?**
+    /// Neither batteries nor posts go through the §3.2 glimpse loop, so neither has a track.
+    /// Instead this asks what counter-battery acquisition actually asks - has it given
+    /// itself away?
     ///
     /// - A **battery** has, if it is transmitting (`emitting` with a live radar) or has
-    ///   fired. Those are the two real ways a site is located: ESM on its emissions, or a
-    ///   counter-battery track back along its rounds.
-    /// - A **post** has, if it is coordinating anything - a command post is found because
-    ///   it is talking, which is the same argument in a different band.
+    ///   fired: ESM on its emissions, or a track back along its rounds.
+    /// - A **post** has, if it is coordinating anything - found because it is talking.
     ///
-    /// Deterministic, and draws **no randomness**. That is not just tidiness: a stochastic
-    /// acquisition here would insert draws into every scenario fielding air defence and
-    /// shift the stream underneath V50, V51, V59 and V60 for no modelling gain.
+    /// Deterministic, and draws **no randomness**: a stochastic acquisition here would
+    /// insert draws into every scenario fielding air defence and shift the stream under
+    /// V50, V51, V59 and V60.
     ///
-    /// It also joins the two halves of §12.3 - switching a radar off already made an ARM
-    /// miss; it now also hides the battery from artillery. One decision, two consequences.
-    ///
-    /// Public because it is a question worth asking from outside: it is what a gate checks
-    /// directly rather than inferring from a hit, and what a front-end would draw to show
-    /// which emplacements have given themselves away.
+    /// Public because a gate checks it directly rather than inferring it from a hit, and a
+    /// front-end would draw which emplacements have given themselves away.
     #[must_use]
     pub fn emplacement_is_located(&self, t: FireTarget) -> bool {
         match t {
@@ -342,7 +336,7 @@ impl Sim {
                     target.pos,
                     target.height_m,
                 );
-                let p_hit = fires::direct_p_hit(
+                let p_hit = weapon_effects::direct_p_hit(
                     weapon.dispersion_mrad,
                     range,
                     target.silhouette_width_m,
@@ -353,7 +347,7 @@ impl Sim {
                 }
             }
             WeaponClass::Indirect => Shot::Indirect {
-                sigma_m: fires::sigma_from_cep(weapon.cep_m),
+                sigma_m: weapon_effects::sigma_from_cep(weapon.cep_m),
                 lethal_radius_m: weapon.lethal_radius_m,
                 cover,
                 effectiveness,
@@ -378,11 +372,12 @@ impl Sim {
                 cover,
                 effectiveness,
             } => {
-                let burst = fires::sample_burst(target_pos, sigma_m, &mut self.rng);
+                let burst = weapon_effects::sample_burst(target_pos, sigma_m, &mut self.rng);
                 let miss = burst.distance(target_pos);
-                // Same multiplication order as before the hoist - see `Shot::Indirect`.
-                let dmg =
-                    fires::carleton_damage(miss, lethal_radius_m) * (1.0 - cover) * effectiveness;
+                // Multiplication order is load-bearing - see `Shot::Indirect`.
+                let dmg = weapon_effects::carleton_damage(miss, lethal_radius_m)
+                    * (1.0 - cover)
+                    * effectiveness;
                 // Each remaining element independently survives or not.
                 let mut killed = 0u32;
                 for _ in 0..remaining {
@@ -396,7 +391,7 @@ impl Sim {
     }
 
     /// Assign every one of `side`'s shooters, splitting them by whether they are in the
-    /// side's fire-control net (`docs/DESIGN.md` §11.3).
+    /// side's fire-control net (`docs/THEORY.md` §11.3).
     ///
     /// With `[sim] fires_need_c2` off - the default - this is one call with the whole
     /// side, exactly as before, and the C2 lists are never consulted. With it on, the side
@@ -470,7 +465,7 @@ impl Sim {
             .collect()
     }
 
-    /// Engagements this side has ordered outright (`docs/DESIGN.md` §13.3).
+    /// Engagements this side has ordered outright (`docs/THEORY.md` §13.3).
     ///
     /// An order stands only while the pairing is **actually engageable** - alive, in range,
     /// and in line of sight if the weapon needs it. When it is not, the order lapses for
@@ -537,7 +532,7 @@ impl Sim {
             })
     }
 
-    /// Allocate `shooters` under this side's doctrine (`docs/DESIGN.md` §13.2).
+    /// Allocate `shooters` under this side's doctrine (`docs/THEORY.md` §13.2).
     ///
     /// - **No doctrine**: one call, exactly the pre-doctrine behaviour (§7.4).
     /// - **Weighted**: one call, with each target's value scaled by its tier - the payoff
@@ -546,11 +541,10 @@ impl Sim {
     ///   shooter that can reach a tier takes something in it; only those left unassigned
     ///   fall through to the next.
     ///
-    /// Solving tier by tier is what makes strict ordering *exact*. The obvious
-    /// alternative - a large bonus added to a higher tier's payoff - is the trap
-    /// `allocation::INELIGIBLE` already fell into once: at the magnitudes needed to
-    /// dominate, `1e18 + 10.0 == 1e18` in f64 and the payoff differences inside a tier
-    /// vanish. A sequence of small exact problems has no such failure mode.
+    /// Solving tier by tier is what makes strict ordering *exact*. The obvious alternative,
+    /// a large bonus on a higher tier's payoff, hits a precision trap: at the magnitudes
+    /// needed to dominate, `1e18 + 10.0 == 1e18` in f64 and the payoff differences *inside*
+    /// a tier vanish. A sequence of small exact problems has no such failure mode.
     fn allocate_by_doctrine(
         &self,
         side: Side,
@@ -605,7 +599,7 @@ impl Sim {
     }
 
     /// Assign `shooters` to enemies of `side`, as `(shooter, target)` pairs.
-    /// `docs/DESIGN.md` §10.2.
+    /// `docs/THEORY.md` §10.2.
     ///
     /// The old rule was "each shooter takes the nearest enemy it can engage", decided
     /// independently. That wastes fire in the obvious way: three tanks all engage the one
@@ -632,22 +626,11 @@ impl Sim {
 
         let value_scale = self.threat_scale();
         // Every target offers a slot to every free shooter, and slot k is worth less than
-        // slot k-1 (see `slot_weight`). There is deliberately **no hard cap**.
-        //
-        // There used to be one, `max_shooters_per_target`, and it was a hard cap that
-        // *idled* shooters: a target offered `min(elements, cap)` slots, so once targets
-        // were scarcer than shooters - which for indirect fire is most of the opening,
-        // since a target must be tracked before it can be shot at - the surplus shooters
-        // were assigned nothing and fired nothing. Measured on `fires_c2.toml`, that made
-        // a side which had been *split in two* by `fires_need_c2` fight better than a
-        // coordinated one, because the cap was applied once per fire-control problem and a
-        // split side therefore got it twice (§11.4).
-        //
-        // The geometric discount below already prices piling on. Truncating it as well
-        // said "rather than overkill, do nothing", which is the wrong trade whenever there
-        // is nothing else to shoot. Offering one slot per free shooter means the marginal
-        // shooter always has somewhere to go, at a value the discount has already decided
-        // is small.
+        // slot k-1 (see `slot_weight`). There is no hard cap on top of the discount: a cap
+        // truncates rather than discourages, leaving a shooter with nothing else to engage
+        // assigned nothing at all (§11.4, V68). Offering one slot per free shooter means
+        // the marginal shooter always has somewhere to go, at a value the discount has
+        // already decided is small.
         let mut slot_target = Vec::new();
         let mut slot_weight = Vec::new();
         for (t_pos, &t) in targets.iter().enumerate() {
@@ -712,7 +695,7 @@ impl Sim {
         if weapon.class == WeaponClass::Indirect && !target.located {
             return None;
         }
-        // Slant range (docs/DESIGN.md §9.1) - the one range convention.
+        // Slant range (docs/THEORY.md §9.1) - the one range convention.
         let range = los::slant_range(
             &self.terrain,
             shooter.pos,
@@ -742,7 +725,7 @@ impl Sim {
                 ) {
                     return None;
                 }
-                let p_hit = fires::direct_p_hit(
+                let p_hit = weapon_effects::direct_p_hit(
                     weapon.dispersion_mrad,
                     range,
                     target.silhouette_width_m,
@@ -756,10 +739,11 @@ impl Sim {
             WeaponClass::Indirect => {
                 // Each round rolls every surviving element, so the expected fraction
                 // removed per round is just the expected damage.
-                let sigma = fires::sigma_from_cep(weapon.cep_m);
-                let per_round = fires::expected_area_damage(0.0, sigma, weapon.lethal_radius_m)
-                    * (1.0 - cover)
-                    * effectiveness;
+                let sigma = weapon_effects::sigma_from_cep(weapon.cep_m);
+                let per_round =
+                    weapon_effects::expected_area_damage(0.0, sigma, weapon.lethal_radius_m)
+                        * (1.0 - cover)
+                        * effectiveness;
                 rounds * f64::from(per_round)
             }
         };
@@ -790,21 +774,17 @@ impl Sim {
         })
     }
 
-    /// What destroying target `t` is worth (`docs/DESIGN.md` §10.2).
+    /// What destroying target `t` is worth (`docs/THEORY.md` §10.2).
     ///
-    /// The `value` dial on the stat block wins when set. Otherwise it is derived:
+    /// The `value` dial on the stat block wins when set. Otherwise it is derived as
     /// `elements × (1 + threat/threat_max)`, so a unit is worth its size, doubled if it is
-    /// the most dangerous thing on the field. Deriving from size *and* threat means an
-    /// unscored stat block still ranks sensibly - an unarmed truck is worth something, a
-    /// full-strength gun battery a great deal more.
+    /// the most dangerous thing on the field - an unscored stat block still ranks sensibly.
     ///
     /// **An emplacement scores no derived threat** (§12.4). A battery's danger is to
-    /// aircraft and a post's is to nobody at all, so neither has an output measurable on
-    /// the same scale as a unit's `rof × lethality × reach` - and inventing a conversion
-    /// would be arithmetic dressed as doctrine. They fall back to `1.0` per element, and a
-    /// scenario that wants artillery to prefer the SAM over the tanks says so with `value`.
-    /// That is what the dial is for: expressing "kill the radar first" is a judgement, not
-    /// a derivation.
+    /// aircraft and a post has no firepower at all, so neither has an output measurable on
+    /// a unit's `rof × lethality × reach` scale, and a conversion would be arithmetic
+    /// dressed as doctrine. Both fall back to `1.0` per element; a scenario wanting
+    /// artillery to prefer the SAM says so with `value`.
     pub(super) fn target_value(&self, t: FireTarget, threat_scale: f32) -> f32 {
         let target = self.target_state(t);
         // How long this target would go on being dangerous if it survived, in epochs.

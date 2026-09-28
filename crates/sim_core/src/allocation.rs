@@ -1,27 +1,18 @@
 //! Weapon-target assignment: which shooter engages which target.
-//! Spec: `docs/DESIGN.md` §10.2. Gates: V56.
+//! Spec: `docs/THEORY.md` §10.2. Gates: V56.
 //!
-//! Pure functions over a payoff matrix - no `Sim`, no terrain, no randomness. The sim
-//! builds the matrix from its own fires model and calls [`solve`]; everything here is a
-//! combinatorial optimisation that can be tested on its own.
+//! Pure functions over a payoff matrix - no `Sim`, no terrain, no randomness - so the
+//! optimisation is testable on its own. The sim builds the matrix from its fires model and
+//! calls [`solve`].
 //!
-//! # The problem
+//! Rows are shooters, columns are **slots**: every target offers one slot per free shooter,
+//! and slot *k* is discounted because the (k+1)-th shooter only helps if the k before it
+//! all failed. Expressing diminishing returns as extra columns is what keeps this a
+//! plain linear assignment rather than a submodular problem.
 //!
-//! Rows are shooters, columns are **slots**. A target with `E` elements offers up to `E`
-//! slots, so several shooters can be sent against one target without the assignment
-//! collapsing to one-shooter-one-target and leaving the rest idle. Each slot is worth
-//! less than the last (see `docs/DESIGN.md` §10.2): a second shooter on a target adds
-//! less than the first did, because the first may already have destroyed it.
-//!
-//! Turning diminishing returns into extra columns is what keeps this a plain linear
-//! assignment problem instead of needing a bespoke submodular solver.
-//!
-//! # Two solvers, on purpose
-//!
-//! [`hungarian`] is optimal. [`greedy`] is the obvious "repeatedly take the best
-//! remaining cell" heuristic. Greedy is not dead code: it is the baseline that turns
-//! "the optimal solver is worth having" from an assumption into a measured number, which
-//! a `sweep --param sim.allocation` reports.
+//! [`hungarian`] is optimal; [`greedy`] repeatedly takes the best remaining cell. Greedy is
+//! the baseline that turns "the optimal solver is worth having" from an assumption into a
+//! measured number.
 
 /// A payoff below this counts as ineligible - the pairing is not allowed at all.
 ///
@@ -60,7 +51,7 @@ pub enum Solver {
     /// against.
     Greedy,
     /// Each shooter independently takes its own best slot, ignoring the others - the
-    /// pre-Phase-10 behaviour, kept so the cost of *not* coordinating is measurable too.
+    /// The uncoordinated rule, kept so the cost of *not* coordinating is measurable too.
     Independent,
 }
 
@@ -88,7 +79,7 @@ pub fn total(payoff: &[Vec<f64>], assignment: &Assignment) -> f64 {
 
 /// Every shooter takes its own best slot, with no regard for what anyone else does.
 ///
-/// Slots are *not* exclusive here - this reproduces the pre-Phase-10 rule where each unit
+/// Slots are *not* exclusive here - this reproduces the uncoordinated rule where each unit
 /// chose independently, so two shooters can pile onto the same target. Kept as the
 /// baseline that shows what coordination buys.
 #[must_use]
@@ -145,30 +136,24 @@ pub fn greedy(payoff: &[Vec<f64>]) -> Assignment {
 
 /// The optimal assignment, by the Kuhn-Munkres (Hungarian) algorithm.
 ///
-/// `O(n²m)` with the potentials formulation, which handles a rectangular matrix
-/// directly - there are usually far more slots than shooters, and padding to a square
-/// would waste most of the work.
-///
-/// The algorithm minimises, so payoffs are negated on the way in. Rows are added one at a
-/// time, each extending the alternating tree until it reaches a free column.
+/// `O(n²m)` with the potentials formulation, which takes a rectangular matrix directly:
+/// there are usually far more slots than shooters, so padding to a square would waste most
+/// of the work. Payoffs are negated on the way in, since the algorithm minimises.
 ///
 /// # Forbidden pairings, and idle shooters
 ///
-/// Kuhn-Munkres produces a **perfect** matching - every row gets a column. What we
-/// actually want is a maximum-weight matching that may leave a shooter idle, and that
-/// forbids some pairings outright. Both fall out of one substitution: forbidden cells are
-/// scored **0** for the solver.
+/// Kuhn-Munkres produces a **perfect** matching; what is wanted is a maximum-weight one
+/// that may leave a shooter idle and forbids some pairings outright. Both fall out of
+/// scoring forbidden cells **0**.
 ///
-/// That is exact, not an approximation, given two conditions this module requires:
-/// eligible payoffs are non-negative, and rows ≤ columns (guaranteed by the transpose
-/// above). Any partial matching then extends to a perfect one using only zero-weight
-/// cells without changing its total, so the best perfect matching and the best partial
-/// matching have the same value. Afterwards, assignments sitting on a forbidden or
-/// worthless cell are simply dropped - a shooter that would contribute nothing is idle.
+/// That is exact given the two conditions this module requires - eligible payoffs
+/// non-negative, and rows ≤ columns (guaranteed by the transpose above). Any partial
+/// matching then extends to a perfect one using only zero-weight cells without changing
+/// its total, so the two optima coincide; assignments landing on a forbidden or worthless
+/// cell are dropped afterwards, leaving that shooter idle.
 ///
 /// # Panics
-/// Debug builds assert the non-negativity requirement; a negative eligible payoff would
-/// silently break the argument above.
+/// Debug builds assert the non-negativity requirement, which the argument above rests on.
 #[must_use]
 pub fn hungarian(payoff: &[Vec<f64>]) -> Assignment {
     let (n, m) = dimensions(payoff);

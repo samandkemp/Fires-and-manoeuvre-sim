@@ -1,29 +1,22 @@
 //! A line-of-sight memo for the per-tick sensing loop.
 //!
-//! # Why this exists
-//!
-//! The glimpse loop tests every (sensor, untracked target) pair *every tick*, and each
-//! test walks the terrain grid - ~77 µs on a 10 km map. Profiling the shipped scenarios
-//! showed the tick cost tracking the undetected-unit count almost exactly: a unit that
-//! stays hidden behind a ridge is re-walked by every sensor, every tick, for the whole
-//! run, always to be told the same thing.
-//!
-//! Most of those endpoints have not moved. Emplaced guns, mast sensors and dug-in
-//! infantry sit still for the entire battle, and terrain never changes mid-run, so the
-//! answer cannot change either.
+//! The glimpse loop tests every (sensor, untracked target) pair every tick, and each test
+//! walks the terrain grid - ~83 µs on a 10 km map. Most endpoints never move: emplaced guns
+//! and mast sensors sit still all battle and terrain never changes mid-run, so a unit hidden
+//! behind a ridge would otherwise be re-walked by every sensor, every tick, for the same
+//! answer.
 //!
 //! # Why it is exact, not approximate
 //!
 //! An entry is reused only when all four endpoint quantities - both positions and both
-//! actor heights - compare **exactly equal** to the ones cached. No tolerance, no
-//! rounding, no staleness window. Anything that moves by so much as one float ulp misses
-//! the cache and pays the full traversal, so a cache hit is the same computation the
-//! cache miss would have performed. That is why the event logs stay bit-identical (V18,
-//! V24, V52) rather than merely close.
+//! actor heights - compare **exactly equal** to those cached. No tolerance, no rounding, no
+//! staleness window, so anything that moves by one float ulp misses and pays the full
+//! traversal. A hit is therefore the computation a miss would have performed, which is why
+//! the event logs stay bit-identical (V18, V24, V52) rather than merely close.
 //!
-//! Terrain is not part of the key because a [`Sim`](super::Sim) owns its terrain for
-//! life: `reset_to_scenario` deliberately keeps the map. The cache is still cleared on
-//! reset, since the asset lists it is indexed by are rebuilt.
+//! Terrain is not part of the key because a [`Sim`](super::Sim) owns its terrain for life -
+//! `reset_to_scenario` keeps the map. The cache is still cleared on reset, since the asset
+//! lists it is indexed by are rebuilt.
 
 use crate::los::LosResult;
 use glam::Vec2;

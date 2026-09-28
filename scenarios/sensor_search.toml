@@ -1,4 +1,4 @@
-# Belief-driven sensor tasking, made watchable (docs/DESIGN.md §10.3).
+# Belief-driven sensor tasking, made watchable (docs/THEORY.md §10.3).
 #
 # Three Blue observers with **narrow arcs** - 70°, so none of them can watch more than a
 # slice of the map at once - against Red units dispersed across ground none of them starts

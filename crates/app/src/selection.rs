@@ -6,10 +6,10 @@
 //! than every marker stacking on the click point.
 
 use bevy::prelude::*;
-use sim_core::air::FlightPlan;
+use sim_core::airframes::FlightPlan;
 use sim_core::sim::Sim;
 
-use crate::state::Selected;
+use crate::resources::Selected;
 
 /// Click-pick radius, metres: how near a click must land to grab a marker.
 pub const PICK_RADIUS_M: f32 = 400.0;
@@ -173,7 +173,7 @@ mod tests {
     use std::path::Path;
 
     /// `ad_c2` is the fixture because it is the only scenario fielding all four asset
-    /// kinds at once - which is exactly the case that used to be half-supported.
+    /// kinds at once.
     fn fixture() -> Option<Sim> {
         let dir = Path::new("../../scenarios");
         let libs = Libraries::load_dir(dir).ok()?;

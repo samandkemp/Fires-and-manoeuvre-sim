@@ -1,25 +1,19 @@
-//! V63 - ground fires can be made to depend on C2. `docs/DESIGN.md` §11.3.
+//! V63 - ground fires can be made to depend on C2. `docs/THEORY.md` §11.3.
 //!
-//! §10.2 let a side coordinate its ground fires for free, while §11 made air defence pay
-//! for a C2 post. That asymmetry was deliberate - a battlegroup does share one fire-control
-//! net, where point-defence batteries genuinely do not - but it was an argument, not a
-//! modelled thing, and so could not be measured.
+//! Fixture: V56's, which is the point - two guns that can both reach two six-element
+//! targets. Coordinated they take one each; independent they both pile onto the nearer. So
+//! the count of distinct targets taking casualties in the first epoch reads directly as
+//! whether the side is coordinating.
 //!
-//! `[sim] fires_need_c2` makes it modelled. **Off by default**, because turning it on
-//! unconditionally would silently reduce every existing scenario to `independent` and
-//! re-baseline the Phase 10 allocation result, V56 and V39 at once, for a reason invisible
-//! in the scenario files. As a dial, the cost of losing the net becomes a number.
-//!
-//! The fixture is V56's, which is the point: two guns that can both reach two six-element
-//! targets. Coordinated, they take one each. Independent, they both pile onto the nearer -
-//! the pre-Phase-10 behaviour. So "how many distinct targets took casualties in the first
-//! epoch" reads directly as "is this side coordinating".
+//! `[sim] fires_need_c2` is **off by default**: turning it on unconditionally would reduce
+//! every existing scenario to `independent`, re-baselining the §10.2 allocation result, V56
+//! and V39 at once for a reason invisible in the scenario files.
 
 use sim_core::c2::C2Type;
-use sim_core::fires::{WeaponClass, WeaponType};
 use sim_core::scenario::{Libraries, Scenario};
 use sim_core::sensing::UnitType;
 use sim_core::sim::Sim;
+use sim_core::weapon_effects::{WeaponClass, WeaponType};
 use std::collections::BTreeMap;
 use validation::scenario_params;
 

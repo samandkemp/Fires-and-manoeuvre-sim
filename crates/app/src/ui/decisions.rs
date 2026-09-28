@@ -12,8 +12,8 @@ use sim_core::sim::Side;
 use super::Panel;
 
 impl Panel<'_, '_, '_> {
-    /// The Phase 10 decision layer: how fire is allocated, and whether sensors search.
-    /// `docs/DESIGN.md` §10.
+    /// The decision layer: how fire is allocated, and whether sensors search.
+    /// `docs/THEORY.md` §10.
     ///
     /// All three are live: switching between `optimal` and `independent` mid-battle is
     /// how the value of coordinating gets *seen* rather than argued about.

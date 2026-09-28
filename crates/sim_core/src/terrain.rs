@@ -1,5 +1,5 @@
 //! The elevation raster, terrain types, the derived cover/concealment/mobility layers,
-//! and the world↔grid transform. Spec: `docs/DESIGN.md` §1.
+//! and the world↔grid transform. Spec: `docs/THEORY.md` §1.
 
 use crate::SimRng;
 use glam::Vec2;
@@ -7,7 +7,7 @@ use ndarray::Array2;
 use rand::{Rng, SeedableRng};
 
 /// How a cell is classified. Drives cover, concealment, mobility, and how the cell
-/// blocks or attenuates line of sight (`docs/DESIGN.md` §1.4).
+/// blocks or attenuates line of sight (`docs/THEORY.md` §1.4).
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
 #[repr(u8)]
 pub enum TerrainType {
@@ -60,7 +60,7 @@ impl TerrainParamsTable {
     }
 }
 
-/// The single place world↔cell conversion happens (`docs/DESIGN.md` §1.1).
+/// The single place world↔cell conversion happens (`docs/THEORY.md` §1.1).
 ///
 /// World frame: metres, X east, Y north; grid origin at the south-west corner; `ix`
 /// increases east, `iy` increases north. Values are registered at cell centres.
@@ -273,13 +273,13 @@ impl TerrainGrid {
 
     /// Movement cost along one grid edge, from cell `from` to 8-neighbour cell `to`.
     ///
-    /// Cost = horizontal distance × the mean terrain mobility multiplier of the two
-    /// cells × a slope factor that penalises uphill grades harder than downhill -
-    /// Phase 5's DP paths over cell *edges* so slope direction matters.
+    /// Cost = horizontal distance × the mean terrain mobility multiplier of the two cells ×
+    /// a slope factor penalising uphill grades harder than downhill. Defined on cell
+    /// **edges** rather than as an isotropic raster, because slope direction matters.
     /// `INFINITY` where either cell is impassable.
     ///
-    /// The slope-penalty constants are placeholder dials; they move into the movement
-    /// TOML when Phase 5 formalises the movement model.
+    /// **Limitation:** the slope-penalty constants are `const` here rather than dials in a
+    /// movement stat block - the one place the data-driven rule is broken (§1.3).
     ///
     /// # Panics
     /// If the cells are not distinct 8-neighbours - callers iterate neighbourhoods, so
@@ -293,7 +293,7 @@ impl TerrainGrid {
             "move_cost is defined on 8-neighbour edges"
         );
 
-        // Placeholder dials (→ movement TOML in Phase 5).
+        // Placeholder values; see the limitation on `move_cost`.
         const UPHILL_PENALTY: f32 = 4.0;
         const DOWNHILL_PENALTY: f32 = 1.5;
 
@@ -349,7 +349,7 @@ fn lerp(a: f32, b: f32, t: f32) -> f32 {
 }
 
 /// A recipe for generating a [`TerrainGrid`]'s elevation. Externally tagged in TOML
-/// (`[terrain.source.hills]`), so new sources are additive (`docs/DESIGN.md` §1.3).
+/// (`[terrain.source.hills]`), so new sources are additive (`docs/THEORY.md` §1.3).
 #[derive(Clone, Debug, serde::Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum TerrainSource {
@@ -376,7 +376,7 @@ pub enum TerrainSource {
         urban_blocks: u32,
     },
     /// A composable recipe: a base surface plus ordered feature layers, which is how a
-    /// map is *described* rather than picked from a menu (`docs/DESIGN.md` §1.3).
+    /// map is *described* rather than picked from a menu (`docs/THEORY.md` §1.3).
     Layers(TerrainRecipe),
     /// A named recipe - `{ preset = "mountain_pass" }` - expanded via
     /// [`TerrainPreset::recipe`].
@@ -474,13 +474,13 @@ impl TerrainSource {
 }
 
 /// A composable terrain recipe: a base surface, then ordered feature layers
-/// (`docs/DESIGN.md` §1.3).
+/// (`docs/THEORY.md` §1.3).
 ///
-/// This is what lets a map be *described* - "rolling hills, a ridge through the middle,
-/// light urban" - rather than picked from a fixed menu. Layers are applied **in the order
-/// written**, each drawing from the one seeded RNG, so the listed order is part of the
-/// determinism contract: the same recipe and seed always give the same map, and swapping
-/// two layers is a different map (urban over woodland leaves urban).
+/// Lets a map be *described* - "rolling hills, a ridge through the middle, light urban" -
+/// rather than picked from a menu. Layers apply **in the order written**, each drawing from
+/// the one seeded RNG, so that order is part of the determinism contract: recipe plus seed
+/// always gives the same map, and swapping two layers gives a different one (urban over
+/// woodland leaves urban).
 #[derive(Clone, Debug, serde::Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct TerrainRecipe {
@@ -795,15 +795,12 @@ impl TerrainLayer {
 
 /// Paint one rectangular urban block, centred on `(cx, cy)` with the given half-extents.
 ///
-/// Walks only the block's **own cell range**. Scanning the whole grid per block is
-/// `O(blocks × cells)` - five blocks on a 1000×1000 map is five million visits to paint a
-/// few thousand cells. The bounds are clamped to the grid and the membership test is
-/// unchanged, so the painted set is identical to the full scan's.
+/// Walks only the block's **own cell range**, clamped to the grid, rather than the whole
+/// grid per block - the membership test is unchanged, so the painted set is identical.
 ///
-/// Shared by [`TerrainSource::Hills`] and [`TerrainLayer::Urban`]. That is safe despite
-/// `Hills` being frozen for RNG-order reasons: the two arms still draw their own centres
-/// and half-extents from their own ranges, in the same order as before, and this touches
-/// only how the painted cells are *found*. Same draws, same map, less work.
+/// Shared by [`TerrainSource::Hills`] and [`TerrainLayer::Urban`], which is safe despite
+/// `Hills` being frozen for RNG-order reasons: each arm still draws its own centres and
+/// half-extents from its own ranges, and only how the painted cells are *found* changes.
 fn paint_urban_block(
     terrain_type: &mut Array2<TerrainType>,
     transform: &GridTransform,
@@ -830,11 +827,10 @@ fn paint_urban_block(
 
 /// Evaluate a hill-sum field over every cell, in parallel.
 ///
-/// This is the dominant cost of terrain generation: `O(cells x hills)`, and both the
-/// relief and the woodland field pay it. The hills are *placed* sequentially from the
-/// seeded RNG before this runs, and each cell writes only its own slot, so the result is
-/// bit-identical to the serial version - the same reasoning that makes `los::viewshed`
-/// parallel and deterministic.
+/// The dominant cost of terrain generation, `O(cells x hills)`, paid by both the relief and
+/// the woodland field. The hills are *placed* sequentially from the seeded RNG before this
+/// runs and each cell writes only its own slot, so the result is bit-identical to a serial
+/// pass - the reasoning that makes `los::viewshed` parallel and deterministic.
 fn hill_sum_field(hills: &[Hill], transform: &GridTransform, w: usize, h: usize) -> Array2<f32> {
     let mut out = Array2::<f32>::zeros((h, w));
     ndarray::Zip::indexed(&mut out).par_for_each(|(iy, ix), v| {

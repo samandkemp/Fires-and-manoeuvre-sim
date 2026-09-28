@@ -1,32 +1,23 @@
-//! V64 - anti-radiation homing: the radar buys its own accuracy. `docs/DESIGN.md` §12.3.
+//! V64 - anti-radiation homing: the radar buys its own accuracy. `docs/THEORY.md` §12.3.
 //!
-//! §12 made air-defence batteries killable, but the missile did not care whether its target
-//! was radiating: the aim point was the battery's position regardless. A real ARM rides the
-//! radar's own signal down, so its accuracy is *bought with the target's emissions*, and
-//! switching the radar off is a counter.
+//! Fixture: one ARM against one battery, run twice - radar transmitting, then silent. The
+//! missile lands with `cep_m` against an emitter and `silent_cep_m` against a silent one,
+//! so the mean miss scales as the ratio of the two CEPs.
 //!
-//! That is the trade this gate pins, and it is a genuine one in both directions. `emitting`
-//! off is not free: the radar is *off*, so the battery detects nothing at all through it.
-//! **Survive the missile, or see the raid coming - not both.**
+//! A dispersion, not a veto: the munition still arrives, it just flies to where the emitter
+//! was last known. "An ARM cannot engage a silent radar at all" is this with the value set
+//! very large - a scenario's choice rather than the model's opinion.
 //!
-//! `emitting` is a separate flag from `self_cue` for exactly this reason. They were once the
-//! same one, and sharing it meant a battery could take the missile protection of going dark
-//! while its radar carried on seeing everything - the survivability of EMCON without its
-//! cost, which made this gate pass while measuring the wrong thing (§12.5, gate V69).
-//! `self_cue` now means only "who does this battery listen to"; `emitting` means "is the
-//! radar on".
-//!
-//! Modelled as a dispersion, not a veto. The munition still arrives; with nothing to home on
-//! it flies to where the emitter was last known to be and lands with `silent_cep_m` instead
-//! of `cep_m`. "An ARM cannot engage a silent radar at all" is that with the value set very
-//! large - reachable as a scenario's choice, rather than baked in as the model's opinion.
+//! The trade runs both ways: `emitting = false` survives the missile and detects nothing
+//! through the radar. `emitting` is separate from `self_cue` - one is whether the radar
+//! transmits, the other whose track the battery acts on (§12.5, V69).
 
-use sim_core::air::{AirType, TargetSpec};
 use sim_core::air_defence::{AdEngagement, AirDefenceType};
-use sim_core::fires::{WeaponClass, WeaponType};
+use sim_core::airframes::{AirType, TargetSpec};
 use sim_core::scenario::{Libraries, Scenario};
 use sim_core::sensing::{Modality, SensorType};
 use sim_core::sim::Sim;
+use sim_core::weapon_effects::{WeaponClass, WeaponType};
 use std::collections::BTreeMap;
 use validation::scenario_params;
 

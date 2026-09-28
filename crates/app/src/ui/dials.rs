@@ -1,20 +1,13 @@
 //! The model dials, editable while the simulation runs.
 //!
-//! The project's premise is that the numbers are dials rather than values, and until now the
-//! app could reach four of them. Watching a rule change a battle is the fastest way to build
-//! intuition about a model, and it is exactly what a sweep cannot give you: a sweep reports
-//! what a dial is worth on average over hundreds of trials, and says nothing about what it
-//! *does*.
+//! Watching a rule change a battle is what a sweep cannot give you: a sweep reports what a
+//! dial is worth on average over hundreds of trials and says nothing about what it *does*.
+//! A change here takes effect on the next tick.
 //!
-//! Three dials are deliberately read-only. `dt_s` and `epoch_s` decide what a tick and an
-//! epoch mean, so changing them mid-run would make the first half of a trial and the second
-//! half answer different questions. `belief_cells` sizes rasters that would have to be
-//! rebuilt and re-keyed. All three are scenario-level, and showing them greyed is more honest
-//! than hiding them.
-//!
-//! This lives outside `ui.rs` because that file grows a section every phase; it was split
-//! once already and had returned to 750 lines. A section per module keeps the next addition a
-//! new file rather than another hundred lines in the same one.
+//! Three dials are **read-only**. `dt_s` and `epoch_s` decide what a tick and an epoch mean,
+//! so changing them mid-run would make the two halves of a trial answer different questions;
+//! `belief_cells` sizes rasters that would have to be rebuilt and re-keyed. All three are
+//! scenario-level, and are shown greyed rather than hidden.
 
 use bevy::prelude::*;
 use bevy_egui::egui;
@@ -22,7 +15,7 @@ use sim_core::doctrine::DoctrineMode;
 use sim_core::sim::Side;
 
 use super::Panel;
-use crate::state::SimRes;
+use crate::resources::SimRes;
 
 impl Panel<'_, '_, '_> {
     /// Every live model dial, grouped by the subsystem it belongs to.
@@ -43,7 +36,7 @@ impl Panel<'_, '_, '_> {
     }
 }
 
-/// Suppression (`docs/DESIGN.md` §4.3): what a near miss does and how fast it wears off.
+/// Suppression (`docs/THEORY.md` §4.3): what a near miss does and how fast it wears off.
 fn suppression(ui: &mut egui::Ui, sim: &mut SimRes) {
     ui.label(egui::RichText::new("Suppression").strong());
     let (mut p, mut recover, mut radius, mut factor) = sim.sim.suppression_dials();

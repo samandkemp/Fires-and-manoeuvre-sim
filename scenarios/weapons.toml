@@ -1,4 +1,4 @@
-# Weapon type stat blocks. Abstract placeholder dials - see docs/DESIGN.md §2.1.
+# Weapon type stat blocks. Abstract placeholder dials - see docs/THEORY.md §2.1.
 # class = "direct" (LOS-gated, hit vs silhouette) | "indirect" (ballistic, CEP + area).
 
 [afv_cannon]
@@ -23,7 +23,7 @@ min_range_m = 2000.0
 cep_m = 90.0
 lethal_radius_m = 40.0
 
-# Air-delivered payloads (docs/DESIGN.md §9.3). Both are `indirect`: a released munition
+# Air-delivered payloads (docs/THEORY.md §9.3). Both are `indirect`: a released munition
 # resolves as an ordinary artillery round - CEP-sampled burst point, Carleton area damage
 # - so the maths is shared, only the accuracy differs. Guidance shows up as a small CEP.
 
@@ -41,7 +41,7 @@ max_range_m = 100.0
 cep_m = 3.0                    # flown onto the target by eye
 lethal_radius_m = 15.0         # small warhead: precise but not devastating
 
-# An anti-radiation missile (docs/design/12-sead.md §12.3). It homes on a **transmitting**
+# An anti-radiation missile (docs/THEORY.md §12.3). It homes on a **transmitting**
 # radar, so its accuracy is a property of the target's behaviour rather than of the
 # munition: `cep_m` against a battery whose radar is up, `silent_cep_m` against one that has
 # shut down. The ratio is the dial - 10x here, so going silent turns a near-certain kill

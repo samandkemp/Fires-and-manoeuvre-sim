@@ -1,10 +1,10 @@
-//! V32-V39 - the zero-sum game solver (docs/DESIGN.md §6).
+//! V32-V39 - the zero-sum game solver (docs/THEORY.md §6).
 //!
 //! Fixtures come from the `validation` crate; the gates reach sim_core through its
 //! public API only.
 
 use ndarray::{arr2, Array2};
-use sim_core::game::*;
+use sim_core::game_theory::*;
 
 const ITERS: usize = 100_000;
 

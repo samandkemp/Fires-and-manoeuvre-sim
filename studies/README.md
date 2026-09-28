@@ -26,7 +26,7 @@ outcome's variance each dial is responsible for.
 
 ```toml
 scenario = "air_raid"          # bare name in scenarios/, or a path
-metric   = "air_leakers"       # any column from `outcome.rs`
+metric   = "air_leakers"       # any column from `metrics.rs`
 
 trajectories = 20              # Morris: cost is r * (k + 1) design points
 levels       = 4               # Morris grid resolution

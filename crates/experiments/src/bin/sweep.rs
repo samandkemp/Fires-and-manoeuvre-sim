@@ -1,8 +1,7 @@
 //! Sweep one scenario dial across a set of values and report what it changed.
 //!
-//! This is the general form of every bespoke sweep in this crate. Any field reachable by a
-//! dotted path in a scenario file is sweepable, because the override is applied to the TOML
-//! before it is parsed ([`experiments::patch`]) - so a dial added next month is sweepable
+//! Any field reachable by a dotted path is sweepable, because the override is applied to the
+//! TOML before it is parsed ([`experiments::overrides`]) - so a dial added later is sweepable
 //! without touching this binary.
 //!
 //! ```text
@@ -21,17 +20,12 @@
 //!       --set sim.allocation=greedy --seeds 1000
 //! ```
 //!
-//! # The comparison is paired, by construction
-//!
-//! Every arm runs seeds `0..N` on the same map, so arm *k* and arm 0 are matched trial for
-//! trial and the difference is taken seed by seed. The variance the two arms share - the
-//! map, most of the luck - cancels, which is usually most of it. The report prints that
-//! paired difference against the **first** arm, with its standard error and t statistic,
-//! and says in as many words whether to believe it. See [`experiments::stats`] for why
-//! this crate offers no unpaired comparison.
+//! Every arm runs seeds `0..N` on the same map, so the comparison is paired by
+//! construction. The report is against the **first** arm, so to compare two other arms,
+//! re-run with one of them first ([`experiments::stats`]).
 
-use experiments::outcome::{Outcome, COLUMNS};
-use experiments::patch::{self, scenario_with_overrides, Override};
+use experiments::metrics::{Outcome, COLUMNS};
+use experiments::overrides::{self, scenario_with_overrides, Override};
 use experiments::stats::{self, paired};
 use experiments::study::{column, run_study, StudyConfig};
 use experiments::{csv, flag, flag_or, flags, has_flag};
@@ -131,12 +125,12 @@ fn main() {
         let mut overrides = fixed.clone();
         overrides.push(Override {
             path: param.clone(),
-            value: experiments::patch::parse_value(value),
+            value: experiments::overrides::parse_value(value),
         });
         // A path naming a stat-block library patches that file; everything else patches
         // the scenario. Both go through the loaders a file on disk would.
-        let (lib_overrides, scenario_overrides) = patch::split(&overrides);
-        let libs = match patch::libraries_with_overrides(&dir, &lib_overrides) {
+        let (lib_overrides, scenario_overrides) = overrides::split(&overrides);
+        let libs = match overrides::libraries_with_overrides(&dir, &lib_overrides) {
             Ok(l) => l,
             Err(e) => {
                 eprintln!("  {param}={value}: {e}");
@@ -256,7 +250,7 @@ fn mean(xs: &[f64]) -> f64 {
 /// The values to sweep: an explicit `--values a,b,c`, or a `--from/--to/--steps` grid.
 fn sweep_values(args: &[String]) -> Result<Vec<String>, String> {
     if let Some(list) = flag(args, "--values") {
-        let values = patch::split_values(&list);
+        let values = overrides::split_values(&list);
         return if values.is_empty() {
             Err("--values was empty".to_owned())
         } else {
@@ -279,7 +273,7 @@ fn sweep_values(args: &[String]) -> Result<Vec<String>, String> {
 }
 
 /// Format a swept value so integral ones stay integers - `2`, not `2.0`, because a `u32`
-/// dial refuses a TOML float (see [`experiments::patch::parse_value`]).
+/// dial refuses a TOML float (see [`experiments::overrides::parse_value`]).
 fn format_value(x: f64) -> String {
     if (x - x.round()).abs() < 1e-9 {
         format!("{}", x.round() as i64)

@@ -1,10 +1,5 @@
 //! Movement decisions in the loop: a unit with an objective plans its own route.
-//! Spec: `docs/DESIGN.md` §5, §10.5. Gates: V72-V74.
-//!
-//! Until now movement was the one decision still scripted. Fires are allocated (§10.2) and
-//! sensors are tasked (§10.3), but a route was drawn by hand - so `movement::least_risk_path`
-//! was called only from `experiments/` and `validation/`, and the dynamic-programming strand
-//! sat *beside* the model rather than inside it.
+//! Spec: `docs/THEORY.md` §5, §10.5. Gates: V72-V74.
 //!
 //! A unit with an `objective` re-solves its route each decision epoch against the live risk
 //! raster. That is what lets sensing and EW bite on **manoeuvre**: place a sensor across a
@@ -12,21 +7,16 @@
 //!
 //! # Why the decision grid is coarse
 //!
-//! Measured: a risk raster at full terrain resolution costs ~4 s for a 1000x1000 map with
-//! two sensors, because every cell asks every sensor for a detection rate and each of those
-//! walks a sightline. At one decision epoch per 10 s that is a hundred times the cost of the
-//! rest of the simulation put together, and a 500-seed study becomes a fortnight.
-//!
-//! So planning happens on a coarse grid - the same reasoning §10.3 gives for belief, and the
-//! same resolution dial. A commander choosing an approach at ten-second intervals is not
-//! choosing between adjacent 10 m cells; the unit still *moves* continuously at full
-//! resolution, and only the route it is following is planned coarsely.
+//! A risk raster at full terrain resolution costs ~4 s for a 1000x1000 map with two
+//! sensors, because every cell asks every sensor for a detection rate and each of those
+//! walks a sightline - a hundred times the cost of the rest of the simulation at one epoch
+//! per 10 s. So planning runs on the same coarse grid §10.3 uses for belief. The unit still
+//! *moves* continuously at full resolution; only the route is planned coarsely.
 //!
 //! The coarse edge cost is `terrain::move_cost`'s own formula - distance x mean mobility x
-//! slope factor - evaluated on cell **aggregates** rather than point samples. At a coarse
-//! grid equal to the terrain it is exactly `move_cost`, which is a property worth stating
-//! because it says the coarsening is an approximation of the real cost rather than a
-//! different cost that happens to look similar.
+//! slope factor - evaluated on cell **aggregates** rather than point samples, and reduces
+//! to exactly `move_cost` when the coarse grid equals the terrain. So the coarsening is an
+//! approximation of the real cost rather than a different cost that resembles it.
 //!
 //! # Determinism
 //!
@@ -404,7 +394,7 @@ impl Sim {
         let mover = reference_mover();
 
         // Enemy shooters that could actually fire: alive, armed, and not this side's.
-        let shooters: Vec<(Vec2, f32, crate::fires::WeaponType, f32)> = self
+        let shooters: Vec<(Vec2, f32, crate::weapon_effects::WeaponType, f32)> = self
             .units
             .iter()
             .filter(|u| u.side != side && u.alive())
@@ -432,7 +422,7 @@ impl Sim {
                     if range > weapon.max_range_m {
                         continue;
                     }
-                    if weapon.class == crate::fires::WeaponClass::Direct
+                    if weapon.class == crate::weapon_effects::WeaponClass::Direct
                         && !crate::los::line_of_sight(
                             &self.terrain,
                             *pos,

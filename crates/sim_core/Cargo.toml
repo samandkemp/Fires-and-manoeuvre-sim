@@ -8,13 +8,13 @@ publish = false
 # The headless OR engine. No Bevy, no rendering, no wall-clock - pure and
 # deterministic given (scenario, seed). See the README's "Design goals".
 #
-# NOTE: SETUP.md calls this crate `core`, but a dependency named `core` shadows
-# Rust's built-in core crate in dependents and breaks proc macros that emit
+# NOTE: the obvious name for this crate is `core`, but a dependency named `core`
+# shadows Rust's built-in core crate in dependents and breaks proc macros that emit
 # `::core::` paths (verified: thiserror's derive fails to compile). Hence `sim_core`.
 
 [dependencies]
-# SETUP.md says glam 0.29, but Bevy 0.19 resolves glam 0.32 (checked Cargo.lock) -
-# versions must match or the "types interop cleanly" promise breaks silently.
+# Pinned to whatever Bevy resolves: Bevy 0.19 wants glam 0.32 (checked Cargo.lock) -
+# the versions must match or the "types interop cleanly" promise breaks silently.
 glam = "0.32"        # vectors/matrices; same lib Bevy uses, so types interop cleanly
 ndarray = { version = "0.16", features = ["rayon"] }  # terrain rasters; rayon = parallel Zip
 rand = "0.9"         # seeded RNG (0.9: gen->random rename; portable ChaCha stream)

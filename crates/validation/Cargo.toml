@@ -2,10 +2,10 @@
 name = "validation"
 version = "0.1.0"
 edition = "2021"
-description = "The V1-V71 validation gates: every sim_core model checked against a closed form or a documented invariant"
+description = "The V1-V77 validation gates: every sim_core model checked against a closed form or a documented invariant"
 publish = false
 
-# The project's contract, gathered in one place. Each gate in docs/DESIGN.md's validation
+# The project's contract, gathered in one place. Each gate in docs/THEORY.md's validation
 # tables lives here, named for its V-number, and checks a model against a *stated*
 # analytical reference rather than against remembered output.
 #

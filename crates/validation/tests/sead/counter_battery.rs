@@ -1,29 +1,25 @@
-//! V65 - ground fires can reach an emplacement. `docs/DESIGN.md` §12.4.
+//! V65 - ground fires can reach an emplacement. `docs/THEORY.md` §12.4.
 //!
-//! §12 made batteries and posts killable, but only from the air: ground fires iterated the
-//! unit list, so artillery could not conduct counter-battery against a SAM sitting in range
-//! of it. Every asset class already had elements and already took §2.3 area damage
-//! identically - the only thing missing was *which lists are searched*.
+//! Fixture: a howitzer in range of an emitting SAM, then of the same SAM gone silent.
 //!
-//! The interesting half is not that a shell can hurt a battery. It is **how the battery is
-//! found**. Neither batteries nor posts go through the §3.2 glimpse loop, so neither has a
-//! track. Rather than invent one - which would insert draws into every scenario fielding air
-//! defence and shift the stream under V50, V51, V59 and V60 for no modelling gain - this
-//! asks the question counter-battery acquisition actually asks: *has it given itself away?*
+//! The interesting half is **how the battery is found**. Neither batteries nor posts go
+//! through the §3.2 glimpse loop, so neither has a track; acquisition instead asks whether
+//! the site has given itself away.
 //!
-//! - a **battery** has, if it is transmitting or has fired - ESM, or a counter-battery track
-//!   back along its rounds;
+//! - a **battery** has, if it is transmitting or has fired - ESM, or a counter-battery
+//!   track back along its rounds;
 //! - a **post** has, if it is coordinating anything: found because it is talking.
 //!
-//! Which joins the two halves of §12.3. Switching a radar off already made an ARM miss; it
-//! now also hides the battery from artillery. One decision, two consequences.
+//! Both are deterministic, so no draws enter scenarios fielding air defence and the stream
+//! under V50, V51, V59 and V60 is unshifted. Going silent therefore hides a battery from
+//! artillery as well as from an ARM (§12.3) - one decision, two consequences.
 
 use sim_core::air_defence::{AdEngagement, AirDefenceType};
 use sim_core::c2::C2Type;
-use sim_core::fires::{WeaponClass, WeaponType};
 use sim_core::scenario::{Libraries, Scenario};
 use sim_core::sensing::{Modality, SensorType, UnitType};
 use sim_core::sim::{FireTarget, Sim};
+use sim_core::weapon_effects::{WeaponClass, WeaponType};
 use std::collections::BTreeMap;
 use validation::scenario_params;
 

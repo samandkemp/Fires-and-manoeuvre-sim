@@ -1,7 +1,7 @@
-//! V44, V46-V47 - drone altitude/masking and flight kinematics (docs/DESIGN.md §9.1-§9.2).
+//! V44, V46-V47 - drone altitude/masking and flight kinematics (docs/THEORY.md §9.1-§9.2).
 
 use glam::Vec2;
-use sim_core::air::*;
+use sim_core::airframes::*;
 use sim_core::los;
 use sim_core::sim::Side;
 use validation::ridge;

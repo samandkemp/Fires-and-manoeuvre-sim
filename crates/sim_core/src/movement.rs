@@ -1,4 +1,4 @@
-//! Least-risk pathing as dynamic programming. Spec: `docs/DESIGN.md` §5. Gates: V25-V27.
+//! Least-risk pathing as dynamic programming. Spec: `docs/THEORY.md` §5. Gates: V25-V27.
 //!
 //! The value function is a shortest path over the 8-connected cell graph with edge cost
 //! `move_cost(from,to) + risk_weight·risk(to)`, so Dijkstra *is* the DP solution.
@@ -56,7 +56,7 @@ pub struct Path {
 
 /// Least-cost path from `start` to `goal` over the 8-connected grid, trading mobility
 /// against `risk_weight · risk`. `None` if the goal is unreachable (walled off by
-/// impassable terrain). `docs/DESIGN.md` §5.1.
+/// impassable terrain). `docs/THEORY.md` §5.1.
 ///
 /// # Panics
 /// If `risk`'s shape does not match the terrain, or an endpoint is out of bounds.
@@ -82,15 +82,15 @@ pub fn least_risk_path(
 
 /// The same search over **any** 8-connected grid, given a per-edge move cost.
 ///
-/// [`least_risk_path`] is this with the terrain's own `move_cost`. It is separated so the
-/// in-loop planner (§10.5) can run the *identical* algorithm over its coarse decision grid
-/// rather than a second implementation that would need its own gates: V25, V26 and V27
-/// constrain this function, and reach the coarse planner through it.
+/// [`least_risk_path`] is this with the terrain's own `move_cost`. Separated so the in-loop
+/// planner (§10.5) runs the *identical* algorithm over its coarse decision grid rather than
+/// a second implementation needing its own gates - V25, V26 and V27 constrain this function
+/// and reach the planner through it.
 ///
-/// `move_cost` must return `f32::INFINITY` for an impassable edge and a non-negative,
-/// finite cost otherwise. Dijkstra is only the dynamic-programming solution while every
-/// edge weight is non-negative; a negative one would make a settled cell reachable more
-/// cheaply later and the answer would be quietly wrong rather than obviously so.
+/// `move_cost` must return `f32::INFINITY` for an impassable edge and a non-negative finite
+/// cost otherwise. Dijkstra is the dynamic-programming solution only while every edge
+/// weight is non-negative: a negative one would make a settled cell reachable more cheaply
+/// later, and the answer would be quietly wrong rather than obviously so.
 ///
 /// # Panics
 /// If `risk`'s shape does not match `(w, h)`, or an endpoint is out of bounds.

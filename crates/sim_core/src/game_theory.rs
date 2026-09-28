@@ -1,4 +1,4 @@
-//! Zero-sum matrix games by fictitious play. Spec: `docs/DESIGN.md` §6.2.
+//! Zero-sum matrix games by fictitious play. Spec: `docs/THEORY.md` §6.2.
 //! Gates: V32-V36, against hand-solvable games.
 //!
 //! Each round both players best-respond to the opponent's empirical play. For two-player

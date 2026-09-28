@@ -1,7 +1,6 @@
 //! Run a folder of scenarios headlessly over many seeds and write the results as CSV.
 //!
-//! The app shows one battle; this shows the average and the spread, which is what a study
-//! needs. Every metric is read back from the sim's own event logs, so there is no separate
+//! Every metric is read back from the sim's own event logs, so there is no separate
 //! measurement path to drift.
 //!
 //! ```text
@@ -13,14 +12,12 @@
 //! Writes `<out>/<scenario>.csv` (a row per seed) and `<out>/summary.csv` (a row per
 //! scenario, mean and standard error). `.gitignore` covers `out/` and `*.csv`.
 //!
-//! Trials run in parallel, one sim per worker thread - see [`experiments::study`] for how
-//! that is arranged and why it cannot change the answer.
+//! Trials run in parallel, one sim per worker thread ([`experiments::study`]).
 //!
-//! To compare *dials* rather than scenarios, use `sweep`: it runs the same scenario at
-//! several values of one parameter over a shared seed set and reports paired differences.
+//! `batch` compares **scenarios**; to compare **dials**, use `sweep`.
 
 use experiments::csv;
-use experiments::outcome::COLUMNS;
+use experiments::metrics::COLUMNS;
 use experiments::study::{run_study, StudyConfig};
 use experiments::{flag, flag_or, has_flag};
 use sim_core::scenario::{Libraries, Scenario};

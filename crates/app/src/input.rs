@@ -11,15 +11,15 @@
 
 use bevy::prelude::*;
 use bevy_egui::egui;
-use sim_core::air::{AltitudeRef, FlightPlan};
 use sim_core::air_defence::RadarPosture;
+use sim_core::airframes::{AltitudeRef, FlightPlan};
 use sim_core::sim::Side;
 
+use crate::resources::{CameraQuery, ClickMode, Probe, Selected, SimRes, UiState, WindowQuery};
 use crate::selection::{
     all_live_assets, append_waypoint, assets_in_box, move_selection, nearest_asset,
     BOX_SELECT_MIN_M, PICK_RADIUS_M,
 };
-use crate::state::{CameraQuery, ClickMode, Probe, Selected, SimRes, UiState, WindowQuery};
 
 /// Handle one frame of map input.
 // egui 0.34 renamed `wants_pointer_input` to `egui_wants_pointer_input`; the old name
@@ -310,9 +310,9 @@ mod tests {
         Some((Sim::new(&scn, &libs, scn.default_seed).ok()?, libs))
     }
 
-    /// Placement used to hardcode a side per mode, so half the asset classes could only ever
-    /// join one force and the counter-sensing fight could not be set up from the map. Every
-    /// placing mode must now honour the chosen side.
+    /// Every placing mode must honour the panel's chosen side. With a side hardcoded per
+    /// mode, half the asset classes could only ever join one force, and the counter-sensing
+    /// fight could not be set up from the map at all.
     #[test]
     fn every_placing_mode_honours_the_chosen_side() {
         let Some((sim, libs)) = fixture() else {

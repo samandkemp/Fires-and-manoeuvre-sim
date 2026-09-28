@@ -1,4 +1,4 @@
-//! V25-V27 - least-risk pathing as DP (docs/DESIGN.md §5).
+//! V25-V27 - least-risk pathing as DP (docs/THEORY.md §5).
 //!
 //! Fixtures come from the `validation` crate; the gates reach sim_core through its
 //! public API only.

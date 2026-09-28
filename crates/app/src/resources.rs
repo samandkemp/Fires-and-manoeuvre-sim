@@ -45,7 +45,7 @@ pub enum Selected {
 ///
 /// Only *placement* is modal. Selecting, moving, routing and deleting are driven by
 /// left-click, modifiers and keys, so the common loop - pick a unit, give it a route -
-/// no longer means toggling a radio button between every step.
+/// does not mean toggling a radio button between every step.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum ClickMode {
     /// Set the LOS-probe observer.
@@ -60,7 +60,7 @@ pub enum ClickMode {
     PlaceAir,
     /// Place an air-defence battery of the selected type.
     PlaceAirDefence,
-    /// Place a C2 post, which coordinates nearby air defence (DESIGN §11).
+    /// Place a C2 post, which coordinates nearby air defence (§11).
     PlaceC2,
     /// Send the selected drone(s) to orbit the click at the panel's radius.
     AirOrbit,
@@ -176,10 +176,9 @@ pub struct UiState {
     pub mode: ClickMode,
     /// Which force the next placed asset joins.
     ///
-    /// Placement used to hardcode a side per mode - Blue sensors, Red units, Blue air
-    /// defence - which meant the counter-sensing fight the whole tool is about could not be
-    /// set up from the map at all. One side control over side-agnostic modes covers both
-    /// forces with half the modes.
+    /// One side control over side-agnostic modes, rather than a side hardcoded per mode:
+    /// the counter-sensing fight the tool is about needs both forces placeable from the
+    /// map, and this covers them with half the modes.
     pub place_side: Side,
     /// Caution used when giving a unit an objective: metres of movement cost it will spend
     /// to avoid one unit of exposure (§5.1).
@@ -272,11 +271,10 @@ pub struct OverlayRequest {
 /// The map overlay: what is showing, what is being computed, and whether it still describes
 /// the simulation.
 ///
-/// An overlay used to be a synchronous snapshot: pressing a button blocked the frame for as
-/// long as the raster took - up to seconds for a long-ranged sensor - and the result then
-/// silently went on describing where a sensor *used to be*. Both halves are fixed here: the
-/// raster is computed on a background task, and a fingerprint of the assets it was built
-/// from says when it has stopped being true.
+/// Two properties matter. The raster is computed on a **background task**, because a full
+/// pass with a long-ranged sensor takes seconds and would otherwise block the frame. And a
+/// fingerprint of the assets it was built from says when it has **stopped being true** -
+/// move a sensor and the overlay describes where it was.
 #[derive(Resource, Default)]
 pub struct Overlay {
     /// The sprite currently on screen.
@@ -377,9 +375,9 @@ pub const COVERAGE_EXPOSURE_S: f32 = 60.0;
 
 /// Playback speed the app starts at, in sim seconds per real second.
 ///
-/// 10× is roughly the fastest a battle can be followed by eye: at 60× - what one
-/// tick per frame used to give - a ten-minute engagement is over in ten seconds and the
-/// detections that decide it flick past in one or two frames.
+/// 10× is roughly the fastest a battle can be followed by eye: at 60× a ten-minute
+/// engagement is over in ten seconds and the detections that decide it flick past in one or
+/// two frames.
 pub const DEFAULT_SPEED_X: f32 = 10.0;
 /// Most ticks one frame may run, whatever the speed. A frame that stalls (a scenario
 /// load, a window drag) hands back a huge delta; without this the next frame would try

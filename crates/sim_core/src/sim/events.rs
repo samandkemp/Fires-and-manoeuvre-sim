@@ -23,7 +23,7 @@ pub struct DetectionEvent {
     pub unit_pos: Vec2,
 }
 
-/// What ground fires shot at (`docs/DESIGN.md` §12.4).
+/// What ground fires shot at (`docs/THEORY.md` §12.4).
 ///
 /// Ground fires used to iterate the unit list alone, which is what made counter-battery
 /// against a SAM impossible to express. Every asset class has elements and takes §2.3 area
@@ -69,7 +69,7 @@ pub struct FireEvent {
     pub killed: bool,
 }
 
-/// One air detection: a sensor picked up an enemy airframe (`docs/DESIGN.md` §9).
+/// One air detection: a sensor picked up an enemy airframe (`docs/THEORY.md` §9).
 /// Separate from [`DetectionEvent`] because the two index different asset lists.
 #[derive(Clone, Debug, PartialEq)]
 pub struct AirDetectionEvent {
@@ -83,7 +83,7 @@ pub struct AirDetectionEvent {
     pub air_pos: Vec2,
 }
 
-/// One resolved air-defence shot (`docs/DESIGN.md` §9.4).
+/// One resolved air-defence shot (`docs/THEORY.md` §9.4).
 #[derive(Clone, Debug, PartialEq)]
 pub struct AirDefenceEvent {
     /// Sim time, seconds.
@@ -96,7 +96,7 @@ pub struct AirDefenceEvent {
     pub killed: bool,
 }
 
-/// One munition released by a strike drone (`docs/DESIGN.md` §9.3).
+/// One munition released by a strike drone (`docs/THEORY.md` §9.3).
 #[derive(Clone, Debug, PartialEq)]
 pub struct StrikeEvent {
     /// Sim time, seconds.

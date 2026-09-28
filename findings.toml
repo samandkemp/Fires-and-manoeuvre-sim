@@ -15,10 +15,38 @@
 # difference across two baselines overstates its error about fivefold, and that is precisely
 # how the allocation effect below stayed invisible for two phases.
 
+# ---------------------------------------------------------------------------------------
+# STATUS (docs refactor, 2026-09-05): every finding below was RE-RUN and holds exactly.
+#
+#   cargo run -p experiments --release --bin findings     # 12 findings, ~25k trials, ~2.5 min
+#
+# The documentation was restructured and then the numbers were verified rather than assumed.
+# All twelve reproduce to three decimal places with zero drift. The worked examples in
+# docs/MODEL.md (detection rates, hit probabilities, Carleton damage) were recomputed from the
+# shipped dials and also reproduce; the performance figures in docs/MODEL.md were re-measured
+# on an idle machine.
+#
+# STILL UNPINNED - quoted in prose with no entry here, because none is expressible as a
+# one-dial paired sweep. Each would need a second scenario file to compare against:
+#
+#   - the C2 coordination table (downed / rounds left / leakers)   docs/THEORY.md 11.2
+#         needs an ad_c2 variant with the [[c2]] block removed
+#   - the sensor-tasking result (2 of 5 vs 5 of 5)                 docs/THEORY.md 10.3
+#         sim.sensor_tasking IS sweepable, but the claim is about which units were found,
+#         and there is no metric for that - `detections` is the nearest proxy
+#   - the kill_chain doctrine table (armour-first vs c2-first)     docs/THEORY.md 13.4
+#         blue.doctrine.priority is a list dial and sweepable; the blocker is that the claim
+#         cites two metrics at once (armour elements AND posts killed)
+#   - the fires_c2 overkill figures (103.40 -> 66.80 s)            docs/THEORY.md 11.4
+#         historical: the dial it measured (max_shooters_per_target) no longer exists
+#   - the Sobol indices for studies/sensing.toml                   docs/THEORY.md 14.3
+#         a sensitivity study, not a paired comparison - re-run with the sensitivity binary
+# ---------------------------------------------------------------------------------------
+
 [[finding]]
 id = "allocation-coordination-pays"
 claim = "Coordinating fires clears the enemy about 12.8 s sooner than the old nearest-enemy rule, roughly 17%."
-documented_in = ["README.md", "docs/MATHS.md", "docs/design/10-the-decision-layer.md"]
+documented_in = ["README.md", "docs/THEORY.md"]
 scenario = "fire_allocation"
 param = "sim.allocation"
 arms = ["independent", "greedy"]
@@ -31,12 +59,7 @@ tolerance = 0.8
 [[finding]]
 id = "allocation-optimal-is-worse"
 claim = "Solving the assignment optimally is measurably WORSE than greedy, because the objective scores a single epoch."
-documented_in = [
-    "README.md",
-    "docs/MATHS.md",
-    "docs/design/10-the-decision-layer.md",
-    "docs/DESIGN.md",
-]
+documented_in = ["README.md", "docs/THEORY.md", "docs/GUIDE.md"]
 scenario = "fire_allocation"
 param = "sim.allocation"
 arms = ["greedy", "optimal"]
@@ -49,7 +72,7 @@ tolerance = 0.15
 [[finding]]
 id = "ad-overkill-cap-second-battery"
 claim = "A second air-defence battery per airframe buys no extra kills: a genuine null, not a small effect."
-documented_in = ["docs/EXPERIMENTS.md", "docs/design/11-command-and-control.md"]
+documented_in = ["docs/GUIDE.md", "docs/THEORY.md"]
 scenario = "ad_c2"
 param = "sim.max_batteries_per_air_target"
 arms = ["1", "2"]
@@ -62,7 +85,7 @@ tolerance = 0.02
 [[finding]]
 id = "ad-overkill-cap-third-battery"
 claim = "A third battery is actively worse: it costs reserve and kills marginally fewer drones."
-documented_in = ["docs/EXPERIMENTS.md", "docs/design/11-command-and-control.md"]
+documented_in = ["docs/GUIDE.md", "docs/THEORY.md"]
 scenario = "ad_c2"
 param = "sim.max_batteries_per_air_target"
 arms = ["1", "3"]
@@ -79,7 +102,7 @@ tolerance = 0.02
 [[finding]]
 id = "horizon-does-not-close-the-gap"
 claim = "Lengthening the allocation horizon leaves the optimal-versus-greedy gap exactly where it was."
-documented_in = ["docs/design/10-the-decision-layer.md"]
+documented_in = ["docs/THEORY.md"]
 scenario = "fire_allocation"
 param = "sim.allocation"
 arms = ["greedy", "optimal"]
@@ -96,7 +119,7 @@ set = ["sim.allocation_horizon=8"]
 [[finding]]
 id = "autonomy-lets-a-drone-hunt"
 claim = "A drone given no target destroys nothing; allowed to choose, it destroys most of the position."
-documented_in = ["docs/design/09-air-and-counter-air.md", "scenarios/hunter_uas.toml"]
+documented_in = ["docs/THEORY.md", "scenarios/hunter_uas.toml"]
 scenario = "hunter_uas"
 param = "air.strike_uas.autonomous"
 arms = ["false", "true"]
@@ -111,7 +134,7 @@ tolerance = 0.5
 [[finding]]
 id = "autonomy-is-worth-nothing-blind"
 claim = "Autonomy without a sensor to find targets is worth exactly nothing."
-documented_in = ["docs/design/09-air-and-counter-air.md", "scenarios/hunter_uas.toml"]
+documented_in = ["docs/THEORY.md", "scenarios/hunter_uas.toml"]
 scenario = "hunter_uas"
 param = "sensors.mast_optical.lambda0_per_s"
 arms = ["0.0", "0.6"]
@@ -128,7 +151,7 @@ set = ["air.strike_uas.autonomous=true"]
 [[finding]]
 id = "caution-buys-survival"
 claim = "A cautious approach arrives with a third more of itself than the direct one."
-documented_in = ["docs/design/10-the-decision-layer.md", "scenarios/covered_approach.toml"]
+documented_in = ["docs/THEORY.md", "scenarios/covered_approach.toml"]
 scenario = "covered_approach"
 param = "blue.units.0.risk_weight"
 arms = ["0", "800"]
@@ -141,7 +164,7 @@ tolerance = 0.25
 [[finding]]
 id = "caution-buys-time-unseen"
 claim = "The cautious approach stays unseen about seven times longer than the direct one."
-documented_in = ["docs/design/10-the-decision-layer.md", "scenarios/covered_approach.toml"]
+documented_in = ["docs/THEORY.md", "scenarios/covered_approach.toml"]
 scenario = "covered_approach"
 param = "blue.units.0.risk_weight"
 arms = ["0", "800"]
@@ -150,3 +173,42 @@ seeds = 400
 until_s = 900.0
 expect = 390.228
 tolerance = 45.0
+
+[[finding]]
+id = "sead-emcon-survives-the-missile"
+claim = "A battery under emission control survives the anti-radiation missile that kills an emitting one."
+documented_in = ["docs/THEORY.md", "docs/MODEL.md"]
+scenario = "sead_arm"
+param = "red.air_defence.0.emitting"
+arms = ["true", "false"]
+metric = "ad_batteries_killed"
+seeds = 500
+until_s = 300.0
+expect = -0.884
+tolerance = 0.05
+
+[[finding]]
+id = "sead-emcon-costs-the-radar"
+claim = "The price of going dark is the whole sensor: a silent battery records essentially no detections."
+documented_in = ["docs/THEORY.md", "docs/MODEL.md"]
+scenario = "sead_arm"
+param = "red.air_defence.0.emitting"
+arms = ["true", "false"]
+metric = "detections"
+seeds = 500
+until_s = 300.0
+expect = -0.996
+tolerance = 0.05
+
+[[finding]]
+id = "sensor-rate-buys-fewer-leakers"
+claim = "A twentyfold better early-warning sensor stops about a quarter of the leakers, and the first doubling is worth nothing measurable."
+documented_in = ["docs/GUIDE.md"]
+scenario = "air_raid"
+param = "sensors.mast_optical.lambda0_per_s"
+arms = ["0.05", "1.0"]
+metric = "air_leakers"
+seeds = 1000
+until_s = 600.0
+expect = -0.176
+tolerance = 0.06

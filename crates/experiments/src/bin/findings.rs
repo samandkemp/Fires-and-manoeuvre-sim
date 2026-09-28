@@ -7,7 +7,7 @@
 //! ```
 //!
 //! Exits non-zero if any finding drifted or broke, so it can be run on a schedule and
-//! noticed. It is deliberately **not** a `cargo test`: these are thousands of trials and
+//! noticed. **Not** a `cargo test`: these are thousands of trials and
 //! take minutes, which is the wrong shape for a suite that has to stay fast enough to run
 //! on every edit.
 //!

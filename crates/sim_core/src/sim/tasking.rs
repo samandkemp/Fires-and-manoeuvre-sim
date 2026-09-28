@@ -1,36 +1,31 @@
 //! Belief-driven sensor tasking: where should each sensor look next?
-//! Spec: `docs/DESIGN.md` §10.3. Gates: V57.
+//! Spec: `docs/THEORY.md` §10.3. Gates: V57.
 //!
-//! This is the piece that finally makes the POMDP layer part of the simulation rather
-//! than a display. Until now `pomdp.rs` was computed for an overlay and no sim code read
-//! it; here each side keeps a belief over where the enemy might be, and points its
-//! steerable sensors to learn the most.
+//! Each side keeps a belief over where the enemy might be and points its steerable sensors
+//! to learn the most from the next look - where the §8.2 POMDP layer stops being a display
+//! and starts driving the simulation.
 //!
 //! # The objective
 //!
-//! For a candidate facing, the observation is binary per cell: either a sensor detects
-//! something at cell `c` (probability `b(c)·p(c)`), collapsing the belief to a point, or
-//! it sees nothing and the belief becomes `b'(c) ∝ b(c)(1 − p(c))`. So
+//! Per cell the observation is binary: a detection at `c` with probability `b(c)·p(c)`,
+//! collapsing belief to a point, or nothing, leaving `b'(c) ∝ b(c)(1 − p(c))`. So
 //!
 //! ```text
 //! E[H after] = (1 − Σ b(c)p(c)) · H(b')
 //! gain       = H(b) − E[H after]
 //! ```
 //!
-//! and the sensor takes the facing with the greatest gain. That is the real
-//! information-gain control, not a proxy for it - and it is why a sensor prefers to sweep
-//! *plausible* ground over ground it has already cleared, without being told to.
+//! and the sensor takes the facing with the greatest gain. Exact rather than a proxy, which
+//! is why a sensor sweeps plausible ground over ground it has cleared without being told to.
 //!
 //! # Why it is affordable
 //!
-//! The expensive part of a detection rate is the line-of-sight walk, and **LOS does not
-//! depend on where a sensor is facing** - only the field-of-regard gate does. So the
-//! per-cell rate is computed once per sensor, ignoring facing, and cached against the
-//! pose it was built for; evaluating twelve candidate facings is then twelve cheap arc
-//! masks over that raster. Without this the layer would cost a full viewshed per facing
-//! per epoch and be unusable.
+//! **Line of sight does not depend on facing** - only the field-of-regard gate does. So the
+//! per-cell rate is computed once per sensor with the arc removed and cached against its
+//! pose, and each candidate facing is a cheap arc mask over that raster. Otherwise the layer
+//! would cost a viewshed per facing per epoch.
 //!
-//! Everything here is deterministic and draws no randomness.
+//! Deterministic throughout; draws no randomness.
 
 use super::{SensorState, Side, Sim};
 use crate::pomdp::SpatialBelief;
@@ -128,22 +123,18 @@ impl Sim {
 
     /// The pose a sensor's coverage raster is cached against.
     ///
-    /// **Emplaced sensors use their exact pose.** Anything else would be an approximation
-    /// where none is needed - they do not move, so the cache hits every epoch after the
-    /// first, and exactness keeps V57 pinned to the real geometry.
+    /// **Emplaced sensors use their exact pose**: they do not move, so the cache hits every
+    /// epoch after the first, and exactness keeps V57 pinned to the real geometry.
     ///
     /// **Carried sensors are quantised to the coarse belief grid.** A raster costs `cells²`
-    /// line-of-sight walks, affordable precisely because an emplaced sensor pays it once. A
-    /// drone moves every tick, so an exact key would rebuild in full every epoch and never
-    /// hit - which is why carried sensors used to be excluded from belief altogether. But
-    /// the raster *is* a coarse-grid object: every entry is already a rate at a coarse cell
-    /// centre. Keying it on the coarse cell the sensor is standing in is therefore
-    /// consistent with the resolution the whole layer runs at, not a fudge, and it makes
-    /// the cost proportional to how far the drone has flown rather than to how long it has
-    /// been airborne.
+    /// line-of-sight walks, and a drone moves every tick, so an exact key would rebuild in
+    /// full every epoch and never hit. The raster *is* a coarse-grid object - every entry is
+    /// a rate at a coarse cell centre - so keying it on the coarse cell the sensor stands in
+    /// matches the resolution the layer runs at, and makes the cost proportional to how far
+    /// the drone has flown rather than how long it has been airborne.
     ///
-    /// Quantisation is exact integer arithmetic, so this stays deterministic: the same
-    /// flight path produces the same rebuild schedule on every run.
+    /// Quantisation is integer arithmetic, so the rebuild schedule is identical on every
+    /// run.
     fn cache_pose(&self, s_idx: usize, cells: usize) -> (Vec2, f32) {
         let (pos, height, _) = self.sensor_view(s_idx);
         if self.sensors[s_idx].carrier.is_none() {
@@ -166,7 +157,7 @@ impl Sim {
     }
 
     /// Update each side's belief, then point every steerable sensor where it will learn
-    /// the most (`docs/DESIGN.md` §10.3). Runs at the decision epoch.
+    /// the most (`docs/THEORY.md` §10.3). Runs at the decision epoch.
     ///
     /// Deterministic: no randomness is drawn, and sensors are visited in index order.
     pub(super) fn task_sensors(&mut self) {

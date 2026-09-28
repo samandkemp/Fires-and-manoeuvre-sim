@@ -6,15 +6,15 @@
 
 use bevy::prelude::*;
 use bevy_egui::egui;
-use sim_core::air::AltitudeRef;
+use sim_core::airframes::AltitudeRef;
 
-use crate::state::Selected;
+use crate::resources::Selected;
 
 use super::Panel;
 
 impl Panel<'_, '_, '_> {
     /// Drone and air-defence types, the flight dials, and applying them to a selection.
-    /// `docs/DESIGN.md` §9.
+    /// `docs/THEORY.md` §9.
     pub(super) fn air_section(&mut self, ui: &mut egui::Ui) {
         ui.separator();
         egui::CollapsingHeader::new("Air")
@@ -114,7 +114,7 @@ impl Panel<'_, '_, '_> {
     }
 
     /// The counter-air picture: what is flying, what each battery is doing, and the
-    /// recent engagements and releases (`docs/DESIGN.md` §9).
+    /// recent engagements and releases (`docs/THEORY.md` §9).
     pub(super) fn air_feed(&mut self, ui: &mut egui::Ui) {
         let sim = &self.sim.sim;
         if sim.air().is_empty() && sim.air_defence().is_empty() {
@@ -146,7 +146,7 @@ impl Panel<'_, '_, '_> {
                 if ad.self_cue { "" } else { " (net-cued)" }
             ));
         }
-        // C2 (docs/DESIGN.md §11): which batteries are coordinating, and whether the post
+        // C2 (docs/THEORY.md §11): which batteries are coordinating, and whether the post
         // holding them together is still alive.
         for post in sim.c2() {
             let covered = sim

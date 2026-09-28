@@ -1,14 +1,10 @@
 //! Command and control: coordination as a placed asset, the link that degrades before
 //! it dies, and fires that can be made to need the net (V59, V62, V63).
 //!
-//! One test binary over several suites. Cargo builds every `tests/*.rs` as its own
-//! binary linking `sim_core` afresh; files under `tests/c2/` are modules of this
-//! one instead, which is why the suite relinks once here rather than 3 times.
-//! Each module below is the file it always was, moved rather than rewritten.
-//!
-//! The `#[path]` attributes are not decoration: a test binary is a *crate root*, so a
-//! bare `mod coordination;` would look for `tests/coordination.rs` -- back at the top level, where it
-//! would become its own binary again and undo the grouping.
+//! One test binary over several suites: each `tests/*.rs` is its own link unit, so
+//! the files under `tests/c2/` are modules of this one rather than binaries of their
+//! own. `#[path]` is required because a test binary is a crate root - a bare `mod x;`
+//! would look for `tests/x.rs` and become a separate binary again.
 
 #[path = "c2/coordination.rs"]
 mod coordination;

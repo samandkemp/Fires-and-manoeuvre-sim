@@ -1,22 +1,14 @@
 //! What an experiment *is*, as a value that can be queued, saved, and re-run from a shell.
 //!
-//! # Why this is not just an interface concern
+//! An experiment run by clicking is not reproducible, and a number nobody can reproduce
+//! stops being evidence. So the runner does not "do experiments": it builds a [`RunSpec`],
+//! shows the command that spec *is*, and then carries it out - so anything set up by hand
+//! can be copied to a terminal or pasted into `findings.toml`.
 //!
-//! An experiment run by clicking is not reproducible, and this project's whole method rests
-//! on a result being re-runnable - the findings manifest exists precisely because a number
-//! nobody can reproduce stops being evidence. So the runner does not "do experiments": it
-//! builds a [`RunSpec`], shows the command that spec is, and then carries it out. Anything
-//! set up by hand can be copied to a terminal, committed, or pasted into `findings.toml`.
-//!
-//! That is why this type lives in `experiments` rather than in the app. It is the definition
-//! of the work, testable without a window; the interface is a way of writing one down.
-//!
-//! # Batches
-//!
-//! A [`Batch`] is an ordered list of specs. Setting up several related runs and leaving them
-//! to it is the actual job - one sweep is a command, and a batch is an afternoon.
+//! That is why the type lives here rather than in the app: it is the definition of the
+//! work, testable without a window. A [`Batch`] is an ordered list of specs.
 
-use crate::patch::split_values;
+use crate::overrides::split_values;
 use std::fmt::Write as _;
 
 /// Which study tool a spec runs, and the arguments only that tool takes.

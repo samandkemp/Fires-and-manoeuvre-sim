@@ -1,4 +1,4 @@
-//! The simulation loop. Spec: `docs/DESIGN.md` §3.3, §9.6.
+//! The simulation loop. Spec: `docs/THEORY.md` §3.3, §9.6.
 //!
 //! Fixed-dt ticks integrate the stochastic sensing process; every `epoch_s` a decision
 //! epoch maintains tracks and resolves fires. Deterministic given `(scenario, seed)`.
@@ -8,20 +8,24 @@
 //! | Module | What it holds |
 //! |---|---|
 //! | this file | the [`Sim`] struct, [`Sim::step_one`] (the tick), and the read accessors |
-//! | [`state`] | what a placed asset *is* - [`UnitState`], [`SensorState`], [`JammerState`] |
-//! | [`events`] | the append-only logs every metric is read back from |
-//! | [`setup`] | building a sim and placing assets into it |
-//! | [`commands`] | what the app's mouse can change between ticks |
-//! | [`detection`] | the glimpse process, EW, and the track lifecycle |
-//! | [`engagement`] | ground fires: target selection and round resolution |
-//! | [`counter_air`] | the air phases - air detection, air defence, strike release |
-//! | [`planning`] | movement decisions: a unit with an objective plans its own route |
+//! | `state` | what a placed asset *is* - [`UnitState`], [`SensorState`], [`JammerState`] |
+//! | `events` | the append-only logs every metric is read back from |
+//! | `setup` | building a sim and placing assets into it |
+//! | `commands` | what the app's mouse can change between ticks |
+//! | `detection` | the glimpse process, EW, and the track lifecycle |
+//! | `engagement` | ground fires: target selection and round resolution |
+//! | `counter_air` | the air phases - air detection, air defence, strike release |
+//! | `tasking` | belief, and where each steerable sensor should look next |
+//! | `planning` | movement decisions: a unit with an objective plans its own route |
+//! | `los_cache` | the line-of-sight memo; a speed-up with no effect on results |
 //!
-//! Those are all child modules of `sim`, which is what lets them reach [`Sim`]'s private
-//! fields while the rest of the crate cannot. Splitting the file cost no encapsulation.
+//! All are **private** child modules of `sim`, which is what lets them reach [`Sim`]'s
+//! private fields while the rest of the crate cannot - so splitting the file cost no
+//! encapsulation. They are named here in backticks rather than linked, because a doc link
+//! from a public page to a private item is a rustdoc warning.
 
-use crate::air::AirState;
 use crate::air_defence::AirDefenceState;
+use crate::airframes::AirState;
 use crate::c2::C2State;
 use crate::scenario::AllocationChoice;
 use crate::suppression::Suppression;
@@ -54,7 +58,7 @@ pub struct Sim {
     terrain: TerrainGrid,
     dt_s: f32,
     epoch_s: f32,
-    // Suppression dials (from the scenario `[sim]` block, docs/DESIGN.md §4.3).
+    // Suppression dials (from the scenario `[sim]` block, docs/THEORY.md §4.3).
     suppression_radius_m: f32,
     p_suppress: f32,
     recover_per_s: f32,
@@ -109,7 +113,7 @@ pub struct Sim {
 impl Sim {
     /// Advance one tick of `dt_s` seconds.
     ///
-    /// The phase order is the determinism contract (`docs/DESIGN.md` §9.6). The air
+    /// The phase order is the determinism contract (`docs/THEORY.md` §9.6). The air
     /// phases are **appended and draw zero RNG values when there are no air or
     /// air-defence assets**, so a drone-free scenario reproduces the pre-air event log
     /// bit-for-bit (V52) - the same identity posture EW takes (V40).
@@ -126,9 +130,9 @@ impl Sim {
         }
         self.sync_carried_sensors();
 
-        // 3. Sensing vs ground units. Unchanged draws and draw order from Phase 2:
-        // `sensor_view` returns exactly the sensor's own position and mount height
-        // unless it is carried, so a sim with no air is bit-identical here.
+        // 3. Sensing vs ground units. `sensor_view` returns exactly the sensor's own
+        // position and mount height unless it is carried, so a sim with no air draws the
+        // same values in the same order and is bit-identical here.
         self.detect_units();
 
         // 4. Sensing vs air. Zero iterations - and so zero draws - with no air assets.
@@ -167,7 +171,7 @@ impl Sim {
     }
 
     /// Move every live, unpinned unit along its route (§6.1). Pure - a Pinned unit does
-    /// not advance, which is the Phase 4 → Phase 5 wiring (V38).
+    /// not advance - suppression gating movement (V38).
     fn advance_units(&mut self) {
         let dt = self.dt_s;
         for u in &mut self.units {
@@ -215,14 +219,14 @@ impl Sim {
         self.dt_s
     }
 
-    /// Decision-epoch length, seconds (`docs/DESIGN.md` §3.3). Exposed so a front-end can
+    /// Decision-epoch length, seconds (`docs/THEORY.md` §3.3). Exposed so a front-end can
     /// step by the unit the *decisions* happen on, not just by the integration tick.
     #[must_use]
     pub fn epoch_s(&self) -> f32 {
         self.epoch_s
     }
 
-    /// Decision epochs resolved so far (`docs/DESIGN.md` §3.3). One per `epoch_s` of sim
+    /// Decision epochs resolved so far (`docs/THEORY.md` §3.3). One per `epoch_s` of sim
     /// time crossed, so it is the count of fires resolutions the run has performed.
     #[must_use]
     pub fn epochs_run(&self) -> u64 {
@@ -253,7 +257,7 @@ impl Sim {
         &self.air_defence
     }
 
-    /// Placed C2 posts, in placement order (`docs/DESIGN.md` §11).
+    /// Placed C2 posts, in placement order (`docs/THEORY.md` §11).
     #[must_use]
     pub fn c2(&self) -> &[C2State] {
         &self.c2
@@ -314,9 +318,9 @@ fn advance_along(mut pos: Vec2, route: &[Vec2], mut idx: usize, mut budget: f32)
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::fires::{WeaponClass, WeaponType};
     use crate::scenario::{load_terrain_params, Libraries, Scenario};
     use crate::sensing::{Modality, SensorType, UnitType};
+    use crate::weapon_effects::{WeaponClass, WeaponType};
     use std::collections::BTreeMap;
     use std::path::Path;
 

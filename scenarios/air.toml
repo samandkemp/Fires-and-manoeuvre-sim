@@ -1,4 +1,4 @@
-# Air asset stat blocks. Abstract placeholder dials - see docs/DESIGN.md §9.
+# Air asset stat blocks. Abstract placeholder dials - see docs/THEORY.md §9.
 #
 # `sensor` (optional) makes the airframe a recce platform: the id keys into sensors.toml
 # and the sensor rides the airframe, seeing from its altitude and facing its heading.

@@ -9,7 +9,7 @@ use bevy_egui::egui;
 use sim_core::sim::Side;
 
 use crate::overlays;
-use crate::state::{OverlayKind, OverlayRequest};
+use crate::resources::{OverlayKind, OverlayRequest};
 
 use super::Panel;
 
@@ -49,8 +49,8 @@ impl Panel<'_, '_, '_> {
             overlays::request_overlay(self.sim, r, self.overlay);
         }
 
-        // Auto-refresh, and the status line that makes a stale overlay obvious. Before
-        // this, an overlay silently went on describing where a sensor used to be.
+        // Auto-refresh, and the status line that makes a stale overlay obvious: an overlay
+        // is a snapshot, so moving a sensor leaves it describing where that sensor was.
         ui.checkbox(&mut self.overlay.auto, "keep it up to date");
         if ui.button("Clear overlay").clicked() {
             overlays::clear_overlay(self.overlay, self.commands);
@@ -58,7 +58,8 @@ impl Panel<'_, '_, '_> {
         if self.overlay.pending.is_some() {
             ui.label("computing... (the map stays live)");
         } else if let Some(showing) = self.overlay.showing {
-            let stale = crate::state::overlay_fingerprint(&self.sim.sim) != self.overlay.built_from;
+            let stale =
+                crate::resources::overlay_fingerprint(&self.sim.sim) != self.overlay.built_from;
             let side = if showing.side == Side::Blue {
                 "Blue"
             } else {

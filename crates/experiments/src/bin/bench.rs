@@ -74,7 +74,7 @@ fn main() {
         );
     }
 
-    // Slant range (docs/DESIGN.md §9.1): the cost of the convention, and how far it
+    // Slant range (docs/THEORY.md §9.1): the cost of the convention, and how far it
     // actually moves the answer on relief - the number behind "no re-baseline needed".
     let mut acc = 0.0f32;
     let t = Instant::now();
@@ -91,7 +91,7 @@ fn main() {
     );
 
     // How much does slant differ from horizontal on this map? Ground-to-ground first
-    // (the existing gates), then against an airborne endpoint (what Phase 9 needed).
+    // (the existing gates), then against an airborne endpoint.
     let report = |label: &str, h_b: f32, samples: u32, rnd: &mut dyn FnMut() -> f32| {
         let (mut worst, mut worst_rel, mut sum_rel) = (0.0f32, 0.0f32, 0.0f64);
         for _ in 0..samples {

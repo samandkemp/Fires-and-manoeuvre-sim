@@ -1,18 +1,16 @@
-//! The input contract (`docs/DESIGN.md` §7.6): values the model cannot run on, refused
+//! The input contract (`docs/THEORY.md` §7.6): values the model cannot run on, refused
 //! at load rather than answered wrongly at run time.
 //!
 //! Separated from the schema because it is a different kind of statement. The schema
 //! says what a scenario may contain; this says what it may *mean*, and it is the half a
 //! reader goes looking for when a sweep produces something impossible.
+//!
+//! The same failure in different clothes: `deny_unknown_fields` refuses a key the schema
+//! does not know, and the three helpers below refuse a *value* the model cannot run on. A
+//! dial outside its domain does not crash - it quietly produces a study of a different
+//! question, or, for the two clock dials, does not terminate at all.
 
 use super::{ScenarioError, SimConfig};
-
-// --- The input contract (`docs/DESIGN.md` §7.6) --------------------------------------
-//
-// `deny_unknown_fields` refuses a key the schema does not know. These three refuse a
-// *value* the model cannot run on, which is the same failure wearing different clothes: a
-// dial outside its domain does not crash, it quietly produces a study of a different
-// question - or, for the two clock dials, does not terminate at all.
 
 /// Reject a dial that must be finite and strictly positive (zero included in the refusal).
 pub(super) fn require_positive(name: &str, value: f32) -> Result<(), ScenarioError> {

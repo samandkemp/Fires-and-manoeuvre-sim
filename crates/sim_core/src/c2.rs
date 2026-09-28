@@ -1,23 +1,19 @@
 //! Command and control: who is allowed to coordinate with whom.
-//! Spec: `docs/DESIGN.md` §11. Gates: V59.
+//! Spec: `docs/THEORY.md` §11. Gates: V59.
 //!
 //! # Why coordination is an asset, not a switch
 //!
-//! Ground fires coordinate side-wide for free (§10.2) - a modelling simplification that
-//! is defensible for a battlegroup sharing one fire-control net. Air defence is different:
-//! point-defence batteries are genuinely autonomous unless something is deliberately
-//! fielded to tie them together, and that something can be jammed, moved, or destroyed.
+//! Ground fires coordinate side-wide for free (§10.2), which is defensible for a
+//! battlegroup sharing one fire-control net. Point-defence batteries are genuinely
+//! autonomous unless something is fielded to tie them together - and that something can be
+//! jammed, moved or destroyed.
 //!
-//! So a **C2 post** is a placed asset with a coordination radius. Batteries inside a live
-//! friendly post's radius allocate as one group; batteries outside act on their own. The
-//! consequence is the interesting part: destroying the post does not kill a single
-//! battery, but the defence **decoheres** - every battery reverts to shooting at whatever
-//! is nearest, and the raid gets the duplicated engagements and the leakers that follow
-//! from that.
-//!
-//! That makes "suppress the enemy's command post" a strictly better first move than
-//! "shoot one more launcher", which is the real-world result the model should produce
-//! without being told to.
+//! So a **C2 post** is a placed asset with a coordination radius: batteries inside a live
+//! friendly post's radius allocate as one group, those outside act on their own.
+//! Destroying the post kills no battery, but the defence **decoheres** - every battery
+//! reverts to nearest-first, with the duplicated engagements and leakers that follow. That
+//! is what makes suppressing the post a better opening move than killing one more
+//! launcher, without the model being told so.
 
 use crate::sim::Side;
 use glam::Vec2;
@@ -35,7 +31,7 @@ pub struct C2Type {
     /// clean later refinement - the §9.5 cue-latency machinery is the natural seam.
     pub coordination_range_m: f32,
     /// How long an asset must have been inside the radius before it is actually in the
-    /// net, seconds (`docs/DESIGN.md` §11.2).
+    /// net, seconds (`docs/THEORY.md` §11.2).
     ///
     /// Joining a fire-control net is not instantaneous: the battery has to be handed the
     /// air picture and told what it is now responsible for. **Defaults to zero**, so the
@@ -43,7 +39,7 @@ pub struct C2Type {
     /// *alone*, without the jamming effect confounding it.
     ///
     /// Matters mainly for a post or battery that moves. Emplaced assets pay it once at
-    /// t = 0 and then never again, which is the honest answer: a static defence is set up
+    /// t = 0 and then never again: a static defence is set up
     /// before the raid arrives.
     #[serde(default)]
     pub link_latency_s: f32,
@@ -60,10 +56,10 @@ pub struct C2Type {
     #[serde(default)]
     pub signature: std::collections::BTreeMap<String, f32>,
     /// How many vehicles the post is made of; attrition removes them one at a time
-    /// (`docs/DESIGN.md` §12).
+    /// (`docs/THEORY.md` §12).
     #[serde(default = "default_elements")]
     pub element_count: u32,
-    /// How much destroying this is worth to enemy **ground** fires (`docs/DESIGN.md`
+    /// How much destroying this is worth to enemy **ground** fires (`docs/THEORY.md`
     /// §12.4). Omit and it scores 1.0 per element.
     ///
     /// There is no derivation to fall back on, unlike a unit's. A post has **no firepower
@@ -73,7 +69,7 @@ pub struct C2Type {
     #[serde(default)]
     pub value: Option<f32>,
     /// Free-form role this asset answers to in a target-priority list
-    /// (`docs/DESIGN.md` §13). Optional: the class `c2` always matches anyway, so
+    /// (`docs/THEORY.md` §13). Optional: the class `c2` always matches anyway, so
     /// this is only needed to say something finer than that.
     #[serde(default)]
     pub role: Option<String>,

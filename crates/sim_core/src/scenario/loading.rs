@@ -1,12 +1,15 @@
 //! Reading scenarios and stat-block libraries off disk.
 //!
-//! Kept apart from the schema so that the types a caller matches on are not buried
-//! among the file handling that produces them.
+//! Kept apart from the schema so that the types a caller matches on are not buried among
+//! the file handling that produces them.
+//!
+//! Every `load_*` below returns [`ScenarioError::Io`] if the file cannot be read and
+//! [`ScenarioError::Parse`] if it is not valid TOML for its type; validation is structural,
+//! since serde requires every field.
 
 use super::*;
 
-/// Read a file, tagging the path onto any I/O error. Shared by every loader below, which
-/// otherwise repeat the same five lines seven times.
+/// Read a file, tagging the path onto any I/O error. Shared by every loader below.
 pub(super) fn read_to_string(path: &Path) -> Result<String, ScenarioError> {
     std::fs::read_to_string(path).map_err(|source| ScenarioError::Io {
         path: path.to_path_buf(),
@@ -16,10 +19,9 @@ pub(super) fn read_to_string(path: &Path) -> Result<String, ScenarioError> {
 
 /// Parse a stat-block library - or the terrain-params table - from TOML **text**.
 ///
-/// The string half of the `load_*` family below: each of those reads a file and calls
-/// this. Public because a caller that already holds the text should not have to write it
-/// back to disk to load it - `experiments`' sweep patches a dial in memory and parses the
-/// result, exactly as `Scenario::from_toml_str` lets it do for a scenario.
+/// The string half of the `load_*` family below. Public so a caller already holding the
+/// text need not write it back to disk: `sweep` patches a dial in memory and parses the
+/// result, as `Scenario::from_toml_str` allows for a scenario.
 ///
 /// # Errors
 /// [`ScenarioError::Parse`] if the text is not valid TOML for `T`.
@@ -30,59 +32,37 @@ pub fn library_from_toml_str<T: serde::de::DeserializeOwned>(
 }
 
 /// Load the per-terrain-type dials (`scenarios/terrain_types.toml`).
-///
-/// # Errors
-/// As [`Scenario::load`] (validation is structural - serde requires every field).
 pub fn load_terrain_params(path: &Path) -> Result<TerrainParamsTable, ScenarioError> {
     library_from_toml_str(&read_to_string(path)?)
 }
 
-/// Load the sensor-type library (`scenarios/sensors.toml`): a table of stat blocks
-/// keyed by type id.
-///
-/// # Errors
-/// As [`Scenario::load`].
+/// Load the sensor-type library (`scenarios/sensors.toml`): stat blocks keyed by type id.
 pub fn load_sensor_types(path: &Path) -> Result<BTreeMap<String, SensorType>, ScenarioError> {
     library_from_toml_str(&read_to_string(path)?)
 }
 
 /// Load the unit-type library (`scenarios/units.toml`).
-///
-/// # Errors
-/// As [`Scenario::load`].
 pub fn load_unit_types(path: &Path) -> Result<BTreeMap<String, UnitType>, ScenarioError> {
     library_from_toml_str(&read_to_string(path)?)
 }
 
 /// Load the weapon-type library (`scenarios/weapons.toml`).
-///
-/// # Errors
-/// As [`Scenario::load`].
 pub fn load_weapon_types(path: &Path) -> Result<BTreeMap<String, WeaponType>, ScenarioError> {
     library_from_toml_str(&read_to_string(path)?)
 }
 
-/// Load the air-type library (`scenarios/air.toml`).
-///
-/// # Errors
-/// As [`Scenario::load`].
+/// Load the air-type library (`scenarios/air.toml`). Optional.
 pub fn load_air_types(path: &Path) -> Result<BTreeMap<String, AirType>, ScenarioError> {
     library_from_toml_str(&read_to_string(path)?)
 }
 
-/// Load the C2 type library (`scenarios/c2.toml`). Optional, like `air.toml`: a scenario
-/// set without it simply has no way to coordinate air defence.
-///
-/// # Errors
-/// As [`Scenario::load`].
+/// Load the C2 type library (`scenarios/c2.toml`). Optional: without it a scenario set has
+/// no way to coordinate air defence.
 pub fn load_c2_types(path: &Path) -> Result<BTreeMap<String, C2Type>, ScenarioError> {
     library_from_toml_str(&read_to_string(path)?)
 }
 
-/// Load the air-defence type library (`scenarios/air_defence.toml`).
-///
-/// # Errors
-/// As [`Scenario::load`].
+/// Load the air-defence type library (`scenarios/air_defence.toml`). Optional.
 pub fn load_air_defence_types(
     path: &Path,
 ) -> Result<BTreeMap<String, AirDefenceType>, ScenarioError> {
@@ -131,7 +111,7 @@ impl Libraries {
 
     /// Load every library from a `scenarios/`-shaped directory. The air and air-defence
     /// libraries are optional: a directory without them loads as empty maps, so
-    /// pre-Phase-9 scenario sets still work.
+    /// older scenario sets still work.
     ///
     /// # Errors
     /// As [`Scenario::load`], for any library that exists but fails to parse, or whose
@@ -150,18 +130,16 @@ impl Libraries {
         Ok(libs)
     }
 
-    /// Refuse a stat block the models cannot evaluate (`docs/DESIGN.md` §7.6).
+    /// Refuse a stat block the models cannot evaluate (`docs/THEORY.md` §7.6).
     ///
-    /// Deliberately **short**. Most dials being zero is a legitimate statement - a drone
-    /// with `cruise_speed_m_s = 0` is stationary (which several gates rely on), a battery
-    /// with `max_range_m = 0` engages nothing, an unarmed unit has no weapon. Only values
-    /// that reach a **divisor** are refused, because those do not produce a small answer,
-    /// they produce `NaN`, and `NaN` loses every comparison it appears in - so the
-    /// subsystem goes silently inert rather than visibly wrong.
+    /// The list is **short** by design: most zeros are legitimate, such as a stationary
+    /// drone or a battery that engages nothing. Only values reaching a **divisor** are
+    /// refused, because those give `NaN` rather than a small answer, and `NaN` loses every
+    /// comparison it appears in - the subsystem goes silently inert rather than visibly
+    /// wrong.
     ///
-    /// Called by [`Libraries::load_dir`] and again by [`crate::sim::Sim::new`], so a
-    /// library patched in memory - which is exactly what `experiments/sweep` does - is
-    /// checked on the same terms as one read from disk.
+    /// Called by [`Libraries::load_dir`] and again by [`crate::sim::Sim::new`], so a library
+    /// patched in memory - what `sweep` does - is held to the same terms as one on disk.
     ///
     /// # Errors
     /// [`ScenarioError::Invalid`], naming the library, the stat block and the dial.
@@ -175,7 +153,7 @@ impl Libraries {
         for (id, w) in &self.weapons {
             // The §2.3 Carleton kernel divides by `2·R_L²`. A round landing exactly on the
             // target then computes 0/0, and the kill roll silently always fails.
-            if w.class == crate::fires::WeaponClass::Indirect {
+            if w.class == crate::weapon_effects::WeaponClass::Indirect {
                 require_positive(&format!("weapons.{id}.lethal_radius_m"), w.lethal_radius_m)?;
             }
         }

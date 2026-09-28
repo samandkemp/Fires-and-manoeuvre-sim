@@ -1,30 +1,24 @@
 //! V70 - what blocks an indirect shooter is a lapsed track, not terrain.
-//! `docs/DESIGN.md` §2, §10.1, §13.4.
+//! `docs/THEORY.md` §2, §10.1, §13.4.
 //!
-//! V66 established that line of sight and range **block** a pairing rather than merely
-//! lowering its score, so a shooter whose priority target is masked by a ridge falls
-//! through to what it can actually engage, and a lock is released when its target becomes
-//! unengageable. Its fixture exercises **direct** fire throughout.
-//!
-//! Indirect fire is eligible on different terms, and this gate says so in both directions.
-//! A shell arcs, so a ridge is irrelevant to it - what it needs is a *track*, held by
-//! somebody on its own side. So the asymmetry is:
+//! Fixture: a ridge masking the shooter from the target, with an observer that can see it.
+//! The gate pins the asymmetry in both directions:
 //!
 //! | | blocked by terrain | blocked by a lapsed track |
 //! |---|---|---|
 //! | direct | yes | no - it needs no track at all |
 //! | indirect | **no** | **yes**, `track_hold_s` after the last look |
 //!
-//! Both halves matter. Without the first, artillery would inherit the sightline
-//! restrictions of a tank; without the second, a lock would outlive the information that
-//! justified it and guns would keep firing at a position nobody has confirmed for minutes.
+//! Both halves matter. Without the first, artillery inherits the sightline restrictions of
+//! a tank; without the second, a lock outlives the information that justified it. V66 pins
+//! the same two rules for direct fire, where the terms are reversed.
 
 use sim_core::scenario::{Libraries, Scenario};
 use sim_core::sim::{FireTarget, Side, Sim};
 use std::collections::BTreeMap;
 
-use sim_core::fires::{WeaponClass, WeaponType};
 use sim_core::sensing::{Modality, SensorType, UnitType};
+use sim_core::weapon_effects::{WeaponClass, WeaponType};
 use validation::scenario_params;
 
 const GUN_X: f32 = 200.0;

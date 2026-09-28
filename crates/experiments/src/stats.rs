@@ -1,34 +1,17 @@
-//! Means, standard errors, and paired differences.
+//! Means, standard errors, and paired differences. Spec: `docs/THEORY.md` §14.2.
 //!
-//! A mean on its own cannot answer the only question a study asks - *is this difference
-//! real?* - so nothing in this crate reports one without an error bar beside it.
+//! Two arms run over the **same seed set**, so each seed gives a matched pair on the same
+//! map with the same dice and the difference is taken seed by seed - common random numbers.
+//! The shared map-and-dice variance cancels, which is usually most of it.
 //!
-//! # Why every comparison here is paired
-//!
-//! Two arms of a study (two solvers, two values of a dial) are run over the **same seed
-//! set**, so each seed gives a matched pair `(a_k, b_k)` on the same map with the same
-//! dice. The difference is then `d_k = a_k - b_k`, and its standard error is
-//!
-//! ```text
-//!   SE(d̄) = s_d / sqrt(n),   s_d² = Σ(d_k - d̄)² / (n - 1)
-//! ```
-//!
-//! This is the classic variance-reduction technique of **common random numbers**. It works
-//! because `Var(a - b) = Var(a) + Var(b) - 2 Cov(a, b)`: the two arms share the map and
-//! most of the luck, so `Cov(a, b)` is large and positive and most of the variance cancels.
-//! Comparing the two *unpaired* means throws that away and can be an order of magnitude
+//! Nothing here reports a mean without an error bar, and there is **no unpaired
+//! comparison**: it would discard that cancellation and can be an order of magnitude
 //! noisier.
-//!
-//! That is not a hypothetical. Comparing the fire-allocation solvers unpaired once
-//! produced a confident finding that greedy beat the optimal assignment; paired over 500
-//! seeds the difference was 0.12 s against an SE of 0.5, and the two were *identical* on
-//! 438 of the 500 seeds (`docs/DESIGN.md` §10.2). The variance being cancelled was the
-//! whole effect.
 
 /// Mean and standard error of a sample.
 ///
 /// `SE = s / sqrt(n)` with `s` the sample standard deviation (Bessel-corrected). Zero for
-/// a sample of one, which is honest: one run says nothing about spread.
+/// a sample of one - one run says nothing about spread.
 #[must_use]
 pub fn mean_and_se(xs: &[f64]) -> (f64, f64) {
     let n = xs.len() as f64;
@@ -50,14 +33,14 @@ pub struct Paired {
     pub mean: f64,
     /// Standard error of that mean.
     pub se: f64,
-    /// `mean / se` - the paired t statistic. `|t| > 2` is the usual "worth believing"
-    /// line for a sample this size (two-sided, ~5%).
+    /// `mean / se` - the paired t statistic. `|t| > 2` is the line this harness calls
+    /// significant (two-sided, ~5%).
     pub t: f64,
     /// Matched pairs compared.
     pub n: usize,
-    /// Pairs where the two arms gave *exactly* the same number. A high count next to a
-    /// small mean says the two arms are mostly the same decision, not that the effect is
-    /// merely hard to see - which is a different conclusion.
+    /// Pairs where the two arms gave *exactly* the same number. A high count beside a small
+    /// mean says the two arms are mostly making the same decision, which is a different
+    /// conclusion from an effect that is merely hard to see.
     pub ties: usize,
 }
 

@@ -1,14 +1,11 @@
-//! V57 - belief-driven sensor tasking. `docs/DESIGN.md` §10.3.
+//! V57 - belief-driven sensor tasking. `docs/THEORY.md` §10.3.
 //!
-//! The claim under test is that pointing a sensor by belief beats leaving it pointed
-//! where it started. The fixture makes that measurable: a narrow-arc sensor in the
-//! middle of open ground, and one hidden enemy placed on a bearing the sensor is *not*
-//! initially covering.
+//! Fixture: a narrow-arc sensor in the middle of open ground, and one hidden enemy on a
+//! bearing the sensor is *not* initially covering. A fixed stare can only ever find an
+//! enemy that walks into its arc.
 //!
-//! A fixed stare can only ever find an enemy that walks into its arc. A belief-driven
-//! sensor drains its own belief out of the ground it has already cleared, so the
-//! best-information facing moves on - the sweep is not scripted, it falls out of
-//! maximising expected entropy reduction.
+//! The sweep is not scripted: a belief-driven sensor drains its own belief out of ground it
+//! has cleared, so the best-information facing moves on by itself.
 
 use sim_core::scenario::{Libraries, Scenario};
 use sim_core::sensing::{Modality, SensorType, UnitType};

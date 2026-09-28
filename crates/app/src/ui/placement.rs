@@ -8,7 +8,7 @@ use bevy::prelude::*;
 use bevy_egui::egui;
 use sim_core::sim::Side;
 
-use crate::state::{ClickMode, Selected};
+use crate::resources::{ClickMode, Selected};
 
 use super::Panel;
 

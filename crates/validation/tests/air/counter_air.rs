@@ -1,5 +1,5 @@
 //! V48-V51 - air-defence engagement, time-to-kill laws and the cueing timeline
-//! (docs/DESIGN.md §9.4-§9.5).
+//! (docs/THEORY.md §9.4-§9.5).
 
 use glam::Vec2;
 use sim_core::air_defence::*;

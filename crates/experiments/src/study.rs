@@ -1,31 +1,25 @@
 //! Running one arm of a study: N seeds of one scenario, in parallel.
 //!
-//! # How the parallelism is arranged, and why that way
+//! # How the parallelism is arranged
 //!
-//! Trials are independent, so they parallelise perfectly - except that each needs a
-//! [`Sim`], and building one means generating the terrain, which is the expensive part
-//! (1-3 s for a 1000×1000 map; the tick itself is under 15 µs).
+//! Terrain generation is the expensive part (1-3 s for a 1000×1000 map against a sub-15 µs
+//! tick), so the seed list is cut into **one chunk per worker thread** and each worker
+//! builds one sim and resets it between trials. That pays `threads` terrain builds
+//! concurrently rather than one per trial, and rules out `rayon::map_init`, whose init
+//! closure runs an unspecified number of times.
 //!
-//! So the seed list is cut into exactly one chunk per worker thread, and each worker builds
-//! **one** sim and resets it between trials. That gives `threads` terrain builds - paid
-//! once, concurrently - rather than one per trial, and rules out the alternative
-//! (`rayon::map_init`) whose init closure is called an unspecified number of times.
-//!
-//! Every worker builds terrain from `scenario.default_seed`, not from the trial seed, so
-//! all workers get the **same** map and the study still asks "what happens on this map, on
-//! average". Terrain generation is deterministic given its seed, so that is exact, not
-//! approximate.
+//! Every worker builds terrain from `scenario.default_seed` rather than the trial seed, so
+//! all workers get the **same** map and the study asks "what happens on this map, on
+//! average" (§14.1). Generation is deterministic given its seed, so that is exact.
 //!
 //! # Determinism
 //!
-//! Results come back in seed order regardless of how the work was scheduled: rayon's
-//! `collect` preserves order, and each trial is a fresh `reset_to_scenario` whose RNG
-//! stream depends only on its seed. A parallel study therefore returns byte-identical
-//! numbers to a serial one - pinned by a test at the bottom of this file, because "we
-//! parallelised the study and the answer changed" is exactly the failure that would
-//! otherwise be discovered by a confusing result months later.
+//! Results come back in seed order however the work was scheduled - rayon's `collect`
+//! preserves order, and each trial is a fresh `reset_to_scenario` whose RNG stream depends
+//! only on its seed. A parallel study returns byte-identical numbers to a serial one,
+//! pinned by a test at the bottom of this file.
 
-use crate::outcome::{run_one, Outcome};
+use crate::metrics::{run_one, Outcome};
 use rayon::prelude::*;
 use sim_core::scenario::{Libraries, Scenario, ScenarioError};
 use sim_core::sim::Sim;
@@ -103,18 +97,14 @@ pub fn run_study(
 /// Evaluate **many** scenarios over one shared seed set, building terrain once for all of
 /// them.
 ///
-/// A sensitivity design is thousands of scenarios that differ only in dials.
-/// [`run_study`] builds terrain once per worker *per call*, which is right for a handful of
-/// arms and catastrophic for a design: 1,600 design points on a 1000x1000 map is ~19,000
-/// terrain builds and the trials themselves become a rounding error. Measured on
-/// `air_raid`, that was the difference between a study finishing and a study being
-/// abandoned.
+/// A sensitivity design is thousands of scenarios differing only in dials, and
+/// [`run_study`] builds terrain once per worker *per call* - right for a handful of arms,
+/// ruinous for a design, where the terrain builds dwarf the trials.
 ///
-/// So terrain is built once per worker from `base`, and every design point is placed into it
-/// with [`Sim::reset_to_scenario`]. That is exactly the "fix the map, vary the dice" rule
-/// the rest of this module follows, applied one level further out - and it means a design
-/// **must not** vary a terrain dial, because the map it would ask for is not the map it
-/// would get. `sensitivity` refuses those paths for that reason.
+/// So terrain is built once per worker from `base` and every design point is placed into it
+/// with [`Sim::reset_to_scenario`]: the "fix the map, vary the dice" rule applied one level
+/// further out. The consequence is that a design **must not** vary a terrain dial, because
+/// the map it asks for is not the map it gets - `sensitivity` refuses those paths.
 ///
 /// Returns one outcome vector per point, in point order.
 ///

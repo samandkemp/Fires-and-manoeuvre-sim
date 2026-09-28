@@ -1,20 +1,16 @@
-//! V72-V74 - movement decisions in the loop. `docs/DESIGN.md` §5, §10.5.
-//!
-//! Fires are allocated and sensors are tasked, but until now a route was drawn by hand:
-//! `movement::least_risk_path` was called only from `experiments/` and this crate, so the
-//! dynamic-programming strand sat *beside* the model rather than inside it.
+//! V72-V74 - movement decisions in the loop. `docs/THEORY.md` §5, §10.5.
 //!
 //! A unit with an `objective` plans its own route each decision epoch against the live risk
 //! raster. Three properties hold it honest, and they pull against each other:
 //!
-//! * **V72** - a scenario with no objective is bit-identical to before, and draws no extra
-//!   randomness. Structural, not dial-gated: no objective means no planner at all.
-//! * **V73** - a unit *avoids* what watches it, and with `risk_weight = 0` stops avoiding
-//!   and takes the short way. Without the second half the first proves only that the router
+//! * **V72** - a scenario with no objective reproduces exactly and draws no extra
+//!   randomness. Structural, not dial-gated: no objective means no planner is built at all.
+//! * **V73** - a unit avoids what watches it, and at `risk_weight = 0` stops avoiding and
+//!   takes the short way. Without the second half the first proves only that the router
 //!   produces some route.
-//! * **V74** - it does not dither. A unit re-deciding every epoch can flip between two
-//!   near-equal routes forever; the hysteresis that prevents it is the movement analogue of
-//!   §13.4's target lock.
+//! * **V74** - it does not dither. Fixture: a watcher on the line makes north and south
+//!   cost almost the same, which is what makes a fresh solve wobble. The hysteresis that
+//!   prevents it is the movement analogue of §13.4's target lock.
 
 use glam::Vec2;
 use sim_core::scenario::{Libraries, Scenario};

@@ -1,4 +1,4 @@
-# What does a fire-direction net actually buy? (docs/design/11-command-and-control.md §11.3)
+# What does a fire-direction net actually buy? (docs/THEORY.md §11.3)
 #
 # Three howitzers, three targets, every gun able to range every target. The post covers
 # `gun-a` and `gun-b` and leaves `gun-c` 2.2 km out on the flank, so `[sim] fires_need_c2 =
@@ -93,7 +93,7 @@ id = "gun-c"
 type = "sp_gun"
 pos = [800.0, 4400.0]
 
-# Indirect fire needs a track (docs/design/02-fires.md). One observer feeds all three guns,
+# Indirect fire needs a track (docs/THEORY.md). One observer feeds all three guns,
 # so what differs between the arms is coordination, not information.
 [[blue.sensors]]
 id = "obs-1"

@@ -1,129 +1,96 @@
 # Fires & Manoeuvre Sim
 
-An operational-research simulation of land warfare direct and indirect fires. A Blue and a
-Red force - composed from artillery, manoeuvre units, sensors, drones and air defence -
-fight over featured terrain: line of sight, cover, concealment, mobility.
+An operational-research simulation of land warfare direct and indirect fires. A Blue and a Red
+force - composed from artillery, manoeuvre units, sensors, drones and air defence - fight over
+featured terrain: line of sight, cover, concealment, mobility.
 
-**Sensing is central.** You place sensors and try to detect the enemy before being
-detected, then watch fires suppress and attrit manoeuvre. Detection is mutual and
-asymmetric, so positioning to see without being seen is a real decision rather than a
-scoring bonus.
+**Sensing is central.** You place sensors and try to detect the enemy before being detected,
+then watch fires suppress and attrit manoeuvre. Detection is mutual and asymmetric, so
+positioning to see without being seen is a real decision rather than a scoring bonus.
 
-Written in Rust, with a Bevy front-end for the tactical map and a headless core for the
-maths. It is a personal research and learning tool, built to make OR models tangible and
-tweakable - not to ship as a game.
+Written in Rust, with a Bevy front-end for the tactical map and a headless core for the maths.
 
-> **All unit, weapon and sensor numbers are abstract placeholder dials - not real munition
-> or sensor performance data.** The models are the product; the numbers are knobs.
+> **All unit, weapon and sensor numbers are abstract placeholder dials - not real munition or
+> sensor performance data.** The models are the product; the numbers are knobs.
 
-## What it is built around
+## What it is for
 
-- **Headless, deterministic core.** The simulation is a pure library (`sim_core`, no
-  Bevy): given a scenario and a seed it produces identical results with no UI attached, so
-  ten thousand trials need no window. 10,000 trials run in under 20 seconds, byte-identical
-  to a serial run.
+A personal research and learning tool, built to make operational-research models tangible and
+tweakable rather than to ship as a game. The goal is to take six bodies of theory that are
+usually taught separately - optimal control, dynamic programming, stochastic processes, game
+theory, partial observability, combinatorial optimisation - and make each one *do something
+visible* in the same simulation, where its consequences can be measured against the others.
+
+Three commitments follow from that, and they override convenience:
+
 - **The maths is the product.** Every model is formulated and validated against a known
-  analytical result or a documented invariant *before* it is made fast or pretty.
-  Correctness is testable; "realism" is not. There are 77 such gates.
-- **Data-driven.** Unit, weapon and sensor stats live in TOML, never hard-coded, so they
-  are tweakable at runtime - and sweepable by dotted path without editing a file.
-- **Composable subsystems.** Terrain, fires, sensing, suppression, movement and
-  decision-making are separate modules with clean interfaces, which is why electronic
-  warfare slotted in as a modifier on the sensing channel rather than a rewrite.
+  analytical result or a documented invariant *before* it is made fast or pretty. Correctness is
+  testable; "realism" is not. There are 77 such gates.
+- **Headless and deterministic.** The simulation is a pure library given a scenario and a seed,
+  producing identical results with no UI attached - so ten thousand trials need no window. They
+  run in under twenty seconds, byte-identical to a serial run.
+- **Data-driven.** Unit, weapon and sensor stats live in TOML, never hard-coded, so they are
+  tweakable at runtime and sweepable by dotted path without editing a file.
 
 One structural discipline underpins all of it: **every subsystem added reduces to an exact
-identity when switched off.** A scenario with no aircraft produces the event log it did
-before the air model existed - byte for byte, not approximately. Every phase of additions
-has been made safe that way.
+identity when switched off.** A scenario with no aircraft produces the event log it did before
+the air model existed - byte for byte, not approximately. Every phase of additions has been made
+safe that way.
+
+## Who it is for
+
+Written for someone comfortable with code and curious about how these methods behave when they
+have to share a simulation, whether or not they have met operational research before. The
+documentation explains the vocabulary rather than assuming it, and the guide is written so that
+somebody new to the model could set it up, build a scenario and run a defensible study without
+reading any of the theory.
+
+It is a study of operational-research *methods*, not a source of real-world capability data, and
+it is not calibrated against any real system.
 
 ## Six strands of theory
 
-Each does a job the others cannot. [`docs/MATHS.md`](docs/MATHS.md) states each in its own
-symbols, with the code it lives in and the gate that holds it honest.
+Each does a job the others cannot.
 
 | Strand | Doing what | Lives in |
 |---|---|---|
-| **Optimal control** | Turn-rate-limited flight; phase-integrated orbits | `air.rs` |
+| **Optimal control** | Turn-rate-limited flight; phase-integrated orbits | `airframes.rs` |
 | **Dynamic programming** | Least-risk pathing - Dijkstra as label-setting value iteration | `movement.rs` |
-| **Stochastic processes** | Detection rates, CEP dispersion, the suppression chain, time-to-kill | `sensing.rs`, `fires.rs`, `suppression.rs`, `air_defence.rs` |
-| **Game theory** | Sensing against counter-sensing, by fictitious play | `game.rs` |
+| **Stochastic processes** | Detection rates, CEP dispersion, the suppression chain, time-to-kill | `sensing.rs`, `weapon_effects.rs`, `suppression.rs`, `air_defence.rs` |
+| **Game theory** | Sensing against counter-sensing, by fictitious play | `game_theory.rs` |
 | **Partial observability** | Belief over enemy position, and the value of *not* seeing | `ew.rs`, `pomdp.rs` |
 | **Combinatorial optimisation** | Side-wide weapon-target assignment (Kuhn-Munkres) | `allocation.rs` |
 
 The loop is **hybrid continuous/discrete**: between decision epochs the state integrates
-continuously; at each epoch the discrete decisions are set - what to shoot, where to move,
-where to look. That split is not a convenience, it is the structure. Continuous dynamics
-are an optimal-control problem, the epoch-to-epoch choices are a dynamic program, and the
-two only compose cleanly if they are kept apart.
-
-## Subsystems
-
-**Terrain** - an elevation raster plus a terrain-type layer, with derived cover,
-concealment, LOS-blocking and mobility layers. Maps are generated from a seed, either as
-rolling relief or from a composable recipe (a base surface plus ordered ridge / woodland /
-urban layers). **Line of sight** - DDA traversal returning canopy transmittance, the height
-needed to clear the worst mask, and where the block occurred.
-
-**Sensing** - glimpse-rate detection over LOS, slant range, signature and concealment.
-Tracks decay when observation lapses, which is what lets jamming *break* a track rather
-than only prevent one. **Fires** - direct fire gated on LOS with an error-function hit
-model; indirect fire as a ballistic arc with CEP dispersion and Carleton area damage.
-**Suppression** - units are N sub-elements with a Free / Suppressed / Pinned Markov state
-driven by near misses, gating movement and fire.
-
-**Air** - drones as a third asset class: per-instance altitude above ground or sea level,
-turn-rate-limited flight, path or transit-then-orbit plans, recce or strike payloads. **Air
-defence** answers with gun or missile engagement, gated by an envelope and by the
-sensor-to-shooter timeline. **Command and control** is an asset to be fielded, not a switch to be
-set: a post lets nearby batteries allocate as a group, and it can be jammed or killed.
-
-**The decision layer** closes the loop sensing → belief → decision → action. Fire is
-allocated side-wide by solving an assignment problem; steerable sensors point themselves by
-expected information gain; **movement** is re-planned each epoch against the live risk
-raster, so a sensor placed across a route changes where a unit goes; and a **kill chain**
-lets a side declare what it has been *told* to shoot first, so directive control can be
-measured against optimal control.
+continuously; at each epoch the discrete decisions are set - what to shoot, where to move, where
+to look. That split is not a convenience, it is the structure. Continuous dynamics are an
+optimal-control problem, the epoch-to-epoch choices are a dynamic program, and the two only
+compose cleanly if they are kept apart.
 
 ## Documentation
 
-There is a lot of it. **You almost certainly do not need to read most of it** - pick the
-path below that matches the reason for reading; the rest is reference, consulted when a
-question actually arises.
+Three layers. Start at the top and go down only as far as your question needs.
 
-**To understand the model** - [docs/HOW_IT_WORKS.md](docs/HOW_IT_WORKS.md) is the one to
-read, and for many people the only one. The modules, one tick end to end, and how detection
-and engagement actually work, with worked numbers. From there,
-[docs/MATHS.md](docs/MATHS.md) states the six OR strands properly, and
-[docs/design/](docs/design/) holds the equations and invariants one page per section.
+| | Document | For |
+|---|---|---|
+| **1** | this page | What it is, and where everything is |
+| **2** | **[docs/GUIDE.md](docs/GUIDE.md)** | **Setting up, running, authoring scenarios, running studies.** The single source for operating the model - start here to *use* it |
+| **2** | [docs/MODEL.md](docs/MODEL.md) | How it works and how the parts interact: the tick, detection, engagement, with worked numbers and the code path for each. Start here to *understand* it |
+| **2** | [docs/REFERENCE.md](docs/REFERENCE.md) | Every TOML field, `[sim]` dial, metric and command-line flag. The lookup table |
+| **3** | [docs/THEORY.md](docs/THEORY.md) | The specification: every model derived from its general form, what was rejected on the way, and its limitations |
+| **3** | [docs/VALIDATION.md](docs/VALIDATION.md) | The 77 gates, what each is checked *against*, and how to add one |
 
-**To run it** - [SETUP.md](SETUP.md) for the environment, then
-[docs/OPERATIONS.md](docs/OPERATIONS.md) for every command and the app's controls. For
-measuring something rather than watching it, [docs/EXPERIMENTS.md](docs/EXPERIMENTS.md)
-covers study design, and [docs/SCENARIOS.md](docs/SCENARIOS.md) covers writing a scenario or
-adding a unit type.
-
-**To check whether it is right** - [docs/VALIDATION.md](docs/VALIDATION.md) lists every gate
-and what it is checked *against*, and each design page states the limitations its model
-accepts.
-
-**To see how it got this way** - [docs/DESIGN.md](docs/DESIGN.md) is the build log: the
-order things were built, the decisions behind them, and the findings that had to be
-corrected.
-
-### Two numbering schemes, and what they mean
+### Two numbering schemes
 
 The prose leans on both, so they are worth thirty seconds up front:
 
-- **§N.M** - a section of the design spec, e.g. §10.2 is fire allocation. The map from § to
-  page is [docs/design/README.md](docs/design/README.md), and the numbers are referenced from
-  ~300 places in the source, which is why they are never renumbered.
-- **V1-V77** - a *validation gate*: one property checked against a closed form or a
-  documented invariant. V25 is "zero risk weight gives the shortest path". Run
-  `cargo run -p validation --release --bin validation_report` to print all of them with the
-  reference each is checked against.
+- **§N.M** - a section of [docs/THEORY.md](docs/THEORY.md); §10.2 is fire allocation. Referenced
+  from over four hundred places in the source, which is why sections are never renumbered.
+- **V1-V77** - a *validation gate*: one property checked against a closed form or a documented
+  invariant. V25 is "zero risk weight gives the shortest path".
 
-Neither is a hierarchy that has to be learned. They are just stable names, so that a claim made
-in one place can be checked in another.
+Neither is a hierarchy to be learned. They are stable names, so a claim made in one place can be
+checked in another.
 
 ## Layout
 
@@ -133,16 +100,13 @@ crates/app/          Bevy front-end: tactical map, pan/zoom, egui control panel
 crates/experiments/  headless studies: batch, sweep, factorial, sensitivity
 crates/validation/   the V1-V77 gates, checked through the public API only
 scenarios/           TOML scenarios and the unit/weapon/sensor stat blocks
-docs/                the spec, the gates, and how to run things
+studies/             dial-space designs for global sensitivity analysis
+docs/                the five documents above
 ```
 
-The dependency arrows only point one way. **`sim_core` never depends on `app` or on Bevy** -
-that boundary is what keeps the maths independently testable and the simulation runnable
-headless, and it is the one rule in the project that is never bent.
-
-Inside `sim_core`, `sim/` is the engine that drives everything else. The model code around
-it - `sensing.rs`, `fires.rs`, `movement.rs` - is pure functions with no state, which is
-what lets the validation crate check each one in isolation.
+The dependency arrows only point one way. **`sim_core` never depends on `app` or on Bevy** - that
+boundary is what keeps the maths independently testable and the simulation runnable headless, and
+it is the one rule in the project that is never bent.
 
 ## Quick start
 
@@ -152,6 +116,11 @@ cargo run -p app -- air_raid           # open a named scenario from scenarios/
 cargo test --workspace                 # the engine tests and the validation gates
 cargo run -p validation --release --bin validation_report   # the gate table
 ```
+
+The first build compiles the Bevy engine and takes several minutes; iterative rebuilds are
+seconds.
+
+Then ask it something:
 
 ```
 # Does coordinating fires matter, and by how much?
@@ -167,33 +136,24 @@ cargo run -p experiments --release --bin sweep -- fire_allocation \
   sim.allocation = optimal     -12.430 +- 0.231 (t = -53.8, n = 2000, 323 tied) significant
 ```
 
-Coordinating clears the enemy ~12.8 s sooner, far outside the noise. Solving the assignment
+Coordinating clears the enemy about 12.8 s sooner, far outside the noise. Solving the assignment
 *optimally* rather than greedily is **worse** - by 0.405 ± 0.051 s when the two are compared
-against each other directly (t = 8.0). Not a bug: the allocation objective scores a single
-epoch, so solving it exactly is myopically right and can be worse over a whole engagement
-than a greedy rule that happens to spread fire. That is the useful kind of negative result,
-and it only exists because the greedy baseline was kept rather than deleted once the optimal
-solver worked.
+against each other directly (t = 8.0). Not a bug: the allocation objective scores a single epoch,
+so solving it exactly is myopically right and can be worse over a whole engagement than a greedy
+rule that happens to spread fire. That is the useful kind of negative result, and it only exists
+because the greedy baseline was kept rather than deleted once the optimal solver worked.
 
-The first build compiles the Bevy engine and takes several minutes; iterative rebuilds are
-seconds. See [docs/OPERATIONS.md](docs/OPERATIONS.md) for everything else.
+See [docs/GUIDE.md](docs/GUIDE.md) for everything else.
 
 ## Status
 
-The model covers terrain and line of sight, sensing and detection, direct and indirect
-fires, suppression and attrition, movement as dynamic programming, a game-theoretic layer,
-electronic warfare with partial observability, air and counter-air, a decision layer closing
-sensing to action, command and control as a placed asset, SEAD, directed targeting, and
-movement decisions taken inside the loop. Alongside it sits a study harness for batch runs,
-sweeps, factorial designs and global sensitivity analysis. All 77 validation gates hold.
+The model covers terrain and line of sight, sensing and detection, direct and indirect fires,
+suppression and attrition, movement as dynamic programming, a game-theoretic layer, electronic
+warfare with partial observability, air and counter-air, a decision layer closing sensing to
+action, command and control as a placed asset, SEAD, directed targeting, and movement decisions
+taken inside the loop. Alongside it sits a study harness for batch runs, sweeps, factorial designs
+and global sensitivity analysis. All 77 validation gates hold.
 
-Each design page states the limitations its model accepts. The largest open one is that the
-fire-allocation objective scores a single epoch, which is measurably what costs the optimal
-solver against a greedy rule ([§10.2](docs/design/10-the-decision-layer.md)).
-
-## A note on scope
-
-This models force-on-force dynamics at an abstract, doctrinal level - detection
-probabilities, suppression states, attrition rates - using invented parameters chosen to
-exercise the mathematics. It is a study of operational-research methods, not a source of
-real-world capability data, and it is not calibrated against any real system.
+Each theory section states the limitations its model accepts. The largest open one is that the
+fire-allocation objective scores a single epoch, which is measurably what costs the optimal solver
+against a greedy rule ([§10.6](docs/THEORY.md#106-the-planning-horizon-and-what-the-optimal-versus-greedy-gap-is-made-of)).
