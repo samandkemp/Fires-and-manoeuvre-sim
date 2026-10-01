@@ -817,8 +817,7 @@ over the cell graph *is* the dynamic-programming solution here. Lives in `moveme
 An 8-connected grid graph, where each edge costs
 
 $$
-c(\text{from} \to \text{to}) = c_{\text{move}}(\text{from}, \text{to}) + w \cdot
-\text{risk}(\text{to})
+c(\text{from} \to \text{to}) = c_{\text{move}}(\text{from}, \text{to}) + w \cdot \text{risk}(\text{to})
 $$
 
 `move_cost` is the §1.3 terrain edge cost - mean mobility times slope factor times distance,
@@ -909,8 +908,7 @@ linear-programming dependency.
 **Convergence is self-certifying.** The value is bracketed by
 
 $$
-v_{\text{low}} = \min_j \big(x^{\mathsf{T}}A\big)_j \le v \le \max_i \big(Ay\big)_i =
-v_{\text{high}}
+v_{\text{low}} = \min_j \big(x^{\mathsf{T}}A\big)_j \le v \le \max_i \big(Ay\big)_i = v_{\text{high}}
 $$
 
 - Blue's guarantee below, Red's above - and the gap $v_{\text{high}} - v_{\text{low}}$ shrinks
@@ -1410,8 +1408,9 @@ $$
 P(\text{kill by } t) = 1 - e^{-\lambda_k t}
 $$
 
-**Missile - discrete shoot-look-shoot.** A launch takes $t_f = r_{\text{slant}} /
-\text{missile\_speed}$ to arrive, then resolves as a Bernoulli trial with single-shot kill
+**Missile - discrete shoot-look-shoot.** A launch takes
+$t_f = r_{\text{slant}} / \text{missile\_speed}$
+to arrive, then resolves as a Bernoulli trial with single-shot kill
 probability $p$; a miss is followed by $t_r$ reload before the next launch. Shots-to-kill is
 Geometric($p$), and the time to the $N$-th arrival is $N t_f + (N-1) t_r$, so
 
@@ -1616,8 +1615,7 @@ Replaces the nearest-enemy rule with a side-wide assignment, solved once per epo
 before anyone shoots. For shooter $i$ and slot $k$ of target $j$,
 
 $$
-\text{payoff}\big[i\big]\big[(j,k)\big] = q(i,j)\cdot \text{value}(j)\cdot \big(1 -
-\bar{q}(j)\big)^{k}
+\text{payoff}\big[i\big]\big[(j,k)\big] = q(i,j)\cdot \text{value}(j)\cdot \big(1 - \bar{q}(j)\big)^{k}
 $$
 
 **$q(i,j)$ is the fraction of the target destroyed this epoch**, from the existing fires model -
@@ -2032,8 +2030,9 @@ drone" from "pile onto this one", which is the entire job it is there to do. Tha
 observed while building V59, not theorised.
 
 One consequence reads as counter-intuitive and is worth stating plainly rather than hiding: a
-bomber seconds from release has a *short* window and therefore a *low* $P(\text{kill before
-release})$, so it scores below a recce drone the battery can comfortably catch. That is the
+bomber seconds from release has a *short* window and therefore a *low*
+$P(\text{kill before release})$, so it scores below a recce drone the battery can
+comfortably catch. That is the
 formulation being self-consistent, not a bug - maximising expected value destroyed says shoot
 what you can still stop, and a bomber past the point of interception is a lost cause. Whether it
 is the *right* objective is a separate question; making `value` reflect imminent harm, rather
@@ -2571,8 +2570,7 @@ variance each dial is responsible for. Two estimators, in the standard two-stage
 
 **Morris elementary effects**, first, because it is cheap. $\mu^*$ ranks dials by how much they
 move the answer and $\sigma$ flags one whose effect depends on where the others are. Its job is to
-say what can be *ignored* before the expensive pass runs. Cost is $(k+1) \times
-\text{trajectories}$.
+say what can be *ignored* before the expensive pass runs. Cost is $(k+1) \times \text{trajectories}$.
 
 **Sobol indices**, second, as a variance decomposition from Saltelli sampling:
 

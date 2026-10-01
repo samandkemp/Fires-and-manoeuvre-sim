@@ -373,8 +373,7 @@ At each epoch, `maintain_tracks` asks whether a sensor would expect to glimpse t
 again during the next epoch:
 
 $$
-\text{refresh if } 1 - e^{-\lambda_{\text{eff}} \cdot \text{epoch\_s}} \ge
-\text{track\_maintain\_p}
+\text{refresh if } 1 - e^{-\lambda_{\text{eff}} \cdot \text{epoch\_s}} \ge \text{track\_maintain\_p}
 $$
 
 Two design points that are easy to miss.
@@ -474,13 +473,11 @@ vertical aiming errors are independent, hitting it is a product of two one-dimen
 integrals:
 
 $$
-P_{\text{hit}} = \mathrm{erf}\!\left(\frac{W}{2\sigma\sqrt2}\right) \cdot
-\mathrm{erf}\!\left(\frac{H}{2\sigma\sqrt2}\right)
+P_{\text{hit}} = \mathrm{erf}\!\left(\frac{W}{2\sigma\sqrt2}\right) \cdot \mathrm{erf}\!\left(\frac{H}{2\sigma\sqrt2}\right)
 $$
 
 $$
-P_{\text{kill}} = P_{\text{hit}} \times p_{\text{kill|hit}} \times (1 - \text{cover}) \times
-\text{suppression factor}
+P_{\text{kill}} = P_{\text{hit}} \times p_{\text{kill|hit}} \times (1 - \text{cover}) \times \text{suppression factor}
 $$
 
 For an `afv_cannon` (0.5 mrad, `p_kill_given_hit` 0.7) against an `afv` (3.2 m by 2.8 m):
@@ -514,8 +511,7 @@ The expected damage, averaged over where the round actually lands, has a **close
 Gaussian convolved with a Gaussian:
 
 $$
-\mathbb{E}[D](d) = \frac{R_L^2}{\sigma^2 + R_L^2}\exp\!\left(\frac{-d^2}{2(\sigma^2 +
-R_L^2)}\right)
+\mathbb{E}[D](d) = \frac{R_L^2}{\sigma^2 + R_L^2}\exp\!\left(\frac{-d^2}{2(\sigma^2 + R_L^2)}\right)
 $$
 
 **That closed form is why this kernel was chosen.** A simpler cookie-cutter lethality disc would
@@ -585,8 +581,9 @@ recce drone is simply a mobile elevated observer with no special case anywhere.
 Air defence answers them with two engagement models, because **time-to-kill is distributed
 differently** in each:
 
-- **Gun or CIWS** (Close-In Weapon System) is a Poisson kill process. $\text{TTK} \sim
-  \text{Exp}(\lambda_k)$ - structurally the same as the glimpse model, so it inherits its
+- **Gun or CIWS** (Close-In Weapon System) is a Poisson kill process.
+  $\text{TTK} \sim \text{Exp}(\lambda_k)$ - structurally the same as the glimpse model,
+  so it inherits its
   tick-size invariance.
 - **Missile** is discrete shoot-look-shoot. Shots-to-kill is Geometric($p$), with flight time
   $t_f$ and reload $t_r$.
