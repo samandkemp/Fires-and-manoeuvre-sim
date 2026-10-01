@@ -55,7 +55,7 @@ catalogue.
 
 **The identity discipline is the one to understand**, because it is what has made nine phases of
 additions safe. Every phase since the third is *appended* to the loop and draws **zero** random
-numbers when its inputs are empty. So a scenario with no aircraft produces the same event log, byte
+numbers when its inputs are empty. Consequently, a scenario with no aircraft produces the same event log, byte
 for byte, that it did before the air model existed: not approximately, but exactly. Adding a subsystem
 cannot silently perturb an existing result, and if it did, a gate fails immediately rather than a
 finding quietly rotting.
@@ -90,7 +90,7 @@ Grouped by the [`docs/THEORY.md`](THEORY.md) section each gate constrains.
 **This table is generated.** It is emitted from `validation::gates::GATES` by
 `validation_report --markdown`, and `crates/validation/tests/catalogue.rs` asserts the
 correspondence between that catalogue and the suite **in both directions**: every gate names a
-test that exists, and every `vNN_*` test appears in the catalogue. So the published table cannot
+test that exists, and every `vNN_*` test appears in the catalogue. Therefore, the published table cannot
 claim a gate the tests do not enforce, and cannot omit one they do. Edit
 [`crates/validation/src/gates.rs`](../crates/validation/src/gates.rs), never this table.
 

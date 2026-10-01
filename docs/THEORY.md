@@ -912,7 +912,7 @@ v_{\text{low}} = \min_j \big(x^{\mathsf{T}}A\big)_j \le v \le \max_i \big(Ay\big
 $$
 
 - Blue's guarantee below, Red's above, and the gap $v_{\text{high}} - v_{\text{low}}$ shrinks
-to zero. So the algorithm reports its own error rather than being run for a fixed number of
+to zero. As a result, the algorithm reports its own error rather than being run for a fixed number of
 iterations and hoped over.
 
 ### 6.3 The interdiction payoff
@@ -1296,7 +1296,7 @@ ground-against-ground bit-identical, at the price of two range rules that disagr
 Rejected: one convention, documented.
 
 **Terrain effects on an airborne target.** Concealment and cover are properties of the cell a
-target *stands in*, and an airborne target is not in one. So an air target contributes
+target *stands in*, and an airborne target is not in one. Consequently, an air target contributes
 $\text{concealment} = 0$ to the §3.2 rate and $\text{cover} = 0$ to damage. Canopy
 transmittance $\tau$ is *not* waived: it is a property of the sightline, so a low drone seen
 through a belt of woods is attenuated exactly as §1.4 says.
@@ -1631,7 +1631,7 @@ $$
 \qquad \theta = \text{rof} \times p_{\text{kill|hit}} \times \text{max\_range}
 $$
 
-So an unscored stat block still ranks sensibly – a unit is worth its size, doubled if it is the
+Therefore, an unscored stat block still ranks sensibly – a unit is worth its size, doubled if it is the
 most dangerous thing on the field – and doctrine ("kill the radar first") can be stated when
 wanted. Per *element*, so a half-destroyed unit is correctly worth less.
 
@@ -1687,7 +1687,7 @@ shooters that can all reach all four targets – over 2,000 paired seeds:
 **Coordinating is worth about 17%**, unambiguously, and the mechanism is the spread: the old rule
 sent every gun at the nearest target while three others stood untouched.
 
-**Solving the assignment optimally is measurably worse than greedy**: by **0.405 ± 0.051 s**
+However, **solving the assignment optimally is measurably worse than greedy**: by **0.405 ± 0.051 s**
 ($t = 8.0$) when the two are compared directly against each other rather than each against
 `independent`. They agree outright on 96% of seeds; the cost is concentrated in the 4% where they
 diverge. §10.6 traces that to the bottom, and it is not a defect in the solver.
@@ -1726,7 +1726,7 @@ and each steerable sensor takes the facing maximising the gain. Sensors with no 
 see all round and have nothing to choose.
 
 **Why it is affordable.** The expensive part of a detection rate is the line-of-sight walk, and
-**line of sight does not depend on facing**: only the field-of-regard gate does. So the per-cell
+**line of sight does not depend on facing**: only the field-of-regard gate does. Therefore, the per-cell
 rate is computed once per sensor with the arc removed, cached against the pose it was built for,
 and each of the twelve candidate facings is then a cheap arc mask over that raster. Without this,
 one epoch would cost a viewshed per facing per sensor.
@@ -1750,7 +1750,7 @@ epoch after the first and there is nothing to buy by approximating, and V57 stay
 real geometry.
 
 A carried sensor still has nothing to *steer*: it faces where its airframe points, and
-`sync_carried_sensors` would overwrite any choice made here on the next tick. So it contributes
+`sync_carried_sensors` would overwrite any choice made here on the next tick. As a result, it contributes
 coverage without participating in the facing decision.
 
 **Off by default (`[sim] sensor_tasking`).** A `facing_deg` written in a scenario is a statement
@@ -1795,7 +1795,7 @@ Declaring both is a load error in the §7.6 family: neither "plan then ignore th
 
 **Per unit, deliberately, not a `[sim]` switch.** Two things follow. The identity holds by
 *construction*: a scenario with no objective builds no planner and computes no raster, so there
-is nothing to switch off (V72). And a scripted unit and a planning unit can share one map on one
+is nothing to switch off (V72). Moreover, a scripted unit and a planning unit can share one map on one
 seed, which makes control and treatment a single trial rather than two runs that have to be
 trusted to differ in only one way.
 
@@ -1898,7 +1898,7 @@ Closing it properly would mean optimising the thing that actually matters: the p
 not a linear assignment problem and Kuhn-Munkres cannot express it. An additive objective over
 slots can never encode a makespan.
 
-So the honest position is that V56 holds, the solver is correct, the objective is a reasonable
+Consequently, the honest position is that V56 holds, the solver is correct, the objective is a reasonable
 surrogate, and **the surrogate's structure – not its coefficients – is what costs the 0.45 s**.
 Optimising a surrogate harder does not improve what the surrogate stands for.
 
@@ -1976,7 +1976,7 @@ $$
 r_{\text{eff}} = r_{\text{coord}} \cdot g(\text{post})
 $$
 
-where $g$ is `ew::jamming_factor` evaluated at the post. So an enemy jammer near the post does
+where $g$ is `ew::jamming_factor` evaluated at the post. Therefore, an enemy jammer near the post does
 not flip the link off: it shrinks it, and the batteries on the flanks fall out of the net while
 the one sitting on top of the post keeps talking. That is the right shape: a link degrades with
 range against a noise floor, and raising the floor is what a jammer does. It also gives the raid
@@ -2023,7 +2023,7 @@ not urgently.
 
 The window is capped at a **planning horizon of 60 s**, for two reasons, the second concrete.
 Beyond about a minute, "how long this target will linger" stops discriminating usefully, since
-the defence will have reconsidered many times. And an uncapped window runs to hundreds of seconds
+the defence will have reconsidered many times. Further to this, an uncapped window runs to hundreds of seconds
 for a distant loiterer, which drives $P(\text{kill})$ to 1 for *every* pairing; the
 diminishing-return discount $(1-p)^k$ then collapses to 1 and stops separating "cover another
 drone" from "pile onto this one", which is the entire job it is there to do. That degeneracy was
@@ -2221,7 +2221,7 @@ silent_cep_m   = 400.0   # against a silent one
 
 `WeaponType::cep_against(emitting)` is the single place that decides, and for anything without the
 flag it returns `cep_m` whatever the emitter is doing: a dumb shell's accuracy does not depend on
-what its target is transmitting. So every existing munition is an exact identity (§7.4), and an
+what its target is transmitting. Therefore, every existing munition is an exact identity (§7.4), and an
 ARM (Anti-Radiation Missile) with no `silent_cep_m` stated falls back to `cep_m`, meaning
 declaring the flag alone changes nothing until the degradation is given a number.
 
@@ -2239,7 +2239,7 @@ sent at one is flying blind by definition rather than by omission.
 not free: the radar is **off**, so the battery detects nothing through it, cues nothing with it
 and contributes no coverage. It can still be handed a track by some *other* sensor over the net –
 that is what `self_cue` governs, and the two are separate flags for exactly this reason – but a
-battery whose radar was its only sensor is simply blind. So the defender chooses: **survive the
+battery whose radar was its only sensor is simply blind. As a result, the defender chooses: **survive the
 missile, or see the raid coming.** Not both.
 
 Measured on `scenarios/sead_arm.toml`, 500 paired seeds: EMCON (Emission Control) takes batteries
@@ -2282,7 +2282,7 @@ This joins the two halves of §12.3. Switching a radar off already made an ARM m
 hides the battery from artillery. **One decision, three consequences**, and the cost stays what
 §12.3 said it was.
 
-**Direct fire is unchanged:** line of sight and range, no track. So going silent hides a battery
+**Direct fire is unchanged:** line of sight and range, no track. Consequently, going silent hides a battery
 from the guns behind the hill, not from the tank looking at it.
 
 **Value has no derivation across classes.** A unit's is
@@ -2350,7 +2350,7 @@ It is not how a force fights. A gun crew does not hold a kill-probability table.
 **orders** – engage air defence before manoeuvre, shoot the command post first, counter-battery
 takes precedence – and it follows them whether or not the shot in front of it is a good one.
 
-So a declared priority here is **strict by default**: a shooter that can reach anything in a
+Therefore, a declared priority here is **strict by default**: a shooter that can reach anything in a
 higher tier takes it, even at a worse kill probability than a lower tier offers. That is not a
 crude approximation of the optimiser; it is a different decision rule, and for a directed force
 a more faithful one.
@@ -2373,7 +2373,7 @@ Four things, checked in this order, all equally valid:
 
 **There is no "no doctrine".** A side always has one; omitting the block gives
 `priority = ["all"]`, a single tier holding every target and ranked among itself by the ordinary
-payoff, which *is* the undirected behaviour. So the engine has **one** code path rather than
+payoff, which *is* the undirected behaviour. Therefore, the engine has **one** code path rather than
 two, and the identity with the pre-doctrine model holds by construction rather than by a
 separate branch that has to be kept honest. `"all"` is usable mid-list too, which makes the
 bottom tier explicit: `["c2", "air_defence", "all"]` reads as the fire plan it is.
@@ -2470,7 +2470,7 @@ three locked guns would look as attractive to a fourth as an untouched one.
 **Measured** on `scenarios/kill_chain.toml`, 500 paired seeds over 20 s: armour-first gives 1.42
 armour elements destroyed and 0 posts; c2-first gives 0.00 and 0.60 ($t = -21.7$ and $+27.2$).
 
-And an unobvious result worth keeping: **batteries killed comes out lower under the
+In addition, an unobvious result worth keeping: **batteries killed comes out lower under the
 air-defence-first plan.** A tank must be *found* – first detection around 3.5 s – while an
 emitting battery is locatable from tick one (§12.4), so even the armour-first plan opens on the
 battery because nothing else is visible yet. **Doctrine ranks what you can see; it cannot rank
@@ -2511,7 +2511,7 @@ Looping it over seeds therefore varies the map and the luck together, and the re
 sources of variance that answer different questions.
 
 Every study builds the terrain **once per worker, from the scenario's own `default_seed`**, and
-calls `Sim::reset_to_scenario` between trials. So the map is held fixed and the question is "what
+calls `Sim::reset_to_scenario` between trials. As a result, the map is held fixed and the question is "what
 happens on *this* map, on average". Averaging over maps is a fair question, just a different one,
 and it is asked by sweeping `default_seed` itself.
 
@@ -2605,7 +2605,7 @@ defender's cue latency does, which is not what §9.5's emphasis on the cueing ti
 you to guess. **The sensor barely matters**, which retrospectively explains why sweeping its
 glimpse rate over a twentyfold range moved leakage by only 0.176: it is not the binding constraint
 here. **`track_hold_s` is exactly inert**, because the engagement resolves faster than the
-shortest hold time in the range. And the first-order total of **0.990** says the dials are
+shortest hold time in the range. Moreover, the first-order total of **0.990** says the dials are
 additive on this scenario, which is a licence for every one-at-a-time sweep run on it.
 
 ### 14.4 Interactions

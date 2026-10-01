@@ -152,7 +152,7 @@ sightline. Jam the observer and the guns behind the hill go quiet, while the tar
 perfectly alive. Direct fire is the exact mirror: it needs a sightline and no track at all.
 
 **An unseen enemy still changes where you go.** The movement risk raster is built from the
-enemy's *sensor coverage*, not from where the enemy is known to be. So a sensor placed across
+enemy's *sensor coverage*, not from where the enemy is known to be. Therefore, a sensor placed across
 a route changes the route even if it never detects anything.
 
 **Killing the radar blinds the network, not just the battery.** An organic radar is an ordinary
@@ -290,7 +290,7 @@ Before any of that, three gates can zero it outright:
 3. **Line of sight.** Hard-blocked by ground or a building, nothing.
 
 Order matters for speed: the range check is a couple of arithmetic operations, the
-line-of-sight walk crosses the whole grid. So the cheap gates run first.
+line-of-sight walk crosses the whole grid. Therefore, the cheap gates run first.
 
 ### Worked example
 
@@ -352,7 +352,7 @@ taller would that mast have to be" is answered by the same query that answers "c
   $z + f$.
 - **Actor height** $h$: eye or mast height above the ground beneath it.
 
-So a unit in woods sits at $z + h$, **under** the canopy at $z + f$: it can see out from
+As a result, a unit in woods sits at $z + h$, **under** the canopy at $z + f$: it can see out from
 beneath its own trees. Urban blocks hard; trees attenuate, accumulating $\tau = e^{-\kappa L}$
 over the canopy length crossed.
 
@@ -424,7 +424,7 @@ That asymmetry is why sensing matters. Artillery cannot fire at what nobody is w
 sensor that loses its track silences the guns behind it.
 
 **Step 3: work out the shot once.** Range, hit probability and dispersion depend only on
-shooter, target and weapon, none of which change during the burst. So they are computed once,
+shooter, target and weapon, none of which change during the burst. Consequently, they are computed once,
 and the round loop only rolls dice.
 
 **Step 4: fire the rounds.**
@@ -441,7 +441,7 @@ lose half your output, which is precisely what makes an aimed-fire duel reproduc
 ### What a side has been told to shoot first
 
 The allocation above is what an *omniscient optimiser* would do. A gun crew does not hold a
-kill-probability table; it holds orders. So a side may declare a **doctrine** – a priority list
+kill-probability table; it holds orders. Therefore, a side may declare a **doctrine** – a priority list
 naming asset ids, roles or whole classes – and by default it is **strict**: a shooter that can
 reach anything in a higher tier takes it, even at a worse shot than a lower tier offers.
 
@@ -619,7 +619,7 @@ W_{\text{eff}} = \max\big(0,\ W - \max(0,\ L + R - D)\big), \qquad L^* = W + D -
 $$
 
 Latency costs nothing until $L + R$ outruns $D$: a cue that aged through the network while the
-drone was still inbound arrives ready. And the critical latency $L^*$ rises one second per
+drone was still inbound arrives ready. Further to this, the critical latency $L^*$ rises one second per
 second of early warning, so **early-warning range and comms latency trade directly against each
 other**.
 
@@ -635,7 +635,7 @@ one fire-control net. Air defence does not, and that difference is deliberate.
 
 A **C2 post** is a placed asset with a coordination radius. Air-defence batteries inside a live
 friendly post's radius solve one assignment together; batteries outside each take whatever is
-nearest. So coordination is something you have to **field**, position, and can **lose**, not a
+nearest. Therefore, coordination is something you have to **field**, position, and can **lose**, not a
 setting.
 
 Killing a post costs the defender **no firepower at all**. What it costs is the coordination:
@@ -648,7 +648,7 @@ that follow. Measured on `ad_c2.toml` over 500 paired seeds, the effect is not r
 | With C2 | 9.92 | **3.65** |
 
 Coordination buys **ammunition**, not kills: the coordinated defence finishes with four and a
-half times the reserve, having achieved slightly more. And the reason is sharper than
+half times the reserve, having achieved slightly more. Moreover, the reason is sharper than
 "coordination is good":
 
 > A gun is a Poisson process, so two batteries on one target simply **add their kill rates**.

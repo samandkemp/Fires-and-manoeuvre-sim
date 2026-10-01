@@ -355,7 +355,7 @@ This split is the heart of the data model.
 - **Scenarios** – `default.toml`, `air_raid.toml`, `kill_chain.toml` and the rest – say **where
   things are**. Each placement names a `type` from a library.
 
-So this, in `units.toml`:
+Therefore, this, in `units.toml`:
 
 ```toml
 [afv]
@@ -620,7 +620,7 @@ can sort on it.
 
 Roles never mask classes. An entry in a priority list may name an **id** (`"red-cp"`), a **role**
 (`"armour"`), a **class** (`unit`, `air_defence`, `c2`, `air`), or **`"all"`**, and
-`"air_defence"` still matches a battery whose role is `"point_defence"`. So inventing a role can
+`"air_defence"` still matches a battery whose role is `"point_defence"`. As a result, inventing a role can
 only add precision, never take it away.
 
 ## 6. Building a scenario
@@ -929,7 +929,7 @@ seed. Looping it over seeds therefore varies the map and the luck together, and 
 averages two sources of variance that answer different questions.
 
 Every study here builds the terrain **once per worker, from the scenario's own `default_seed`**,
-and resets between trials. So the map is held fixed and the question is "what happens on *this*
+and resets between trials. Consequently, the map is held fixed and the question is "what happens on *this*
 map, on average". It is also far faster: terrain generation is seconds, a trial is microseconds.
 
 To average over maps – a fair question, just a different one – sweep `default_seed` itself:
@@ -1140,7 +1140,7 @@ meaning, unit and theory section, so the second stage does not have to be retype
 
 **What it leaves out, and says so.** Flags and named choices have no gradient and no midpoint –
 `optimal` is not halfway between `greedy` and `independent` – so they are excluded and *listed*
-rather than silently dropped. They belong in a `factorial`. So are dials whose current value is
+rather than silently dropped. They belong in a `factorial`. Therefore, are dials whose current value is
 zero, since a relative range around nothing is nothing.
 
 ### 12.6 `findings` - do the documented numbers still hold?
@@ -1209,7 +1209,7 @@ If an effect is not visible at 2,000 seeds it is small enough that the honest an
 ### 13.1 What the columns mean
 
 Every metric is read back from the simulation's own event logs and final state, never accumulated
-alongside it as it runs. So there is no second bookkeeping path to drift: if a metric is wrong,
+alongside it as it runs. Therefore, there is no second bookkeeping path to drift: if a metric is wrong,
 the log is wrong, and the app's event feed is showing the same wrong thing.
 
 | Column | Meaning |
@@ -1253,7 +1253,7 @@ Measured on a twelve-thread machine, release build:
 | `batch --only air_raid --seeds 2000` | 2,000 | 8.1 s | 248/s |
 | `sweep fire_allocation` (3 arms, 500 seeds) | 1,500 | 0.3 s | 4,715/s |
 
-A trial costs microseconds; **building the terrain costs seconds**. So the seed list is cut into
+A trial costs microseconds; **building the terrain costs seconds**. As a result, the seed list is cut into
 exactly one chunk per worker thread, and each worker builds one simulation and resets it between
 trials. Every worker builds terrain from `default_seed`, so all workers get the **same** map.
 
@@ -1302,7 +1302,7 @@ nothing.
 drones. Stacking is not free even when ammunition is not the binding constraint, because a battery
 committed to an airframe another battery has already covered is not covering a different one.
 
-So on this scenario the default of 2 is defensible but unearned. Whether that holds when batteries
+Consequently, on this scenario the default of 2 is defensible but unearned. Whether that holds when batteries
 are scarcer relative to the raid is the next question, and it is one `--set` away.
 
 ### 14.1 A stat-block dial: what is a better sensor worth?
