@@ -3,7 +3,7 @@
 Everything needed to set the model up, drive it, build situations for it, and get a number
 out of it that can be defended. It assumes no Rust and no prior contact with the codebase.
 
-This is the working document - if you are using the model rather than reading about it, you
+This is the working document, if you are using the model rather than reading about it, you
 should be able to stay on this page. [`docs/MODEL.md`](MODEL.md) explains how the thing works
 and why; [`docs/REFERENCE.md`](REFERENCE.md) is the lookup table for every field and dial;
 [`docs/THEORY.md`](THEORY.md) derives the mathematics. This page tells you what to type.
@@ -12,12 +12,12 @@ and why; [`docs/REFERENCE.md`](REFERENCE.md) is the lookup table for every field
 > real munition or sensor performance data.** The models are the product; the numbers are
 > knobs. Nothing here is calibrated against any real system.
 
-**Part 1 - Getting it running**
+**Part 1: Getting it running**
 - [1. Setting up](#1-setting-up)
 - [2. Running the app](#2-running-the-app)
 - [3. Driving the app](#3-driving-the-app)
 
-**Part 2 - Building situations**
+**Part 2: Building situations**
 - [4. The two kinds of file](#4-the-two-kinds-of-file)
 - [5. Adding a type](#5-adding-a-type)
 - [6. Building a scenario](#6-building-a-scenario)
@@ -26,14 +26,14 @@ and why; [`docs/REFERENCE.md`](REFERENCE.md) is the lookup table for every field
 - [9. The kill chain](#9-the-kill-chain)
 - [10. Loading and checking](#10-loading-and-checking)
 
-**Part 3 - Getting numbers out**
+**Part 3: Getting numbers out**
 - [11. Study design: the two rules](#11-study-design-the-two-rules)
 - [12. The study tools](#12-the-study-tools)
 - [13. Reading the output](#13-reading-the-output)
 - [14. A worked study, end to end](#14-a-worked-study-end-to-end)
 - [15. Keeping findings honest](#15-keeping-findings-honest)
 
-**Part 4 - Maintaining it**
+**Part 4: Maintaining it**
 - [16. Testing, linting, releasing](#16-testing-linting-releasing)
 - [17. Extending the harness](#17-extending-the-harness)
 - [18. Troubleshooting](#18-troubleshooting)
@@ -51,12 +51,12 @@ order; each step ends with a check, so you know it worked.
 
 Rust is installed through `rustup`, which manages compiler versions for you.
 
-**Windows** - download and run `rustup-init.exe` from <https://rustup.rs>. It will tell you it
+**Windows**: download and run `rustup-init.exe` from <https://rustup.rs>. It will tell you it
 needs the **Visual Studio C++ Build Tools**, the MSVC linker. Let it guide you, or install
 "Desktop development with C++" from the Visual Studio Installer first. This is required: Rust
 links through the MSVC toolchain on Windows.
 
-**macOS and Linux** - run
+**macOS and Linux**: run
 
 ```
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
@@ -77,12 +77,12 @@ rustup default stable
 
 VSCode extensions, from the Extensions panel:
 
-- **rust-analyzer** (rust-lang) - *essential*. The language server: autocomplete, inline
+- **rust-analyzer** (rust-lang): *essential*. The language server: autocomplete, inline
   types, go-to-definition, error highlighting. This is 90% of the experience.
-- **CodeLLDB** (Vadim Chugunov) - debugger with breakpoints, cross-platform.
-- **Even Better TOML** - syntax and validation for `Cargo.toml` and the scenario files.
-- **Dependi** - shows latest crate versions inline in `Cargo.toml`.
-- **Error Lens** - optional, but prints errors inline on the line rather than only
+- **CodeLLDB** (Vadim Chugunov) – debugger with breakpoints, cross-platform.
+- **Even Better TOML** – syntax and validation for `Cargo.toml` and the scenario files.
+- **Dependi** – shows latest crate versions inline in `Cargo.toml`.
+- **Error Lens** – optional, but prints errors inline on the line rather than only
   underlining them, which is a real help early on.
 
 Recommended workspace settings (Ctrl/Cmd+Shift+P, "Preferences: Open Workspace Settings
@@ -97,7 +97,7 @@ Recommended workspace settings (Ctrl/Cmd+Shift+P, "Preferences: Open Workspace S
 ```
 
 That runs Clippy, Rust's linter, on save and auto-formats with `rustfmt`. Take Clippy's advice
-seriously - it teaches idiomatic Rust as you go.
+seriously: it teaches idiomatic Rust as you go.
 
 Always open the **project root folder**, not a single file, so rust-analyzer can see the whole
 workspace.
@@ -121,27 +121,27 @@ Fast iterative builds are already configured in the repository, so there is noth
   macOS needs nothing).
 - The app enables Bevy's `dynamic_linking` feature, which massively speeds up rebuilds.
 
-**Remove `dynamic_linking` before making a release build** - it produces a binary that will not
+**Remove `dynamic_linking` before making a release build**: it produces a binary that will not
 run elsewhere. See [Testing, linting, releasing](#16-testing-linting-releasing).
 
 ### 1.4 The network caveat
 
 This machine's connection drops sustained TLS downloads mid-stream, and rustup, cargo and VSIX
 downloads are all affected. `~/.cargo/config.toml` sets `net.retry = 10` and disables HTTP/2
-multiplexing. If a large download fails anyway, **retry** - resume loops work.
+multiplexing. If a large download fails anyway, **retry**: resume loops work.
 
 ### 1.5 Learning Rust alongside
 
 The audience for this project is not assumed to know Rust, and none of Part 2 or Part 3 requires
-it - scenarios and studies are TOML and command lines. If you do want to read the engine, Rust's
+it: scenarios and studies are TOML and command lines. If you do want to read the engine, Rust's
 ownership model is the thing that makes it feel alien at first, and it is worth an hour before
 you start rather than an afternoon of confusion in the middle.
 
-- **The Rust Book** - <https://doc.rust-lang.org/book> - chapters 1-10, especially 4 (Ownership)
+- **The Rust Book** – <https://doc.rust-lang.org/book> – chapters 1-10, especially 4 (Ownership)
   and 10 (Generics and Traits). The single best resource, and free.
-- **Rustlings** - <https://github.com/rust-lang/rustlings> - small in-terminal exercises; the
+- **Rustlings** – <https://github.com/rust-lang/rustlings> – small in-terminal exercises; the
   fastest way to make the concepts stick.
-- **Bevy Quick Start** - <https://bevy.org/learn/quick-start> - only needed for the app crate.
+- **Bevy Quick Start** – <https://bevy.org/learn/quick-start> – only needed for the app crate.
   `sim_core`, where all the maths lives, has no Bevy in it at all.
 
 Non-obvious Rust idioms in this codebase carry a one-line comment saying why they are there, so
@@ -156,7 +156,7 @@ cargo run -p validation --release --bin validation_report
 ```
 
 That last one is the interesting check. It runs all 77 validation gates and prints each one
-beside **the closed form it is checked against** - which is the artefact worth showing someone
+beside **the closed form it is checked against**, which is the artefact worth showing someone
 who asks whether the model is any good.
 
 ## 2. Running the app
@@ -169,7 +169,7 @@ cargo run -p app -- path/to/mine.toml  # or by path, for one kept elsewhere
 
 An unknown name prints the scenarios it could have opened rather than failing obscurely. The
 in-app **scenario** dropdown lists every file in `scenarios/` that parses as a scenario and
-switches between them live - terrain, forces and all, no restart.
+switches between them live: terrain, forces and all, no restart.
 
 ### The bundled scenarios
 
@@ -233,15 +233,15 @@ big it is: real time accumulates into a budget which is spent in whole `dt_s` ti
 and 60× produce the same event log, and the slow one is a magnifying glass rather than a
 different experiment.
 
-**Breakpoints matter more than they sound.** The moments worth seeing - first contact, a
-casualty, a missile away - last a single tick, so slowing down is not enough on its own; it
+**Breakpoints matter more than they sound.** The moments worth seeing – first contact, a
+casualty, a missile away – last a single tick, so slowing down is not enough on its own; it
 also requires looking at the right pixel at the right moment. A breakpoint stops the clock on
 the tick that tripped it.
 
 ### 3.2 Placing assets
 
 Every asset class can be placed for **either** force: pick what to place, then pick the side it
-joins. The counter-sensing fight - positioning to see without being seen - is the point of the
+joins. The counter-sensing fight – positioning to see without being seen – is the point of the
 tool, so it has to be something the map can express rather than only a scenario file.
 
 | Mode | Places |
@@ -317,7 +317,7 @@ worth typing, and setting up six related ones is an afternoon of remembering dot
 | **Finished** | What each run reported, with the command that produced it |
 
 **It shows the command it will run**, live, as the form is filled in, and refuses to queue a
-study that is malformed - naming what to fix rather than only what is wrong. The failure worth
+study that is malformed: naming what to fix rather than only what is wrong. The failure worth
 preventing is a batch left running overnight whose third run had no second value to compare
 against.
 
@@ -350,9 +350,9 @@ Rust.
 
 This split is the heart of the data model.
 
-- **Libraries** - `units.toml`, `weapons.toml`, `sensors.toml`, `air.toml`, `air_defence.toml`,
-  `c2.toml`, `terrain_types.toml` - say **what things are**. One entry per type.
-- **Scenarios** - `default.toml`, `air_raid.toml`, `kill_chain.toml` and the rest - say **where
+- **Libraries** – `units.toml`, `weapons.toml`, `sensors.toml`, `air.toml`, `air_defence.toml`,
+  `c2.toml`, `terrain_types.toml` – say **what things are**. One entry per type.
+- **Scenarios** – `default.toml`, `air_raid.toml`, `kill_chain.toml` and the rest – say **where
   things are**. Each placement names a `type` from a library.
 
 So this, in `units.toml`:
@@ -382,7 +382,7 @@ route = [[5600.0, 6400.0], [4300.0, 5200.0]]
 Change `element_count` in the library and **every** `afv` in every scenario changes. That is the
 point: numbers are dials to be turned, never values baked into code.
 
-A scenario is told apart from a library by *being parseable as a scenario* - it needs a `name`
+A scenario is told apart from a library by *being parseable as a scenario*: it needs a `name`
 and a `[terrain]` block, which no library has. There is no hard-coded list of scenario names
 anywhere, so adding a library never confuses the app's picker or the batch runner.
 
@@ -409,15 +409,15 @@ loads with those libraries empty, so an older scenario set still works.
 Two of these repay thought.
 
 **`signature` is a table, not a number**, so adding acoustic or EO/IR sensing later means adding
-a key - `acoustic = 0.8` for a vehicle with a generator running - rather than a schema change.
+a key – `acoustic = 0.8` for a vehicle with a generator running – rather than a schema change.
 
 **`value` is usually better left out.** Omitted, it is derived as
 $\text{elements} \times (1 + \theta/\theta_{\max})$, where threat $\theta$ comes from rate of
-fire, kill probability and reach - so a stat block with no score is still ranked sensibly by the
+fire, kill probability and reach, so a stat block with no score is still ranked sensibly by the
 allocator. Declare it to say something the derivation cannot, such as "the radar matters more
 than its firepower suggests".
 
-**Worked example.** A light reconnaissance vehicle - fast, well-armed for its size, hard to see:
+**Worked example.** A light reconnaissance vehicle: fast, well-armed for its size, hard to see:
 
 ```toml
 # units.toml
@@ -458,7 +458,7 @@ cep_m = 90.0               # circular error probable
 lethal_radius_m = 40.0     # the Carleton kernel's scale
 ```
 
-**Direct fire needs line of sight; indirect fire does not** - it needs a *track*, meaning
+**Direct fire needs line of sight; indirect fire does not**: it needs a *track*, meaning
 somebody on the same side has seen the target and the track has not lapsed. That asymmetry is
 the whole difference between the two classes at the decision layer, and it is why an artillery
 scenario needs an observer to be worth anything.
@@ -499,7 +499,7 @@ $\lambda = \lambda_0 f(r) \sigma \tau (1-c)$ with $f(r) = 1/(1 + (r/r_{1/2})^n)$
 `lambda0_per_s` sets the ceiling and `range_half_m` sets where it collapses.
 
 **`for_width_deg` is what makes a sensor taskable.** A sensor with a finite field of regard can
-only watch a slice of the map, so *where it points* is a decision - and it is the only kind of
+only watch a slice of the map, so *where it points* is a decision, and it is the only kind of
 sensor the tasking layer has anything to do with. An all-round sensor has nothing to task.
 
 ### 5.4 A drone
@@ -522,18 +522,18 @@ release_range_m = 2500.0      # standoff distance
 optical = 0.35
 ```
 
-- `sensor = "uas_optical"` instead makes it a recce platform - the sensor rides the airframe,
+- `sensor = "uas_optical"` instead makes it a recce platform: the sensor rides the airframe,
   seeing from its altitude and facing its heading.
 - `munitions` and `expendable` span the spectrum in two dials: a reusable carrier drops several
   and flies on; a one-way attack munition carries one and dies with it.
 - **`max_turn_rate_deg_s` is load-bearing, not decoration.** It is a rate limit on heading, so a
-  drone asked to fly a 90° corner cannot - it flies an arc of radius $v/\omega$, arriving late
+  drone asked to fly a 90° corner cannot: it flies an arc of radius $v/\omega$, arriving late
   and displaced. That error is exactly what an air-defence engagement window is made of.
 - **`release_range_m` and the defending battery's `max_range_m` are a matched pair.** Set release
   inside the gun's bubble and the drone must fly through it; set it outside and the long-range SAM
   (Surface-to-Air Missile) and its cueing chain are what matter. This is the single most
   consequential number in a counter-air scenario, and getting it wrong is how you build a scenario
-  that measures nothing - see [Troubleshooting](#18-troubleshooting).
+  that measures nothing: see [Troubleshooting](#18-troubleshooting).
 
 ### 5.5 An air-defence battery
 
@@ -568,7 +568,7 @@ reload_s = 8.0                # E[TTK] = t_f/p + (1/p - 1) * reload_s
 **A gun and a missile fail differently, not just at different rates.** A gun grinds continuously
 (Poisson), so stacking two batteries on a target simply adds kill rates and wastes nothing. A
 missile is a discrete round, so overkill is real. That is why coordination pays for missiles and
-barely registers for guns - a result worth reproducing before trusting any counter-air
+barely registers for guns: a result worth reproducing before trusting any counter-air
 conclusion.
 
 **Omitting `sensor` is a modelling statement**, not an oversight: a battery with no organic radar
@@ -591,7 +591,7 @@ optical = 0.85                # deliberately high
 ```
 
 The signature is high on purpose. A command post concentrates antennas and vehicles, which is
-what makes it findable - and **being findable is the point**, because it is the asset an attacker
+what makes it findable, and **being findable is the point**, because it is the asset an attacker
 most wants to kill first. Killing it costs no battery, no magazine and no envelope; it costs only
 the coordination.
 
@@ -619,7 +619,7 @@ Every stat block may carry a `role`, a free-form string. It exists for one purpo
 can sort on it.
 
 Roles never mask classes. An entry in a priority list may name an **id** (`"red-cp"`), a **role**
-(`"armour"`), a **class** (`unit`, `air_defence`, `c2`, `air`), or **`"all"`** - and
+(`"armour"`), a **class** (`unit`, `air_defence`, `c2`, `air`), or **`"all"`**, and
 `"air_defence"` still matches a battery whose role is `"point_defence"`. So inventing a role can
 only add precision, never take it away.
 
@@ -653,8 +653,8 @@ type = "afv"
 pos = [4800.0, 1250.0]
 ```
 
-That is a complete, runnable scenario. `[sim]` and both forces are optional - every dial has a
-default - so the minimum is a `name`, a `[terrain]` block and something to look at.
+That is a complete, runnable scenario. `[sim]` and both forces are optional – every dial has a
+default – so the minimum is a `name`, a `[terrain]` block and something to look at.
 
 **Positions are world metres, not cells.** A 700 by 300 grid at 10 m per cell is 7 km by 3 km, so
 `pos = [4800.0, 1500.0]` sits 4.8 km east and centred north-south. X is east, Y is north, and the
@@ -678,13 +678,13 @@ actually reach for.
 | `p_suppress` | 0.15 | Chance one near miss steps suppression up |
 
 **Four of them are switches back to older behaviour**, which is how one model gets isolated from
-another - and that is usually what you want when designing a study:
+another, and that is usually what you want when designing a study:
 
 - **`allocation = "independent"`** restores the rule where every shooter picked the nearest enemy
   for itself. Comparing it against `optimal` is what a `sim.allocation` sweep measures, and the
   answer is that coordinating is worth about 17% off the time to clear the enemy while
   *optimality* over greedy is worth slightly less than nothing.
-- **`track_hold_s`** set towards the run length recovers permanent detection - useful for studying
+- **`track_hold_s`** set towards the run length recovers permanent detection: useful for studying
   fires without tracks lapsing underneath them.
 - **`sensor_tasking`** is off by default, so a `facing_deg` you write is taken as meant. Turn it
   on to let sensors search, but note that it dissolves any scenario whose premise is a *committed*
@@ -723,17 +723,17 @@ woodland = { fraction = 0.32, patch_scale_m = 450.0 }
 urban = { blocks = 5, min_size_m = 250.0, max_size_m = 500.0 }
 ```
 
-**Layers apply in the order written** - urban after woodland leaves urban, and the reverse does
-not - and all draw from one seeded stream, so a recipe plus a seed always reproduces the same map.
+**Layers apply in the order written** – urban after woodland leaves urban, and the reverse does
+not – and all draw from one seeded stream, so a recipe plus a seed always reproduces the same map.
 `base` is `flat` or `hills`; `apply` may be empty. `mountain_pass.toml` is a worked example.
 
 The key inside `[[terrain.source.layers.apply]]` is **`apply`**, not `features`. Mistyping it used
 to be silently ignored, producing a flat map where a ridge was intended; the schema now rejects
 it.
 
-Two forms deserve their reputations. **`flat` is the right choice for a validation fixture** - it
+Two forms deserve their reputations. **`flat` is the right choice for a validation fixture**: it
 takes terrain out of the answer entirely, so anything measured is the model you intended to
-measure. And **`preset` is the right choice for *a* map rather than *this* map** - when you want
+measure. And **`preset` is the right choice for *a* map rather than *this* map**: when you want
 representative ground and do not care about its particulars.
 
 **Terrain build is the expensive part of a run**, seconds against microseconds for a trial. That
@@ -796,16 +796,16 @@ pos = [5400.0, 1500.0]
 
 Five of these carry more meaning than they look like they do.
 
-**`target = { unit = "..." }` resolves across units, air-defence batteries and C2 posts** - one
-namespace - so sending a strike drone at a SAM needs no special syntax. The key stayed `unit` for
+**`target = { unit = "..." }` resolves across units, air-defence batteries and C2 posts** – one
+namespace – so sending a strike drone at a SAM needs no special syntax. The key stayed `unit` for
 compatibility; `asset` is the clearer alias and means the same thing.
 
-**A unit has a `route` or an `objective`, never both** - declaring both is a load error. A route
+**A unit has a `route` or an `objective`, never both**: declaring both is a load error. A route
 is scripted and followed exactly; an objective is planned toward, re-solved each decision epoch
 against what the unit's side knows about enemy sensors, so a sensor placed across the way changes
 where it goes. `risk_weight` is the exchange rate: at `0` the unit takes the short way regardless
 of who is watching. **Sweeping it on one unit while another follows a fixed route is how the trade
-between arriving quickly and arriving alive gets measured** - control and treatment on the same
+between arriving quickly and arriving alive gets measured**: control and treatment on the same
 map and the same seed.
 
 **`self_cue` and `emitting` are two different decisions**, and they were once one flag. `self_cue
@@ -813,7 +813,7 @@ map and the same seed.
 still runs, still detects, and can still be homed on by an anti-radiation missile. `emitting =
 false` is EMCON (Emission Control): the radar is off, so the battery detects nothing through it
 and an ARM (Anti-Radiation Missile) has nothing to ride. Measured, going dark costs a battery its
-whole contribution - zero detections, zero shots - in exchange for surviving the missile.
+whole contribution – zero detections, zero shots – in exchange for surviving the missile.
 
 **`altitude_ref` decides whether terrain can mask a drone.** `agl` follows the ground and rides
 over ridges; `amsl` holds a constant height above sea level and is masked by anything taller. Same
@@ -826,7 +826,7 @@ explicit `target` always wins.
 
 ## 9. The kill chain
 
-A side **always** has a fire plan. Omitting the block gives `priority = ["all"]` - one tier
+A side **always** has a fire plan. Omitting the block gives `priority = ["all"]`: one tier
 holding everything, ranked by the ordinary payoff, which *is* the undirected behaviour. Declare
 one and it is **followed**:
 
@@ -840,7 +840,7 @@ shooter = "gun-a"
 target = "red-cp"
 ```
 
-**`strict` means a shooter that can reach a higher tier takes it even at a worse shot** - a crew
+**`strict` means a shooter that can reach a higher tier takes it even at a worse shot**: a crew
 follows orders, not a kill-probability table. `weighted` scales value by tier instead, so doctrine
 biases the optimisation without overriding it. The difference is exactly the cost of directive
 control against optimal control, and it is measurable:
@@ -849,7 +849,7 @@ control against optimal control, and it is measurable:
 sweep <scn> --param blue.doctrine.mode --values strict,weighted --seeds 1000 --metric red_cleared_s
 ```
 
-**A name matching nothing is a load error** listing what would have worked - because a tier that
+**A name matching nothing is a load error** listing what would have worked, because a tier that
 silently matches nothing is a doctrine nobody is following.
 
 Two rules stop a fire plan wasting ammunition. **Line of sight and range block a pairing**, so a
@@ -872,15 +872,15 @@ An unknown name prints the ones that would have worked.
 
 **Two classes of mistake are caught at load rather than in the results.**
 
-**Unknown keys are rejected.** Nearly every dial has a default, so a misspelt one - `track_hold`
-for `track_hold_s` - used to parse perfectly, take the default, and quietly change what the
+**Unknown keys are rejected.** Nearly every dial has a default, so a misspelt one – `track_hold`
+for `track_hold_s` – used to parse perfectly, take the default, and quietly change what the
 scenario meant. Every schema now sets `deny_unknown_fields`, so the loader refuses it and names
 the key.
 
 **Values the model cannot run on are rejected.** `dt_s = 0` never advances the clock and
 `epoch_s = 0` makes the epoch count infinite, and both hang rather than failing. Probabilities
 must lie in $[0,1]$, durations and radii must not be negative, and the two stat-block dials that
-reach a divisor - a sensor's `range_half_m`, an indirect weapon's `lethal_radius_m` - must be
+reach a divisor – a sensor's `range_half_m`, an indirect weapon's `lethal_radius_m` – must be
 positive, because a zero there gives `NaN` and the subsystem goes silently *inert* rather than
 visibly wrong.
 
@@ -894,7 +894,7 @@ cargo run -p experiments --release --bin sweep -- my_scenario \
     --param sim.track_hold_s --values 10,20,45,90 --seeds 500
 ```
 
-`--param` patches any dotted path - scenario **or** stat-block library - into the TOML before it
+`--param` patches any dotted path – scenario **or** stat-block library – into the TOML before it
 is parsed, and the result goes through exactly the same validation as a file on disk.
 
 ### Seeds
@@ -932,7 +932,7 @@ Every study here builds the terrain **once per worker, from the scenario's own `
 and resets between trials. So the map is held fixed and the question is "what happens on *this*
 map, on average". It is also far faster: terrain generation is seconds, a trial is microseconds.
 
-To average over maps - a fair question, just a different one - sweep `default_seed` itself:
+To average over maps – a fair question, just a different one – sweep `default_seed` itself:
 
 ```
 sweep default --param default_seed --values 1,2,3,4,5 --seeds 400
@@ -968,7 +968,7 @@ separate errors do not combine the way a paired difference does.
 
 On the allocation comparison, greedy and optimal differ by **0.405 ± 0.051** measured directly,
 but read off their shared `independent` baseline the gap looks like 0.4 against standard errors of
-about 0.23 - five times noisier, and enough to hide a real effect completely. To compare two other
+about 0.23: five times noisier, and enough to hide a real effect completely. To compare two other
 arms, **re-run with one of them first**.
 
 ## 12. The study tools
@@ -999,7 +999,7 @@ cargo run -p experiments --release --bin batch -- scenarios --only air_raid --se
 Writes `out/<scenario>.csv`, a row per seed with every metric, and `out/summary.csv`, a row per
 scenario with mean and standard error. `.gitignore` already covers `out/` and `*.csv`.
 
-`batch` compares **scenarios**. It is the regression sweep - run it after a change to see whether
+`batch` compares **scenarios**. It is the regression sweep: run it after a change to see whether
 anything moved that should not have. To compare **dials**, use `sweep`.
 
 ### 12.2 `sweep` - one dial, many values
@@ -1040,7 +1040,7 @@ The override is applied to the **TOML, before it is parsed**. Three consequences
 - The patched scenario goes through **exactly the same loader** as a file on disk, so an
   out-of-range value fails the same way rather than reaching the simulation.
 
-A dial absent from the file - most of them, since nearly all have a default - is created. That is
+A dial absent from the file – most of them, since nearly all have a default – is created. That is
 safe because `deny_unknown_fields` is set throughout: `sim.track_hold` for `sim.track_hold_s` is a
 load error naming the key, not a silent default.
 
@@ -1054,7 +1054,7 @@ rebuilds terrain. A legitimate question, just a slower and noisier one.
 ### 12.3 `factorial` - several dials at once
 
 `sweep` answers *what does this dial do*. `factorial` answers *what do these dials do, and does
-either one's answer depend on the other* - a different question, and on this model it has more
+either one's answer depend on the other*: a different question, and on this model it has more
 than once been the more important one.
 
 ```
@@ -1072,8 +1072,8 @@ cargo run -p experiments --release --bin factorial -- fires_c2 \
 Every combination of levels is a **cell**, and every cell runs the same seed set. Cost is the
 product of the level counts: three two-level factors is eight cells.
 
-It reports **main effects** first, each averaged over every level of the other factors - so a
-factor is described by what it does across the design, not at one corner of it - and
+It reports **main effects** first, each averaged over every level of the other factors – so a
+factor is described by what it does across the design, not at one corner of it – and
 **interactions** second, as the difference of differences formed per seed.
 
 **The closing line says whether any interaction is significant, and that decides whether the main
@@ -1081,7 +1081,7 @@ effects above may be read on their own.** If two dials interact, "this one is wo
 sentence with a missing clause.
 
 A factor may have more than two levels. Main effects are then reported per level against the
-baseline, and the interaction is the corner-to-corner contrast across each factor's **range** - a
+baseline, and the interaction is the corner-to-corner contrast across each factor's **range**: a
 summary rather than the whole surface. The per-cell CSV holds the rest.
 
 ### 12.4 `sensitivity` - which dials drive the answer at all?
@@ -1098,20 +1098,20 @@ each dial is responsible for.
 cargo run -p experiments --release --bin sensitivity -- studies/sensing.toml --seeds 20
 ```
 
-**The dial space is a file, not a pile of flags**, because it is a design - something to commit,
+**The dial space is a file, not a pile of flags**, because it is a design: something to commit,
 review and re-run. See [`studies/README.md`](../studies/README.md) for the format.
 
 It reports **Morris** first, because it is cheap: `mu*` ranks dials by how much they move the
 answer, `sigma` flags one whose effect depends on where the others are. Its job is to say what can
 be ignored before the expensive pass runs. Then **Sobol**, as a variance decomposition: `S1` is
 what a dial explains alone, `ST` what it is involved in altogether, and `ST − S1` the share
-running *through* interactions - which is exactly what a one-dial sweep cannot see.
+running *through* interactions, which is exactly what a one-dial sweep cannot see.
 
 **The closing line adds the first-order indices up.** Near 1 means the dials are additive and
 one-at-a-time sweeps are sound. Well below 1 means most of the variance lives in interactions, and
 a sweep will mislead.
 
-A slightly **negative** `S1` means "indistinguishable from zero" - the estimator is unbiased
+A slightly **negative** `S1` means "indistinguishable from zero": the estimator is unbiased
 rather than non-negative, and clamping it would hide how noisy a near-zero index is.
 
 **Cost** is `(morris points + sobol points) × seeds`, and `--seeds` is deliberately modest: a
@@ -1121,7 +1121,7 @@ design point is an average over seeds, and the variance being decomposed is the 
 ### 12.5 `meta` - screening all the dials
 
 `sweep`, `factorial` and `sensitivity` all need to be *told* which dials to vary, which assumes
-the interesting dials are already known - the assumption most worth testing.
+the interesting dials are already known: the assumption most worth testing.
 
 ```
 cargo run -p experiments --release --bin meta -- air_raid --metric air_leakers
@@ -1138,8 +1138,8 @@ two-stage practice is standard, and it is what the tools are shaped for.
 `--emit FILE` writes the screened dial space as a `studies/*.toml`, each row carrying the dial's
 meaning, unit and theory section, so the second stage does not have to be retyped.
 
-**What it leaves out, and says so.** Flags and named choices have no gradient and no midpoint -
-`optimal` is not halfway between `greedy` and `independent` - so they are excluded and *listed*
+**What it leaves out, and says so.** Flags and named choices have no gradient and no midpoint –
+`optimal` is not halfway between `greedy` and `independent` – so they are excluded and *listed*
 rather than silently dropped. They belong in a `factorial`. So are dials whose current value is
 zero, since a relative range around nothing is nothing.
 
@@ -1154,8 +1154,8 @@ Re-runs every finding in [`findings.toml`](../findings.toml) and reports any who
 has moved outside the tolerance its author set. Exits non-zero on drift, so it can be run on a
 schedule and noticed.
 
-`--quick` cuts the seeds to a tenth. That is enough to catch a finding that has *broken* - a
-renamed dial, a deleted scenario, an inverted sign - and far too few to judge drift, which is what
+`--quick` cuts the seeds to a tenth. That is enough to catch a finding that has *broken* – a
+renamed dial, a deleted scenario, an inverted sign – and far too few to judge drift, which is what
 it says when it finishes.
 
 This is not a `cargo test`: the full pass is around 18,000 trials. Run it before a release or
@@ -1164,7 +1164,7 @@ overnight, not on every edit.
 ### 12.7 The bespoke probes and the benchmarks
 
 Each answers one question its own way and prints a table. They are kept because each does
-something `sweep` and `factorial` cannot - search over *positions*, solve a game, or print a
+something `sweep` and `factorial` cannot: search over *positions*, solve a game, or print a
 closed form beside the measurement.
 
 ```
@@ -1180,7 +1180,7 @@ cargo run -p experiments --release --bin fires_bench  # the fires path alone
 ```
 
 `bench` also reports the line-of-sight memo hit rate. **Terrain build time is the figure that
-matters** - the simulation tick is sub-millisecond and too noisy to optimise against. The fires
+matters**: the simulation tick is sub-millisecond and too noisy to optimise against. The fires
 path gets its own bench because the tick bench is too sensing-dominated to resolve it.
 
 ## 13. Reading the output
@@ -1189,15 +1189,15 @@ path gets its own bench because the tick bench is too sensing-dominated to resol
 sim.allocation = greedy      -12.835 +- 0.224 (t = -57.2, n = 2000, 311 tied) significant
 ```
 
-- **`-12.835`** - the mean paired difference against the *first* arm, in the metric's units.
-- **`+- 0.224`** - its standard error. Roughly, the true value is within about two of these.
-- **`t = -57.2`** - mean divided by standard error. $|t| > 2$ is the line this harness calls
+- **`-12.835`** – the mean paired difference against the *first* arm, in the metric's units.
+- **`+- 0.224`** – its standard error. Roughly, the true value is within about two of these.
+- **`t = -57.2`** – mean divided by standard error. $|t| > 2$ is the line this harness calls
   significant, two-sided at about 5%. At 57 there is nothing to argue about.
-- **`311 tied`** - seeds where the two arms gave *exactly* the same number.
+- **`311 tied`**: seeds where the two arms gave *exactly* the same number.
 - **`significant` / `NOT significant`**.
 
 **The tie count is the part people skip, and it is the most informative field.** A small
-difference with a *high* tie count means the two arms are mostly making the same decision - a
+difference with a *high* tie count means the two arms are mostly making the same decision: a
 different conclusion from "the effect is real but hard to see". When every arm ties on every seed,
 the report says so explicitly, because "no significant effect" reads as evidence of no effect when
 it is usually evidence that **the dial does not reach the metric in this scenario at all**.
@@ -1234,7 +1234,7 @@ Two repay attention.
 **`*_cleared_s` is usually the metric that answers "was this better?"** Losses saturate: if
 everything on one side dies by 600 s in every arm, `red_losses` is the same number everywhere and
 only the *time* distinguishes them. That is how the allocation result had to be measured. A side
-that was never cleared reports the run length, so read it with the kill counts beside it - `600`
+that was never cleared reports the run length, so read it with the kill counts beside it: `600`
 means "not by 600 s", not "at 600 s". A side fielding no ground units also reports the run length;
 there was nothing to clear.
 
@@ -1291,11 +1291,11 @@ cargo run -p experiments --release --bin sweep -- ad_c2 \
 Read it in three parts.
 
 **Cap 4 is exactly cap 3**, because the scenario has three batteries. That is the harness
-confirming it is measuring what it claims to - and it is worth looking for that kind of sanity
+confirming it is measuring what it claims to, and it is worth looking for that kind of sanity
 check in every study.
 
 **The second battery buys nothing and costs a quarter of a round.** −0.002 kills against a
-standard error of 0.007 is a null result at 2,500 paired seeds - not "too small to see", genuinely
+standard error of 0.007 is a null result at 2,500 paired seeds, not "too small to see", genuinely
 nothing.
 
 **The third battery is actively worse**: it costs 0.64 rounds of reserve *and* kills 0.028 fewer
@@ -1324,7 +1324,7 @@ cargo run -p experiments --release --bin sweep -- air_raid \
 
 A twentyfold better sensor stops a quarter of the leakers. **Note the shape**: the first doubling
 is worth nothing measurable, and it takes a factor of seven before the effect clears the noise.
-That is what $P = 1 - e^{-\lambda \Delta t}$ looks like from the outside - the sensor is not the
+That is what $P = 1 - e^{-\lambda \Delta t}$ looks like from the outside: the sensor is not the
 binding constraint until it is bad enough to be one, and after that each increment matters less
 than the last.
 
@@ -1334,7 +1334,7 @@ A measured finding is a claim about a model at a moment. The model then changes,
 something re-runs the claim, a number that was right when written goes on being quoted after it
 stopped being true.
 
-`findings.toml` pins each documented claim to the paired comparison that produced it - scenario,
+`findings.toml` pins each documented claim to the paired comparison that produced it: scenario,
 dial, two arms, metric, seeds, the expected difference and a tolerance:
 
 ```toml
@@ -1420,7 +1420,7 @@ Four edits, all in [`crates/experiments/src/metrics.rs`](../crates/experiments/s
 4. Bump `N`.
 
 `COLUMNS` and `values()` are tied together by the array length `N`, so forgetting one of them will
-not compile. Fill the field in `run_one` **from the simulation's logs or final state** - that is
+not compile. Fill the field in `run_one` **from the simulation's logs or final state**: that is
 the rule that keeps the metrics honest.
 
 Everything else picks it up automatically: both CSVs, the summary, and `--metric <name>`.
@@ -1460,11 +1460,11 @@ silent gap.
 - **Two-way interactions only.** `factorial` reports every pair of factors; a three-way
   interaction is in the per-cell CSV but not in the report.
 - **Sensitivity dials are continuous only.** A range is a pair of numbers, so a categorical dial
-  like `sim.allocation` has no place in a study file - use `factorial` for those.
+  like `sim.allocation` has no place in a study file: use `factorial` for those.
 - **A sensitivity study may not vary terrain.** Terrain is built once for the whole design, so a
   terrain dial would ask for a map it does not get.
 - **`--seeds N` always means seeds `0..N`**, so two studies at different `N` share a prefix rather
-  than being independent. That is deliberate - it is what makes arms pairable - but it means "run
+  than being independent. That is deliberate – it is what makes arms pairable – but it means "run
   1,000 more seeds" is `--seeds 2000`, not a second run.
 - **No confidence intervals on quantiles**, only on means.
 

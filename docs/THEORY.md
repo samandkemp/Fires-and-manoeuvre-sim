@@ -11,8 +11,8 @@ numbers and the code path for each. **Read those first.** This page is where you
 you want to know *why* an equation has the form it does, what was rejected on the way to it,
 and what it is checked against.
 
-It is one file on purpose. The `§N.M` references scattered through the source - roughly five
-hundred of them - resolve here, and landing on the right section of one document beats
+It is one file on purpose. The `§N.M` references scattered through the source – roughly five
+hundred of them – resolve here, and landing on the right section of one document beats
 landing on a table of contents that then sends you somewhere else.
 
 ---
@@ -51,14 +51,14 @@ several phases had each added to it.
   inputs are empty, so each new subsystem reduces to an exact identity when switched off
   (§7.4).
 - **Validated before optimised.** No model is made fast until it has a gate against a closed
-  form. Where that meant keeping a slow reference - the brute-force viewshed, the fixed-step
-  line-of-sight oracle, the greedy allocator - the reference is kept.
+  form. Where that meant keeping a slow reference – the brute-force viewshed, the fixed-step
+  line-of-sight oracle, the greedy allocator – the reference is kept.
 - **Dials are data.** Every number is a TOML dial with a default; these sections state the
   functional form, not the value. The dials themselves are catalogued in
   [`docs/REFERENCE.md`](REFERENCE.md).
 - **Placeholder parameters throughout.** No weapon, sensor or unit number here is real
   performance data. The models are the product; the numbers are knobs.
-- **Notation.** Mathematics is LaTeX; backticks name something in the source tree - a file, a
+- **Notation.** Mathematics is LaTeX; backticks name something in the source tree: a file, a
   function, a TOML dial. So `move_cost` sits in backticks beside the equation's
   $c_{\text{move}}$, and a symbol carries a gloss naming the dial it corresponds to, because
   that is what ties a formula to the schema. Rust doc comments stay in Unicode, since
@@ -75,7 +75,7 @@ Seven bodies of theory, each doing a job the others cannot. This section is the 
 each one out against the particular problem it is put to.
 
 Seven here, six in the README: information-gain control (§0.7) is separated out from partial
-observability because it is a *control* objective rather than an inference one - it decides where
+observability because it is a *control* objective rather than an inference one: it decides where
 to look, where the belief filter only decides what to think. The README folds the two together,
 which is the right summary for a front page and the wrong distinction to lose here.
 
@@ -90,7 +90,7 @@ which is the right summary for a front page and the wrong distinction to lose he
 | Information-gain control | maximise $H(b) - \mathbb{E}[H(b')]$ over the available looks | belief-driven sensor tasking | §10.3 | V57 |
 
 The simulation loop is **hybrid continuous/discrete**. Between decision epochs the state
-integrates continuously; at each epoch the discrete decisions are set - what to shoot, where
+integrates continuously; at each epoch the discrete decisions are set: what to shoot, where
 to move, where to look. That split is not a convenience, it is the structure: continuous
 dynamics are an optimal-control problem, the epoch-to-epoch choices are a dynamic program,
 and the two only compose cleanly if they are kept apart. §7.1 makes it concrete.
@@ -103,7 +103,7 @@ $$
 \dot{x} = f(x, u), \qquad u \in U(x)
 $$
 
-For an airframe the state is $x = (p, \psi, v)$ - position, heading, speed - and the binding
+For an airframe the state is $x = (p, \psi, v)$ – position, heading, speed – and the binding
 constraint is a **turn rate**, not a position:
 
 $$
@@ -141,7 +141,7 @@ c(x, u) = c_{\text{move}}(x, u) + w \cdot \text{risk}(u)
 $$
 
 Because every cost is non-negative there are no negative cycles, so Dijkstra returns $J^*$
-exactly - a label-setting value iteration, not an approximation of one. Full value iteration
+exactly: a label-setting value iteration, not an approximation of one. Full value iteration
 is held in reserve for when risk becomes time-varying and the one-sweep ordering no longer
 holds.
 
@@ -158,7 +158,7 @@ Four processes, each chosen so that it has a closed form to test against.
 **Detection is a rate**, never a per-tick probability, because memorylessness gives the exact
 identity $\prod_k e^{-\lambda \Delta t_k} = e^{-\lambda \sum_k \Delta t_k}$ for any
 subdivision of an interval. Halving $dt$ therefore cannot change the detection statistics. A
-per-tick probability would silently make the physics a function of the integrator - a class
+per-tick probability would silently make the physics a function of the integrator: a class
 of bug that is very hard to see and very easy to publish (§3.2, V17).
 
 **Fires are two Gaussians with two closed forms.** Direct fire hits a rectangular silhouette
@@ -173,8 +173,8 @@ mean first-passage time for free (§4.3).
 suite, because the law is an *emergent* property of the whole loop rather than of any one
 function (§4.1, V30).
 
-**Air defence uses two distributions for one job** - exponential for a gun, geometric for a
-missile - because they differ in shape and not merely in mean, so guns and missiles fail
+**Air defence uses two distributions for one job** – exponential for a gun, geometric for a
+missile – because they differ in shape and not merely in mean, so guns and missiles fail
 differently against a saturating raid (§9.4).
 
 Lives in `sensing.rs`, `weapon_effects.rs`, `suppression.rs`, `air_defence.rs`.
@@ -217,21 +217,21 @@ out of Bayes rather than being scripted. Worked out in §8; lives in `ew.rs` and
 
 Which shooter engages which target is an assignment problem, and solving it side-wide rather
 than shooter-by-shooter is the difference between three tanks all firing at the nearest enemy
-and three tanks covering three enemies. Expressing diminishing returns as extra *columns* -
-one slot per additional shooter, geometrically discounted - is what keeps this a plain linear
+and three tanks covering three enemies. Expressing diminishing returns as extra *columns* –
+one slot per additional shooter, geometrically discounted – is what keeps this a plain linear
 assignment, solvable optimally by Kuhn-Munkres, instead of a submodular problem needing a
 bespoke solver. Worked out in §10.2; lives in `allocation.rs`.
 
 A greedy allocator ships alongside, and earns its place by settling what the optimal solver
 is actually worth. It turns out to be worth slightly *less* than greedy, for a reason that is
-about the objective rather than the solver - §10.6 traces it to the bottom.
+about the objective rather than the solver: §10.6 traces it to the bottom.
 
 ### 0.7 Information-gain control - where to look
 
 Entropy is the control objective for the sensor-tasking layer: point each steerable sensor at
 the facing maximising the *expected* reduction in $H(b) = -\sum_s b(s) \log b(s)$. That
 closes the loop **sensing → belief → decision → action**, and produces an unscripted search
-pattern - each sensor drains its own belief out of ground it has cleared, so the
+pattern: each sensor drains its own belief out of ground it has cleared, so the
 best-information facing moves on by itself. Worked out in §10.3; lives in `sim/tasking.rs`.
 
 ### 0.8 Two properties that cut across all seven
@@ -245,7 +245,7 @@ best-information facing moves on by itself. Worked out in §10.3; lives in `sim/
 ---
 ## 1. Terrain and line of sight
 
-Everything downstream - fires, sensing, movement - reads terrain and calls line of sight, so
+Everything downstream – fires, sensing, movement – reads terrain and calls line of sight, so
 the conventions and the query contract here are the highest-blast-radius decisions in the
 project. Lives in `terrain.rs` and `los.rs`.
 
@@ -256,7 +256,7 @@ Fixed permanently, because changing one later would silently move every result.
 - **World frame:** metres, `f32`. **X = east, Y = north, Z = up.** Right-handed, and it
   agrees with Bevy 2D's Y-up, so the renderer never flips an axis. `f32` resolves about a
   millimetre at 10 km, which is ample at tactical extents.
-- **Grid:** an `ndarray::Array2<T>` indexed `[iy, ix]` - row `iy` is northing, column `ix` is
+- **Grid:** an `ndarray::Array2<T>` indexed `[iy, ix]`: row `iy` is northing, column `ix` is
   easting. **Origin at the south-west corner.** A larger index is always further east or
   north, so there is no inversion between grid, world and screen.
 - **Registration:** the stored value for cell $(i_x, i_y)$ is the quantity at the **cell
@@ -266,17 +266,17 @@ Fixed permanently, because changing one later would silently move every result.
   (`cell_center`, `world_to_cell`, `world_to_frac`). Any GIS raster with a north-west origin
   is flipped **once** at load, never inside a model.
 - **Cell size and extent** are scenario parameters. The default is $s = 10$ m over
-  $1000 \times 1000$ cells - a 10 by 10 km battlegroup frontage.
+  $1000 \times 1000$ cells: a 10 by 10 km battlegroup frontage.
 - **Determinism.** Terrain and line of sight are pure deterministic functions of their
   inputs. The only randomness is in seeded generation, drawn from the caller's `SimRng`.
 
 ### 1.2 The height model - three quantities, never conflated
 
-- **Ground elevation** $z(x,y)$ - bare earth, a DTM. Stored raster, bilinear between centres.
-- **Feature height** $f(x,y) \ge 0$ - canopy or building height *above ground*, effectively a
+- **Ground elevation** $z(x,y)$ – bare earth, a DTM. Stored raster, bilinear between centres.
+- **Feature height** $f(x,y) \ge 0$ – canopy or building height *above ground*, effectively a
   DSM minus the DTM. Per terrain type, from `terrain_types.toml`. The **blocking surface** is
   $z + f$.
-- **Actor height** $h \ge 0$ - eye, mast or turret height above the ground the actor stands
+- **Actor height** $h \ge 0$: eye, mast or turret height above the ground the actor stands
   on. An endpoint's absolute height is $z(\text{endpoint}) + h$.
 
 The consequence is that a unit *in* woods sits at $z + h$, under the canopy at $z + f$, not
@@ -289,8 +289,8 @@ height, which is why adding air required no change to the line-of-sight query at
 
 `TerrainGrid` owns every layer, so shape invariants live in one place:
 
-- `elevation_m: Array2<f32>` - bare earth $z$.
-- `terrain_type: Array2<TerrainType>` - `Open | Trees | Urban`, extensible, `u8` repr.
+- `elevation_m: Array2<f32>` – bare earth $z$.
+- `terrain_type: Array2<TerrainType>` – `Open | Trees | Urban`, extensible, `u8` repr.
 - **Derived and precomputed at construction** from the per-type dials, all cheap and pure:
   `feature_height_m` ($f$), `cover` $\in [0,1]$, `concealment` $\in [0,1]$, and
   `mobility_cost` $\ge 1$, where `f32::INFINITY` means impassable.
@@ -305,24 +305,24 @@ The shipped per-type dials, all placeholders:
 
 **Cover** reduces delivered damage; **concealment** reduces the detection rate; **mobility
 cost** multiplies movement cost. They are separate dials because they are separate physical
-facts - a wood conceals well and protects poorly, a built-up area does the reverse.
+facts: a wood conceals well and protects poorly, a built-up area does the reverse.
 
 **Terrain sources** sit behind a small seam so later ones are additive: analytic fixtures (flat
 from TOML; wall, ridge and hill built in tests, where they double as the line-of-sight validation
-terrains), and seeded procedural terrain, all drawn from one RNG stream in fixed order - relief,
+terrains), and seeded procedural terrain, all drawn from one RNG stream in fixed order: relief,
 then woods, then urban. Relief is a Gaussian-hill sum; woodland is a second hill-sum field
 thresholded at the quantile giving the requested fraction; urban is seeded rectangular blocks of
 roughly 200-500 m that override woodland. Real DEM (Digital Elevation Model) import is
 deliberately out of scope, but the seam keeps it a clean later addition.
 
 **Composable recipes.** `Flat` and `Hills` answer "give me a map"; they do not answer "give me
-*this* map". `TerrainSource::Layers` takes a **recipe** - a base surface plus ordered feature
-layers (`Ridge`, `Woodland`, `Urban`) - so a map can be described: rolling relief, a ridge
+*this* map". `TerrainSource::Layers` takes a **recipe** – a base surface plus ordered feature
+layers (`Ridge`, `Woodland`, `Urban`) – so a map can be described: rolling relief, a ridge
 through the middle, light urban. Each layer is a small deterministic operation over
 (elevation, terrain type) drawing from the one seeded stream, and **the written order is part
 of the contract**: layers apply in sequence, so urban over woodland leaves urban and the
-reverse does not. `TerrainSource::Preset` names common recipes - `rolling_hills`,
-`wooded_hills`, `light_urban`, `dense_urban`, `mountain_pass`, `flat_plain` - expanding to
+reverse does not. `TerrainSource::Preset` names common recipes – `rolling_hills`,
+`wooded_hills`, `light_urban`, `dense_urban`, `mountain_pass`, `flat_plain` – expanding to
 the same structure. Sugar, not a second mechanism, so a preset can always be copied out and
 adjusted.
 
@@ -338,11 +338,11 @@ s(g) = 1 + 4\max(0, g) + 1.5\max(0, -g),
 \qquad g = \frac{\Delta z}{\text{horizontal distance}}
 $$
 
-so **flat ground is the cheapest case and both gradients cost more** - ascent about 2.7 times
+so **flat ground is the cheapest case and both gradients cost more**: ascent about 2.7 times
 harder than descent, not descent for free. That is the intended reading: a steep descent is
 slow for a tracked vehicle, not an advantage. "Penalises uphill harder than downhill" is easy
 to misread as "downhill is cheaper than flat", so it is worth stating that it is not. The two
-constants are still `const` in `terrain.rs` rather than dials in a movement stat block - the
+constants are still `const` in `terrain.rs` rather than dials in a movement stat block: the
 one piece of data-drivenness §5 still owes.
 
 ### 1.4 Line of sight
@@ -360,7 +360,7 @@ $$
 $$
 
 **The same traversal takes a parabolic $\text{hgt}(s)$** for ballistic crest clearance. That
-closure is the reason line of sight need not be rewritten for indirect fire - it is why the
+closure is the reason line of sight need not be rewritten for indirect fire: it is why the
 signature takes a profile rather than two heights.
 
 **Algorithm.** Amanatides-Woo / DDA grid traversal from $a$ to $b$, visiting exactly the
@@ -411,7 +411,7 @@ consumes.
 
 **Brute force**, running `los` from the observer to every in-range cell. Correct by
 construction once `los` is validated, and it stays as the reference oracle any faster sweep
-must match. It has not needed replacing - two optimisation passes made brute force fast
+must match. It has not needed replacing: two optimisation passes made brute force fast
 enough, both bit-identical in output:
 
 | Pass | Change | Measured |
@@ -465,7 +465,7 @@ is a terrain gate and belongs here, not beside the air gates it was first writte
 Direct fire is line-of-sight-gated hit probability; indirect fire is ballistic dispersion plus
 area effect plus terrain interaction. Weapons are data-driven stat blocks in
 `scenarios/weapons.toml`, and a unit type may carry a `weapon` id. Every model here has a
-closed-form gate - this is where "the maths is the product" is most literally true. Lives in
+closed-form gate: this is where "the maths is the product" is most literally true. Lives in
 `weapon_effects.rs`.
 
 Each modelling choice below records the alternatives considered, because in most cases the
@@ -481,14 +481,14 @@ dispersion at range $r$ is $\sigma(r) = \text{dispersion\_mrad} \cdot r / 1000$ 
 `p_kill_given_hit`, lethality once a round strikes the silhouette; `moving_target_penalty`, a
 factor inflating $\sigma$ against a moving target.
 
-**Indirect:** `cep_m`, circular error probable, taken as constant with range - a dial, with
+**Indirect:** `cep_m`, circular error probable, taken as constant with range: a dial, with
 range-dependent CEP (Circular Error Probable) a documented later refinement; `lethal_radius_m`,
 the Carleton damage scale $R_L$.
 
 ### 2.2 The direct-fire hit model
 
 Requires `clear` line of sight and $r \le \text{max\_range}$. The round's impact scatters as
-an isotropic two-dimensional Gaussian about the aim point - the target centre - with standard
+an isotropic two-dimensional Gaussian about the aim point – the target centre – with standard
 deviation $\sigma(r)$. The target presents a rectangle of width $W$ in deflection, from the
 unit's `silhouette_width_m`, and height $H$ in elevation, from its `height_m`.
 
@@ -510,8 +510,8 @@ about $1.5 \times 10^{-7}$ and no new dependency.
 
 *Alternative considered:* a single circular-target form,
 $P_{\text{hit}} = 1 - \exp(-R^2/2\sigma^2)$. Rejected, because the rectangular silhouette
-gives distinct deflection and elevation behaviour - a tall thin target and a low wide one are
-genuinely different problems - and it yields a cleaner Monte Carlo gate.
+gives distinct deflection and elevation behaviour – a tall thin target and a low wide one are
+genuinely different problems – and it yields a cleaner Monte Carlo gate.
 
 ### 2.3 Indirect-fire dispersion and area effect
 
@@ -544,14 +544,14 @@ terrain cover layer so urban and woodland shielding needs no new dial.
 
 **That closed form is the reason for this kernel.** A cookie-cutter lethality disc is simpler
 and cheaper, but it has no analytical expectation, so the Monte Carlo sampler would have
-nothing to be checked against - and an unvalidated sampler is precisely what this project
+nothing to be checked against, and an unvalidated sampler is precisely what this project
 exists not to build.
 
 *Alternative considered:* elliptical range and deflection errors (PER/PED), which is more
 faithful but needs the gun-target azimuth to orient the ellipse. Deferred; circular CEP
 first.
 
-**Crest clearance** reuses the §1.4 traversal with a **parabolic** height profile - the reason
+**Crest clearance** reuses the §1.4 traversal with a **parabolic** height profile: the reason
 `line_of_sight` takes a profile closure at all. It is wired as a later refinement and is not
 active; see the limitation below.
 
@@ -564,7 +564,7 @@ Units carry `strength` $\in [0,1]$ reduced by delivered damage, with `strength <
 killed and removed from sensing and from the live target list. This is the attrition state
 validated against Lanchester in §4.
 
-Who shoots what is not decided here - §10.2 allocates fire side-wide, and §13 says what a side
+Who shoots what is not decided here: §10.2 allocates fire side-wide, and §13 says what a side
 has been ordered to shoot first.
 
 ### 2.5 Deliberate limitations
@@ -575,7 +575,7 @@ has been ordered to shoot first.
   real minimum-ordinate calculation would refuse the mission or demand a different charge.
   This is deliberate: the arc is not simulated, only its endpoints, so there is no ordinate to
   compare against. It matters only for a gun sited very close to very steep ground.
-- **Eligibility is a track, not a sightline** - which is correct, and worth stating because it
+- **Eligibility is a track, not a sightline**, which is correct, and worth stating because it
   is the mirror of direct fire and easy to assume the other way round. A howitzer engages what
   its side can *see*, not what *it* can see. V70 pins both directions; §13.4 covers what that
   means for a fire plan.
@@ -598,13 +598,13 @@ has been ordered to shoot first.
 ## 3. Sensing and detection
 
 The core interactive loop: place sensing assets and try to detect the enemy before being
-detected. Detection is **mutual and asymmetric** - both sides' sensors run the same machinery
-against the other side's units - so positioning to see without being seen is a real decision
+detected. Detection is **mutual and asymmetric** – both sides' sensors run the same machinery
+against the other side's units – so positioning to see without being seen is a real decision
 rather than a scoring bonus. Lives in `sensing.rs`.
 
 ### 3.1 Stat blocks
 
-**Sensor type** (`scenarios/sensors.toml`): `modality`, an enum - `optical` now, with `acoustic`
+**Sensor type** (`scenarios/sensors.toml`): `modality`, an enum: `optical` now, with `acoustic`
 and `eo_ir` later, each bringing its own propagation term, which is why it is a tag rather than a
 convention; `mount_height_m`, so a mast or a hovering UAS (Uncrewed Aerial System) is just this
 dial; `max_range_m`, a hard cutoff; `lambda0_per_s`, the peak detection rate against signature 1
@@ -613,7 +613,7 @@ falloff curve; and an optional field of regard `for_width_deg`, with the sensor 
 carrying the facing. Omitting the arc means all-round.
 
 **Unit type** (`scenarios/units.toml`): `height_m` as the target height for line of sight, and
-`signature` as a **per-modality table** - `signature.optical = 0.6` - so acoustic and EO/IR
+`signature` as a **per-modality table** – `signature.optical = 0.6` – so acoustic and EO/IR
 add keys rather than schema changes.
 
 ### 3.2 The glimpse-rate model
@@ -636,7 +636,7 @@ range (§9.1).
 The rate is gated to exactly zero when line of sight is not `clear`, when
 $r > \text{max\_range}$, or when the target is outside the field of regard. $\tau$ and `clear`
 both come from the one line-of-sight call, with the sensor's `mount_height_m` and the unit's
-`height_m` as endpoint heights - this is what the rich `LosResult` was built for.
+`height_m` as endpoint heights: this is what the rich `LosResult` was built for.
 
 Then
 
@@ -656,8 +656,8 @@ for any subdivision of the interval, so halving $dt$ cannot change the detection
 per-tick probability would silently make the physics a function of the integrator, which is a
 very hard bug to see and a very easy one to ship. V17 checks the identity to float tolerance.
 
-Each detection emits an event `{time, sensor_id, unit_id, unit_pos}` into an append-only log -
-the observation channel the §8.2 belief filter consumes - and marks the unit detected by the
+Each detection emits an event `{time, sensor_id, unit_id, unit_pos}` into an append-only log –
+the observation channel the §8.2 belief filter consumes – and marks the unit detected by the
 sensor's side.
 
 Detections were permanent in the first version of this model, with track loss deferred to EW
@@ -714,8 +714,8 @@ of `initial_elements`, with `strength() = elements / initial` for display and
 - **Direct round:** one round that passes
   $p_{\text{hit}} \cdot p_{\text{kill|hit}} \cdot (1 - \text{cover})$ removes **one** element.
 - **Indirect round:** a burst delivers Carleton damage $D$ to the unit, and each surviving
-  element is independently killed with probability $D \cdot (1 - \text{cover})$ - a binomial
-  draw - so area fire attrits a group properly, and expected casualties are
+  element is independently killed with probability $D \cdot (1 - \text{cover})$ – a binomial
+  draw – so area fire attrits a group properly, and expected casualties are
   $\text{elements} \cdot D \cdot (1 - \text{cover})$.
 
 **Fire volume scales with the shooter's live elements.** A unit fires
@@ -730,8 +730,8 @@ $$
 $$
 
 Combat power goes as the *square* of numbers under aimed fire. Reproducing it is the strongest
-single check in the suite, because it is an **emergent** property of the whole loop - element
-counts, rate of fire, hit probability, removal - and not of any one function. Nothing was
+single check in the suite, because it is an **emergent** property of the whole loop – element
+counts, rate of fire, hit probability, removal – and not of any one function. Nothing was
 written to produce it.
 
 ### 4.2 Fire gating
@@ -746,8 +746,8 @@ masked top-priority target blocks a direct-fire gun and does not block the howit
 
 ### 4.3 Suppression as a birth-death chain
 
-Per-unit state $S \in \{\text{Free}, \text{Suppressed}, \text{Pinned}\}$. Near-misses - rounds
-landing within `suppression_radius_m` of the unit that do **not** kill it - push the state up;
+Per-unit state $S \in \{\text{Free}, \text{Suppressed}, \text{Pinned}\}$. Near-misses – rounds
+landing within `suppression_radius_m` of the unit that do **not** kill it – push the state up;
 time pushes it back down. Per near-miss the state steps up one level with probability
 `p_suppress`; each tick it steps down one level at rate `recover_per_s`, a memoryless recovery
 timer.
@@ -758,7 +758,7 @@ $$
 $$
 
 The birth-death structure hands over its stationary distribution for free, and the mean time
-from Pinned to Free is $2/\mu$ - two exponential steps in series. Both are closed forms to gate
+from Pinned to Free is $2/\mu$: two exponential steps in series. Both are closed forms to gate
 against, which is why the chain is discrete rather than a continuous suppression scalar.
 
 Effects, and the reason the state is discrete:
@@ -770,7 +770,7 @@ Effects, and the reason the state is discrete:
 
 Suppression is a **state** rather than a scalar multiplier because it gates behaviour
 discontinuously. Pinned units neither fire nor move, which is what lets fires shape manoeuvre
-without killing anybody - and that, rather than attrition, is what artillery mostly does.
+without killing anybody, and that, rather than attrition, is what artillery mostly does.
 
 **What counts as a near-miss differs by weapon class, and the difference is a simplification
 worth stating.** Indirect fire samples an impact point and tests it: a round is a near-miss
@@ -778,20 +778,20 @@ when $\lVert \text{burst} - \text{target} \rVert < \text{suppression\_radius\_m}
 fire does not.** It resolves a single hit/kill roll and treats *every* miss as a near-miss,
 whatever the range, so `suppression_radius_m` does not enter the direct-fire path at all.
 
-At the shipped dials this is very nearly exact - 0.4 mrad at 3 km is $\sigma \approx 1.2$ m, so
+At the shipped dials this is very nearly exact: 0.4 mrad at 3 km is $\sigma \approx 1.2$ m, so
 essentially every direct-fire miss really does land inside a 35 m radius. It stops being exact
 for a high-dispersion or very long-range direct weapon, where suppression would scale with
 *rounds fired* rather than with rounds landing close.
 
 It is left as it is deliberately. Sampling an impact point for direct fire would change the
-number of RNG draws per round, which re-baselines V24, V30 and V31 - a real cost for an effect
+number of RNG draws per round, which re-baselines V24, V30 and V31: a real cost for an effect
 the current dials cannot resolve.
 
 ### 4.4 Deliberate limitations
 
 - **Suppression has three levels, not a continuum.** That is a modelling choice made for the
   closed forms it buys, not an approximation of something finer.
-- **Direct fire suppresses on rounds fired, not rounds landing close** - see above.
+- **Direct fire suppresses on rounds fired, not rounds landing close**: see above.
 - **There is no morale, cohesion or command effect on suppression**, and no unit-to-unit
   variation in susceptibility.
 
@@ -808,7 +808,7 @@ the current dials cannot resolve.
 
 ## 5. Movement as dynamic programming
 
-Least-risk pathing over the terrain grid: a mover trades **mobility cost** - time and effort -
+Least-risk pathing over the terrain grid: a mover trades **mobility cost** – time and effort –
 against **exposure risk**. The value function is exactly a shortest-path problem, so Dijkstra
 over the cell graph *is* the dynamic-programming solution here. Lives in `movement.rs`.
 
@@ -820,7 +820,7 @@ $$
 c(\text{from} \to \text{to}) = c_{\text{move}}(\text{from}, \text{to}) + w \cdot \text{risk}(\text{to})
 $$
 
-`move_cost` is the §1.3 terrain edge cost - mean mobility times slope factor times distance,
+`move_cost` is the §1.3 terrain edge cost: mean mobility times slope factor times distance,
 infinite when impassable. `risk(cell)` is a caller-supplied exposure raster in $[0,1]$, and
 `risk_weight` $w$ tunes caution: the metres of mobility cost the mover will spend to avoid one
 unit of risk.
@@ -841,8 +841,8 @@ becomes time-varying, at which point the one-sweep ordering no longer holds.
 ### 5.2 The risk raster
 
 Risk defaults to **enemy observation coverage**: for each cell, the detection rate a reference
-mover would suffer from the best-placed enemy sensor - the maximum over enemy sensors of the
-§3.2 rate against a reference unit - normalised to $[0,1]$.
+mover would suffer from the best-placed enemy sensor – the maximum over enemy sensors of the
+§3.2 rate against a reference unit – normalised to $[0,1]$.
 
 This reuses the sensing model, so "least-risk path" literally means "the route that stays
 hardest to see", and the see-without-being-seen idea becomes navigable. The path solver itself
@@ -850,7 +850,7 @@ is agnostic: any $[0,1]$ raster works, which is what let §10.5 later add a fire
 touching the solver.
 
 **Sweeping $w$ is the point.** A single "optimal" route answers a question nobody asked. The
-frontier traced by $w$ from zero upward - arriving quickly against arriving alive - is the
+frontier traced by $w$ from zero upward – arriving quickly against arriving alive – is the
 answer with operational content.
 
 ### 5.3 Deliberate limitations
@@ -870,7 +870,7 @@ answer with operational content.
 | V27 | Path optimality | Dijkstra's cost matches an independent Bellman-Ford reference on a small grid; the path is contiguous, in bounds and endpoint-correct |
 
 A note on `Ord` and `Eq` for the frontier: they must agree, including for NaN, because
-`BinaryHeap` may rely on the total order. A disagreement there is not a hypothetical - it is
+`BinaryHeap` may rely on the total order. A disagreement there is not a hypothetical: it is
 the kind of defect that produces a wrong path on one input in ten thousand and passes every
 test that does not happen to hit it.
 
@@ -911,7 +911,7 @@ $$
 v_{\text{low}} = \min_j \big(x^{\mathsf{T}}A\big)_j \le v \le \max_i \big(Ay\big)_i = v_{\text{high}}
 $$
 
-- Blue's guarantee below, Red's above - and the gap $v_{\text{high}} - v_{\text{low}}$ shrinks
+- Blue's guarantee below, Red's above, and the gap $v_{\text{high}} - v_{\text{low}}$ shrinks
 to zero. So the algorithm reports its own error rather than being run for a fixed number of
 iterations and hoped over.
 
@@ -919,7 +919,7 @@ iterations and hoped over.
 
 - **Blue strategy:** a position $b$ holding a sensor and a co-located **observed indirect**
   shooter. Detection gates its fire, since indirect fire needs a track.
-- **Red strategy:** a route $r$ - candidate paths across the map, some from the §5 least-risk
+- **Red strategy:** a route $r$: candidate paths across the map, some from the §5 least-risk
   pather at varying caution, some direct.
 - **Payoff $A[b][r]$:** expected Red attrition, as a fraction of Red elements lost, when Red
   traverses $r$ while Blue at $b$ watches and bombards. Estimated by a short headless Monte
@@ -961,7 +961,7 @@ statement about *this* terrain and *these* sensors rather than about an abstract
 ## 7. The simulation loop
 
 Every other section specifies a *model*; this one specifies the **order those models run in
-and what that order guarantees** - which is the thing most easily broken by accident and
+and what that order guarantees**, which is the thing most easily broken by accident and
 hardest to notice afterwards. It was written last, after several phases had each added to the
 loop. Lives in `sim/mod.rs`, with the phases split across `sim/`.
 
@@ -971,15 +971,15 @@ loop. Lives in `sim/mod.rs`, with the phases split across `sim/`.
 
 The loop is hybrid continuous/discrete:
 
-- **The tick** (`dt_s`, default 1 s) integrates what changes continuously - movement, and the
+- **The tick** (`dt_s`, default 1 s) integrates what changes continuously: movement, and the
   moment-to-moment hazard of being seen.
 - **The decision epoch** (`epoch_s`, default 10 s) is where *choices* are made: what is still
   being tracked, where to look, what to shoot, where to move.
 
 The split is the optimal-control-plus-dynamic-programming structure of §0 made concrete, and
 it is load-bearing in both directions. Physically, fire missions are not re-planned sixty
-times a minute. Computationally, it is what keeps the expensive decision layer - an assignment
-solve and an information-gain search - off the hot path: §10.1 measured track maintenance at
+times a minute. Computationally, it is what keeps the expensive decision layer – an assignment
+solve and an information-gain search – off the hot path: §10.1 measured track maintenance at
 about 2.3 ms per tick against about 0.23 ms at epoch cadence.
 
 A tick may straddle an epoch boundary, or several. `step_one` advances the clock and then
@@ -1030,13 +1030,13 @@ stated tolerances.
 
 Four structural rules make it hold, and each is enforced somewhere rather than trusted:
 
-1. **One seeded stream.** All randomness comes from the `SimRng` the `Sim` owns - `ChaCha8Rng`,
+1. **One seeded stream.** All randomness comes from the `SimRng` the `Sim` owns: `ChaCha8Rng`,
    chosen because its stream is stable across `rand` versions, so an archived seed still
    reproduces after a routine dependency bump. No wall clock, no thread RNG, no global state.
 2. **Fixed iteration order.** Assets are visited by index, never by hash order, and state
    carries no `HashMap` whose iteration reaches a result. Placement order is itself part of
    the contract, so two runs agree on every index.
-3. **Parallelism writes disjointly.** The rasters - viewshed, coverage, belief, risk - are
+3. **Parallelism writes disjointly.** The rasters – viewshed, coverage, belief, risk – are
    computed with rayon via `ndarray::Zip`, where each cell writes its own slot and the
    line-of-sight scratch is thread-local. No result depends on scheduling.
 4. **New phases are appended and draw nothing when idle.** This is the rule that has let the
@@ -1047,7 +1047,7 @@ Four structural rules make it hold, and each is enforced somewhere rather than t
 Rule 4 deserves stating as a design *method*, because it is how every subsystem since Phase 3
 has been added without re-baselining anything.
 
-> A new subsystem must reduce to an **exact identity** when it has nothing to do - not an
+> A new subsystem must reduce to an **exact identity** when it has nothing to do, not an
 > approximation, not "close enough". Switched off, the event log is bit-identical to the build
 > before it existed.
 
@@ -1076,14 +1076,14 @@ planner when no unit declares an objective; doctrine defaults to a single tier o
 A structural identity cannot be broken by someone changing a default.
 
 The payoff is concrete: adding drones did not move a single ground-scenario result, and sensor
-tasking could be added without touching the §6 game - once it was defaulted off, which V39 is
+tasking could be added without touching the §6 game: once it was defaulted off, which V39 is
 what forced.
 
 **The discipline also constrains optimisation**, not just modelling. Both major performance
 passes were verified by hashing a multi-scenario, multi-seed batch before and after and
 requiring the digest to match. That is why the indirect damage factors are deliberately *not*
 pre-multiplied into one term: float multiplication is not associative, and folding them would
-shift a result by an ulp - enough to flip a knife-edge kill roll and silently re-baseline V22
+shift a result by an ulp: enough to flip a knife-edge kill roll and silently re-baseline V22
 and V24.
 
 ### 7.5 What the loop does not do
@@ -1095,14 +1095,14 @@ Stated so the boundaries are visible rather than assumed.
   deliberate simultaneity choice.
 - **No variable time step.** A finer `dt_s` costs proportionally more and, because detection is
   a rate rather than a per-tick probability (§3.2), buys no accuracy in the detection
-  statistics - which is exactly what V17 checks.
+  statistics, which is exactly what V17 checks.
 - **No terrain-aware communications.** The C2 link is degraded by jamming and by latency
   (§11.1) but not by a ridge between post and battery.
 
 ### 7.6 The input contract
 
 The schema's `deny_unknown_fields` refuses a **key** the model does not know, on the grounds
-that a misspelt dial takes its default and produces a study of a different question - a failure
+that a misspelt dial takes its default and produces a study of a different question: a failure
 invisible because the run *succeeds*. A **value** outside its domain fails in exactly the same
 way.
 
@@ -1119,12 +1119,12 @@ Neither is exotic. `sweep` exists precisely to set any dotted path in a file fro
 line, so `--param sim.epoch_s --from 0 --to 30` is an ordinary-looking sweep whose first arm
 hangs with no diagnostic at all.
 
-The rest are ordinary domain checks - probabilities in $[0,1]$; `track_hold_s`, `recover_per_s`,
+The rest are ordinary domain checks: probabilities in $[0,1]$; `track_hold_s`, `recover_per_s`,
 `suppression_radius_m`, `risk_weight`, `fire_risk_weight` and `repath_margin` non-negative;
-`belief_cells` and `allocation_horizon` at least 1 - plus the small set of stat-block dials that
+`belief_cells` and `allocation_horizon` at least 1: plus the small set of stat-block dials that
 reach a **divisor**: a sensor's `range_half_m` in the §3.2 falloff, and an indirect weapon's
 `lethal_radius_m` in the §2.3 Carleton kernel. Those two are singled out because a zero there does
-not give a small answer, it gives `NaN`, and `NaN` loses every comparison it appears in - so the
+not give a small answer, it gives `NaN`, and `NaN` loses every comparison it appears in, so the
 subsystem goes silently *inert* rather than visibly wrong, which is the hardest kind of failure to
 notice.
 
@@ -1136,7 +1136,7 @@ unused `lethal_radius_m` of zero means nothing at all. A validator that refused 
 enforcing taste rather than tractability.
 
 `Libraries::validate` runs both at load and again inside `Sim::new`, so a library patched in
-memory - which is what `sweep` does - is held to the same contract as one read from disk.
+memory – which is what `sweep` does – is held to the same contract as one read from disk.
 
 ### 7.7 Validation gate (V67)
 
@@ -1148,8 +1148,8 @@ memory - which is what `sweep` does - is held to the same contract as one read f
 
 ## 8. Electronic warfare and partial observability
 
-EW degrades sensing; with imperfect detection the observer reasons over a **belief** - a
-probability distribution - rather than over ground truth. EW is a clean modifier on the sensing
+EW degrades sensing; with imperfect detection the observer reasons over a **belief** – a
+probability distribution – rather than over ground truth. EW is a clean modifier on the sensing
 channel: with no jammers it is the identity, so EW-off reduces bit-for-bit to §3. Lives in
 `ew.rs` and `pomdp.rs`.
 
@@ -1178,7 +1178,7 @@ product is exactly 1, so EW-off is an exact identity (V40) rather than a near-id
 Note the sign convention, because §11.1 uses the mirror image of it. `Sim::jamming_at` folds a
 side's **own** jammers, because a jammer protecting Red degrades *Blue's sensing of Red*.
 `Sim::link_quality_at` folds the **enemy's**, because a jammer degrades *Blue's own
-communications*. Same asset, same dials, opposite side of the argument - so one Red jammer both
+communications*. Same asset, same dials, opposite side of the argument, so one Red jammer both
 hides Red units and cuts the Blue net.
 
 ### 8.2 The belief filter
@@ -1205,7 +1205,7 @@ $$
 P(\text{no detection} \mid \text{enemy at } s) = \exp\big(-\lambda_{\text{eff}}(s)\, \Delta t\big)
 $$
 
-Cells the sensor covers well get a low likelihood - the enemy would have been seen - so belief
+Cells the sensor covers well get a low likelihood – the enemy would have been seen – so belief
 drains out of them; dead ground and jammed cells sit near 1 and keep their mass. Multiplying an
 uninformative prior by this likelihood over the exposure window *is* "where an undetected enemy
 could be", which is what the app's belief heatmap shows: cleared coverage against plausible
@@ -1246,8 +1246,8 @@ falls straight out of Bayes rather than being scripted.
 
 Air assets are a **third class** alongside units and sensors: airframes that fly at a chosen
 altitude, heading and speed along a flight path or a transit-then-orbit plan. Strike drones bomb
-ground units; an **air-defence** class answers them, with an engagement model - and therefore a
-time-to-kill distribution - that varies by type. A drone may instead, or also, carry a sensor,
+ground units; an **air-defence** class answers them, with an engagement model – and therefore a
+time-to-kill distribution – that varies by type. A drone may instead, or also, carry a sensor,
 making it a mobile elevated observer. Lives in `airframes.rs`, `air_defence.rs` and
 `sim/counter_air/`.
 
@@ -1259,7 +1259,7 @@ channels. That falls straight out of the §3 sensing model.
 ### 9.1 Altitude, actor height, and the slant-range convention
 
 **Altitude is per instance**, with a reference frame, because the two behaviours differ in
-exactly the way that matters - whether terrain can mask the airframe:
+exactly the way that matters: whether terrain can mask the airframe:
 
 $$
 h(p) = a \quad \text{(AGL)}
@@ -1274,7 +1274,7 @@ $h$ is precisely the **actor height** of §1.2, so line of sight, viewshed and s
 change whatsoever: `line_of_sight(terrain, a, h_a, b, h_b)` already takes arbitrary endpoint
 heights. An AGL drone hugs the terrain and is never masked by the hill it overflies; an AMSL
 drone cruises level and *is* masked by higher ground. The $\max(0, \cdot)$ clamp means an AMSL
-altitude below the local ground is a drone on the deck - degenerate but well-defined, never
+altitude below the local ground is a drone on the deck: degenerate but well-defined, never
 negative.
 
 **Slant range replaces horizontal range**, project-wide:
@@ -1298,7 +1298,7 @@ Rejected: one convention, documented.
 **Terrain effects on an airborne target.** Concealment and cover are properties of the cell a
 target *stands in*, and an airborne target is not in one. So an air target contributes
 $\text{concealment} = 0$ to the §3.2 rate and $\text{cover} = 0$ to damage. Canopy
-transmittance $\tau$ is *not* waived - it is a property of the sightline, so a low drone seen
+transmittance $\tau$ is *not* waived: it is a property of the sightline, so a low drone seen
 through a belt of woods is attenuated exactly as §1.4 says.
 
 ### 9.2 Flight kinematics
@@ -1324,7 +1324,7 @@ $$
 r_{\min} = \frac{v}{\omega_{\max}}
 $$
 
-with $\omega$ in radians per second - the closed form V47 gates, via the chord of a turn through
+with $\omega$ in radians per second: the closed form V47 gates, via the chord of a turn through
 angle $\phi$ being $2 r_{\min} \sin(\phi/2)$.
 
 **Orbit.** On reaching the terminal waypoint the airframe captures the circle at its nearest
@@ -1336,14 +1336,14 @@ $$
 $$
 
 with heading tangent to the circle. Integrating the phase rather than steering toward the
-circle keeps the radius exact - no drift over a long loiter - and gives the closed-form lap
+circle keeps the radius exact – no drift over a long loiter – and gives the closed-form lap
 time $T = 2\pi R / v$.
 
 **Endurance.** `endurance_s > 0` removes the airframe once its time aloft exceeds it.
 
 ### 9.3 Strike
 
-A strike drone's aim point is its assigned target - a named asset or a fixed point - or, if
+A strike drone's aim point is its assigned target – a named asset or a fixed point – or, if
 none was assigned, its **final waypoint**. On closing within `release_range_m` (slant) of the
 aim point it releases one munition, which is **exactly the §2.3 indirect round**: burst point
 $b = \text{aim} + N(0, \sigma^2 I)$ with $\sigma = \text{cep\_m}/1.1774$, Carleton damage
@@ -1351,7 +1351,7 @@ $D(\rho)$, delivered as $D \cdot (1 - \text{cover})$.
 
 One generalisation of §2.3 is needed. An indirect round damages only the unit it was aimed at,
 but a strike on a *point* must damage whatever is near the burst. Damage is therefore applied
-to **every live ground unit within $3 R_L$ of the burst** - beyond $3 R_L$ the Carleton kernel
+to **every live ground unit within $3 R_L$ of the burst**: beyond $3 R_L$ the Carleton kernel
 is below $1.2 \times 10^{-4}$, a documented cutoff that keeps the sweep $O(\text{units})$. Each
 surviving element rolls independently as in §4.1, and near misses feed §4.3 suppression
 unchanged.
@@ -1382,22 +1382,22 @@ assignment wins outright, so opportunity never overrides orders.
 tied). Without the decision it flies the route, releases at its last waypoint and hits nothing.
 
 Blinding the observer takes it straight back to 0.000. **Autonomy is worth exactly nothing
-without the sensor that finds the targets** - the drone may choose, and has nothing to choose
+without the sensor that finds the targets**: the drone may choose, and has nothing to choose
 from. Worth stating plainly, because it is easy to read autonomy as a property of the airframe
 when it is really a property of the side's picture.
 
 One case is subtler than it looks. A **named** target that no longer exists yields no release
-for a non-autonomous airframe - not a fallback to the destination - because that is the identity
+for a non-autonomous airframe – not a fallback to the destination – because that is the identity
 half of V60. An autonomous airframe in the same position looks for something else, which is
 re-targeting rather than a fallback.
 
 ### 9.4 Air defence: two engagement models, two closed forms
 
-Two models, because **time-to-kill is distributed differently** in each - differing in shape and
+Two models, because **time-to-kill is distributed differently** in each: differing in shape and
 not just in mean, so guns and missiles fail differently against a saturating raid. That is the
 whole reason to model both rather than tune one "effectiveness" number.
 
-**Gun or CIWS (Close-In Weapon System) - a Poisson kill process.** While the target sits in the
+**Gun or CIWS (Close-In Weapon System): a Poisson kill process.** While the target sits in the
 envelope, kills arrive at rate $\lambda_k$, so per tick $p = 1 - e^{-\lambda_k dt}$. This is
 structurally identical to the §3.2 glimpse model, so it inherits its tick-size invariance and its
 validation machinery:
@@ -1408,7 +1408,7 @@ $$
 P(\text{kill by } t) = 1 - e^{-\lambda_k t}
 $$
 
-**Missile - discrete shoot-look-shoot.** A launch takes
+**Missile: discrete shoot-look-shoot.** A launch takes
 $t_f = r_{\text{slant}} / \text{missile\_speed}$
 to arrive, then resolves as a Bernoulli trial with single-shot kill
 probability $p$; a miss is followed by $t_r$ reload before the next launch. Shots-to-kill is
@@ -1420,29 +1420,29 @@ $$
 $$
 
 *Alternative considered for the missile:* modelling interception kinematically, with the missile
-as a pursuing body and the kill depending on closing geometry. Rejected - the interesting
+as a pursuing body and the kill depending on closing geometry. Rejected: the interesting
 variable here is delay and magazine, not endgame guidance, and $p$ and $t_f$ are the dials that
 carry the behaviour.
 
 **Envelope.** An engagement requires the target inside `[min_range_m, max_range_m]` in slant range
-*and* inside `[min_alt_m, max_alt_m]` - the altitude band is what separates a low-tier CIWS from a
-high-tier SAM (Surface-to-Air Missile) - plus line of sight if `requires_los`, a free engagement
+*and* inside `[min_alt_m, max_alt_m]` – the altitude band is what separates a low-tier CIWS from a
+high-tier SAM (Surface-to-Air Missile) – plus line of sight if `requires_los`, a free engagement
 channel, and magazine remaining. `channels`, the number of simultaneous engagements, is the
 saturation lever a raid plays against.
 
 **One asymmetry between the closed form and the simulation, stated rather than reconciled.**
 `resolve_due` charges $t_r$ after a **miss** only, so a battery that kills cleanly may relaunch
-on the next tick. That reads as the reload being the *look* in shoot-look-shoot - you only
-re-engage a target you failed to kill - and it is self-consistent. It is not what the closed form
+on the next tick. That reads as the reload being the *look* in shoot-look-shoot – you only
+re-engage a target you failed to kill – and it is self-consistent. It is not what the closed form
 assumes: $\mathbb{E}[\text{TTK}]$, `shot_opportunities` and therefore the §11.2 allocation payoff
 all price a $t_f + t_r$ cycle per shot regardless of outcome. The payoff is thus very slightly
 pessimistic about a battery's throughput against a stream of targets. The two answer different
-questions - the closed form is about killing *one* target, the simulation about what a battery
+questions: the closed form is about killing *one* target, the simulation about what a battery
 does next.
 
 ### 9.5 The cueing timeline
 
-A battery acts on whichever route to the track reaches it first - its own radar, or the network:
+A battery acts on whichever route to the track reaches it first: its own radar, or the network:
 
 ```
 actionable_at = min( own_sensor_seen,                  // organic: no comms hop
@@ -1467,7 +1467,7 @@ stopping at the first global detection.
 This yields the phase's headline closed form, and it turns on **what the clock starts on**: the
 cueing chain begins at *detection*, not at envelope entry.
 
-Let a drone be detected $D$ seconds before it enters the envelope - its **warning lead** - and
+Let a drone be detected $D$ seconds before it enters the envelope – its **warning lead** – and
 spend $W$ seconds inside the envelope before reaching its release point. The battery is
 actionable from $t_{\text{entry}} - D + L + R$, so the effective engagement window is
 
@@ -1491,7 +1491,7 @@ Leakage then follows from §9.4: for a gun $P(\text{leak}) = \exp(-\lambda_k W_{
 for a missile with $K = \lfloor (W_{\text{eff}} - t_f)/(t_f + t_r) \rfloor + 1$ shot
 opportunities, zero if $W_{\text{eff}} < t_f$, $P(\text{leak}) = (1-p)^K$.
 
-The $D = 0$ case - acquired exactly as it enters the envelope - gives the simpler
+The $D = 0$ case – acquired exactly as it enters the envelope – gives the simpler
 $W_{\text{eff}} = W - L - R$ and $L^* = W - R$. That special case is what the `air_raid`
 experiment isolates by setting the radar's range equal to the gun's.
 
@@ -1502,19 +1502,19 @@ rather than argued: cruise speed dominates cue latency. §14.3 has the worked re
 
 Air adds phases to the loop. They are **appended, and draw zero RNG values when the air and
 air-defence lists are empty**, so a drone-free scenario reproduces the pre-air event log
-bit-for-bit - the identity discipline of §7.4. The air phases are 2, 4, 6 and 7 in §7.2.
+bit-for-bit: the identity discipline of §7.4. The air phases are 2, 4, 6 and 7 in §7.2.
 
 A recce drone's sensor needs no phase of its own: **every sensor lives in one list**, and a
 carried one reports the position, height and facing of the airframe carrying it, through
 `Sim::sensor_view`. For an uncarried sensor that resolves to exactly its own position and
-`mount_height_m`, so phase 3 is unchanged - same draws, same order - whenever there is no air.
+`mount_height_m`, so phase 3 is unchanged – same draws, same order – whenever there is no air.
 Phases 4, 6 and 7 iterate empty lists and draw nothing at all.
 
 A carried sensor's public `pos` and `facing_deg` are **written back from the airframe each
 tick**, immediately after air movement. The airframe stays the source of truth and `sensor_view`
 is still the accessor that knows about altitude, but leaving the public fields frozen at the
-placement point made every consumer outside the detection loop - the app's coverage and belief
-overlays, the diagnostic probes - plot a recce drone's sensor at its take-off position and
+placement point made every consumer outside the detection loop – the app's coverage and belief
+overlays, the diagnostic probes – plot a recce drone's sensor at its take-off position and
 ground mount height.
 
 `Sim::sensor_active` is the matching gate: a carried sensor dies with its airframe, so a
@@ -1551,7 +1551,7 @@ changes nothing today.
 | V52 | Air-off identity | No air and no air defence gives an event log bit-identical to the pre-air build; with air, the same (scenario, seed) reproduces exactly |
 
 V52's zero-draw half is the one gate that lives inside `sim_core` rather than in the validation
-crate, because it asserts a property of the RNG draw stream itself - genuinely internal state
+crate, because it asserts a property of the RNG draw stream itself: genuinely internal state
 that a public-API test cannot reach.
 
 ---
@@ -1583,20 +1583,20 @@ $$
 cueing timeline needed no change at all. Air keeps its per-sensor `seen_by` record as well,
 because §9.5 needs to know *which* battery saw the target.
 
-A lapsed air track clears the whole cueing record - `detected_at_s`, `detected_by` and `seen_by`
+A lapsed air track clears the whole cueing record, `detected_at_s`, `detected_by` and `seen_by`
 - not just the flag. Otherwise reacquisition would find a stale `detected_at_s` already aged
 past `cue_latency_s + reaction_time_s`, and a battery would fire the instant the target
 reappeared, skipping the §9.5 timeline entirely.
 
 **Maintenance runs at the decision epoch, not the tick.** The glimpse loop skips already-detected
-targets, so refreshing a track means looking again - measured at 4 sensors by 6 units by 97 µs,
+targets, so refreshing a track means looking again: measured at 4 sensors by 6 units by 97 µs,
 about 2.3 ms per tick, up to twenty times the whole tick budget. At a 10 s epoch that amortises
 to 0.23 ms per tick. The cadence is right on its own terms too: tracks decay over tens of
 seconds, and maintaining one is a decision-layer concern.
 
 **Maintenance is deterministic, not a fresh glimpse.** Acquisition stays stochastic; keeping eyes
 on something already found is not a coin flip. A track refreshes when the sensor's *effective*
-rate $\lambda_{\text{eff}}$ - the §8.1 jammed rate, with concealment, range and canopy folded in
+rate $\lambda_{\text{eff}}$: the §8.1 jammed rate, with concealment, range and canopy folded in
 - clears a threshold:
 
 $$
@@ -1620,7 +1620,7 @@ $$
 
 **$q(i,j)$ is the fraction of the target destroyed this epoch**, from the existing fires model -
 `direct_p_hit` or `expected_area_damage`, times cover, suppression factor and round count,
-exactly as a round resolves - clamped to $[0,1]$. Ineligible pairings (out of range, no line of
+exactly as a round resolves: clamped to $[0,1]$. Ineligible pairings (out of range, no line of
 sight, undetected for indirect) are forbidden outright.
 
 **$\text{value}(j)$** is $\text{elements} \times \text{per\_element}$, where `per_element` is the
@@ -1631,11 +1631,11 @@ $$
 \qquad \theta = \text{rof} \times p_{\text{kill|hit}} \times \text{max\_range}
 $$
 
-So an unscored stat block still ranks sensibly - a unit is worth its size, doubled if it is the
-most dangerous thing on the field - and doctrine ("kill the radar first") can be stated when
+So an unscored stat block still ranks sensibly – a unit is worth its size, doubled if it is the
+most dangerous thing on the field – and doctrine ("kill the radar first") can be stated when
 wanted. Per *element*, so a half-destroyed unit is correctly worth less.
 
-**$q$ is an expectation, clamped - not a probability.** For direct fire it is
+**$q$ is an expectation, clamped, not a probability.** For direct fire it is
 $\text{rounds} \cdot p_{\text{kill}} / \text{elements}$; for indirect,
 $\text{rounds} \cdot \mathbb{E}[\text{damage per round}]$. Both are linear in the round count
 rather than the exact $1 - (1-q)^{\text{rounds}}$, and both are clamped. That is fine for
@@ -1652,7 +1652,7 @@ failed. This is the standard weapon-target-assignment decomposition, exact when 
 target are alike. Turning diminishing returns into extra columns is what keeps the problem a
 plain **linear** assignment rather than a submodular one.
 
-There is deliberately **no hard cap** on top of it for ground fires - §11.4 says why, and V68
+There is deliberately **no hard cap** on top of it for ground fires: §11.4 says why, and V68
 holds the replacement.
 
 $\bar q$ is averaged over the shooters that *could* engage the target, not over those actually
@@ -1661,8 +1661,8 @@ direction: a distant shooter that will never be chosen drags $\bar q$ down, whic
 the later slots and so mildly *encourages* piling on. Exact when the shooters are alike; worth
 re-checking with a `sim.allocation` sweep on a scenario with deliberately heterogeneous shooters.
 
-Solved by Hungarian (Kuhn-Munkres) over shooters by slots, with `greedy` and `independent` - the
-old per-shooter rule - alongside. `[sim] allocation` chooses.
+Solved by Hungarian (Kuhn-Munkres) over shooters by slots, with `greedy` and `independent` – the
+old per-shooter rule – alongside. `[sim] allocation` chooses.
 
 **Forbidden pairings are scored zero, not $-\infty$.** Kuhn-Munkres produces a *perfect*
 matching, while what is wanted is a maximum-weight matching that may leave a shooter idle. With
@@ -1675,8 +1675,8 @@ A large negative sentinel would have been worse than merely wrong. `1e18 + 10.0`
 a precision trap this codebase has fallen into once and now avoids by construction. §13.2 records
 where the same trap was avoided a second time.
 
-**Measured: coordination pays, optimality does not.** On `scenarios/fire_allocation.toml` - four
-shooters that can all reach all four targets - over 2,000 paired seeds:
+**Measured: coordination pays, optimality does not.** On `scenarios/fire_allocation.toml` – four
+shooters that can all reach all four targets – over 2,000 paired seeds:
 
 | Rule | Time to destroy Red | Paired against `independent` |
 |---|---|---|
@@ -1687,14 +1687,14 @@ shooters that can all reach all four targets - over 2,000 paired seeds:
 **Coordinating is worth about 17%**, unambiguously, and the mechanism is the spread: the old rule
 sent every gun at the nearest target while three others stood untouched.
 
-**Solving the assignment optimally is measurably worse than greedy** - by **0.405 ± 0.051 s**
+**Solving the assignment optimally is measurably worse than greedy**: by **0.405 ± 0.051 s**
 ($t = 8.0$) when the two are compared directly against each other rather than each against
 `independent`. They agree outright on 96% of seeds; the cost is concentrated in the 4% where they
 diverge. §10.6 traces that to the bottom, and it is not a defect in the solver.
 
 > Measured *directly against each other*, never by eye across a shared baseline. The two
 > baselines do not combine the way a paired comparison does, and reading a difference across
-> them overstates its error roughly fivefold - which is how this effect stayed invisible for two
+> them overstates its error roughly fivefold, which is how this effect stayed invisible for two
 > phases. §14.2 states the rule this produced.
 
 On the other shipped scenarios the difference is exactly zero on every seed: with one or two
@@ -1726,27 +1726,27 @@ and each steerable sensor takes the facing maximising the gain. Sensors with no 
 see all round and have nothing to choose.
 
 **Why it is affordable.** The expensive part of a detection rate is the line-of-sight walk, and
-**line of sight does not depend on facing** - only the field-of-regard gate does. So the per-cell
+**line of sight does not depend on facing**: only the field-of-regard gate does. So the per-cell
 rate is computed once per sensor with the arc removed, cached against the pose it was built for,
 and each of the twelve candidate facings is then a cheap arc mask over that raster. Without this,
 one epoch would cost a viewshed per facing per sensor.
 
 **Carried sensors, and the cache key that pays for them.** A drone-mounted sensor moves every
 tick, so an exact pose key would rebuild its raster every epoch and never hit. Carried sensors
-were therefore excluded from the belief layer at first - which was the wrong call, and instructive
+were therefore excluded from the belief layer at first, which was the wrong call, and instructive
 about why: *not finding anything is evidence*, negative information is the whole point of the
 POMDP layer, and the most mobile observer on the field was the one asset excluded from it. A recce
 drone could fly the length of the map and leave its side's belief unchanged.
 
 They are now included, keyed on a pose **quantised to the coarse belief grid**, and to a 25 m
-altitude band. This is not a fudge: the raster *is* a coarse-grid object - every entry is a rate
-at a coarse cell centre - so keying it on the coarse cell the sensor stands in is consistent with
+altitude band. This is not a fudge: the raster *is* a coarse-grid object – every entry is a rate
+at a coarse cell centre – so keying it on the coarse cell the sensor stands in is consistent with
 the resolution the whole layer runs at. The cost becomes proportional to how far the drone has
 flown rather than to how long it has been airborne, and quantisation is integer arithmetic, so
 the rebuild schedule is identical on every run.
 
 Emplaced sensors keep their **exact** pose as the key. They do not move, so the cache hits every
-epoch after the first and there is nothing to buy by approximating - and V57 stays pinned to the
+epoch after the first and there is nothing to buy by approximating, and V57 stays pinned to the
 real geometry.
 
 A carried sensor still has nothing to *steer*: it faces where its airframe points, and
@@ -1755,12 +1755,12 @@ coverage without participating in the facing decision.
 
 **Off by default (`[sim] sensor_tasking`).** A `facing_deg` written in a scenario is a statement
 of intent, and silently overriding it would change what every existing scenario means. It would
-also dissolve the §6.3 interdiction game, whose Blue strategies *are* committed postures - a
+also dissolve the §6.3 interdiction game, whose Blue strategies *are* committed postures: a
 sensor that re-points itself is no longer playing a strategy. V39 caught exactly this when the
 default was briefly `true`, which is the gate doing its job: it caught a model change that would
 otherwise have quietly invalidated a whole phase.
 
-*Measured*, on `scenarios/sensor_search.toml` - three 70°-arc observers, five Red units, none of
+*Measured*, on `scenarios/sensor_search.toml`: three 70°-arc observers, five Red units, none of
 them in the sectors the observers start on: a fixed stare finds **2 of 5**; the belief-driven
 sweep finds **5 of 5**. Nothing about the sweep is scripted. Each sensor drains its own belief out
 of ground it has cleared, so the best-information facing moves on by itself.
@@ -1780,7 +1780,7 @@ of ground it has cleared, so the best-information facing moves on by itself.
 V30 (Lanchester), V31 and V39 were flagged in advance as able to move. V24, V30 and V31 did not,
 exactly as reasoned: they are single-shooter or homogeneous-line scenarios where allocation
 degenerates to the old choice. **V39 did move**, and not because of allocation but because of
-tasking - which is how `sensor_tasking` came to default to off.
+tasking, which is how `sensor_tasking` came to default to off.
 
 ### 10.5 Movement decisions in the loop
 
@@ -1788,13 +1788,13 @@ Fires are allocated and sensors are tasked, but movement stayed scripted for a l
 `movement::least_risk_path` was called only from `experiments` and `validation`, so the
 dynamic-programming strand sat *beside* the model rather than inside it.
 
-A unit now declares **either** a `route` - scripted, exactly as before - **or** an `objective`,
+A unit now declares **either** a `route` – scripted, exactly as before – **or** an `objective`,
 which it plans its own way to, re-solving each decision epoch against the live risk raster.
 Declaring both is a load error in the §7.6 family: neither "plan then ignore the plan" nor
 "follow the route then re-plan" is obviously the one meant.
 
 **Per unit, deliberately, not a `[sim]` switch.** Two things follow. The identity holds by
-*construction* - a scenario with no objective builds no planner and computes no raster, so there
+*construction*: a scenario with no objective builds no planner and computes no raster, so there
 is nothing to switch off (V72). And a scripted unit and a planning unit can share one map on one
 seed, which makes control and treatment a single trial rather than two runs that have to be
 trusted to differ in only one way.
@@ -1807,8 +1807,8 @@ planning happens on the same coarse grid §10.3 uses for belief, for the same re
 choosing an approach every ten seconds is not choosing between adjacent 10 m cells. The unit still
 *moves* continuously at full resolution.
 
-The coarse edge cost is `TerrainGrid::move_cost`'s own formula - distance times mean mobility
-times slope factor - evaluated on cell **aggregates** rather than point samples, so it is an
+The coarse edge cost is `TerrainGrid::move_cost`'s own formula – distance times mean mobility
+times slope factor – evaluated on cell **aggregates** rather than point samples, so it is an
 approximation of the real cost rather than a different cost that resembles it. A coarse cell is
 impassable only when *every* fine cell in it is: at 150 m resolution, "there is a way through" is
 the honest reading.
@@ -1819,7 +1819,7 @@ constrain the shared core, so their guarantees reach the in-loop planner rather 
 implementation needing its own gates.
 
 **Hysteresis, named in advance.** A unit re-deciding every epoch flips between two near-equal
-routes as costs wobble - the movement analogue of §13.4's target-lock problem, and it gets the
+routes as costs wobble: the movement analogue of §13.4's target-lock problem, and it gets the
 same answer. A new route is adopted only if it beats the held one by `repath_margin`, default
 10%, with the held route re-costed on the *current* raster so a route only looks worse when the
 risk has actually moved.
@@ -1850,7 +1850,7 @@ and a horizon second-guessing it would make an explicit statement mean something
 **What it prices, and what it does not.** The horizon changes *which* target to shoot: it makes a
 dangerous one worth more than a merely large one, because the harm a survivor does grows with the
 time it has to do it in. On `default` a horizon of 8 stops shooting the air-defence battery
-altogether - its threat to ground forces is zero - and concentrates on armed units.
+altogether – its threat to ground forces is zero – and concentrates on armed units.
 
 It does **not** close the gap between the optimal solver and the greedy one, at any setting tried:
 
@@ -1865,7 +1865,7 @@ scaling every value by the same factor leaves every assignment untouched and a s
 nothing. Nothing about the future of a *target* can matter there.
 
 **What the gap is actually made of.** Tracing the seeds where the two solvers disagree settles it.
-Over 150 seeds, optimal is worse on 7, **better on none**, and identical on 143 - and on the seeds
+Over 150 seeds, optimal is worse on 7, **better on none**, and identical on 143, and on the seeds
 where it loses, both solvers fire the *same number of rounds*. Nothing is being wasted. The
 divergence is always at the endgame:
 
@@ -1881,7 +1881,7 @@ assignment scores higher on expected damage and leaves one target barely alive, 
 epoch.
 
 **The objective maximises expected damage; the outcome is a completion time.** Expected damage is
-indifferent to how damage is spread across survivors. Time-to-clear is not - it depends only on
+indifferent to how damage is spread across survivors. Time-to-clear is not: it depends only on
 the last target standing. Throughput against makespan, in the usual scheduling sense.
 
 **Why no better value function fixes it.** The obvious repair is to make finishing a target worth
@@ -1889,7 +1889,7 @@ more than wounding two. That was implemented as a flat completion bonus and then
 it did nothing measurable at any setting. The reason is structural, and it is the useful part of
 this result: **both solvers optimise the same objective**, so improving the objective moves both
 together, and the gap is not a property of the value function at all. Greedy does not win because
-it values completion - it has no notion of completion. It wins because its heuristic bias happens
+it values completion: it has no notion of completion. It wins because its heuristic bias happens
 to produce assignments that finish targets, and exact maximisation of an additive surrogate does
 not.
 
@@ -1899,7 +1899,7 @@ not a linear assignment problem and Kuhn-Munkres cannot express it. An additive 
 slots can never encode a makespan.
 
 So the honest position is that V56 holds, the solver is correct, the objective is a reasonable
-surrogate, and **the surrogate's structure - not its coefficients - is what costs the 0.45 s**.
+surrogate, and **the surrogate's structure – not its coefficients – is what costs the 0.45 s**.
 Optimising a surrogate harder does not improve what the surrogate stands for.
 
 ### 10.7 Deliberate limitations
@@ -1924,8 +1924,8 @@ Optimising a surrogate harder does not improve what the surrogate stands for.
 ### 10.8 Deferred
 
 **A completion-time objective**, maximising the probability that every remaining target dies this
-epoch rather than the expected damage dealt. §10.6 establishes that this - not the value
-function's coefficients - is what the optimal-versus-greedy gap is made of. It is a product over
+epoch rather than the expected damage dealt. §10.6 establishes that this – not the value
+function's coefficients – is what the optimal-versus-greedy gap is made of. It is a product over
 targets rather than a sum, so it leaves the linear-assignment family entirely and needs a
 different solver, which is why it is deferred rather than attempted.
 
@@ -1943,13 +1943,13 @@ different solver, which is why it is deferred rather than attempted.
 ---
 ## 11. Command and control
 
-Ground fires coordinate side-wide for free (§10.2) - defensible for a battlegroup sharing one
+Ground fires coordinate side-wide for free (§10.2): defensible for a battlegroup sharing one
 fire-control net. Air defence should not, and did not: each battery independently engaged
 whatever was nearest.
 
 **Coordination is an asset you field, not a switch you set.** A dial would have made "the
 batteries cooperate" free and permanent. Making it a placed **C2 post** makes it something that
-must be paid for, positioned, and can be taken away - which is the behaviour worth modelling, and
+must be paid for, positioned, and can be taken away, which is the behaviour worth modelling, and
 the seam SEAD (Suppression of Enemy Air Defences) hangs off. Lives in `c2.rs` and
 `sim/counter_air/coordinate.rs`.
 
@@ -1977,20 +1977,20 @@ r_{\text{eff}} = r_{\text{coord}} \cdot g(\text{post})
 $$
 
 where $g$ is `ew::jamming_factor` evaluated at the post. So an enemy jammer near the post does
-not flip the link off - it shrinks it, and the batteries on the flanks fall out of the net while
+not flip the link off: it shrinks it, and the batteries on the flanks fall out of the net while
 the one sitting on top of the post keeps talking. That is the right shape: a link degrades with
 range against a noise floor, and raising the floor is what a jammer does. It also gives the raid
-a **soft** counter beside SEAD's hard one - same effect on the defence, no ordnance spent, and
+a **soft** counter beside SEAD's hard one: same effect on the defence, no ordnance spent, and
 nothing on the map to show it happened.
 
 Note the sign, which is the mirror of §8.1. `Sim::jamming_at` folds a side's **own** jammers,
 because a jammer protecting Red degrades Blue's sensing of Red. `Sim::link_quality_at` folds the
 **enemy's**, because a jammer degrades Blue's own communications. Same asset, same dials,
-opposite side of the argument - so one Red jammer both hides Red units and cuts the Blue net.
+opposite side of the argument, so one Red jammer both hides Red units and cuts the Blue net.
 
 *Joining costs time.* `link_latency_s`, default 0, is how long a battery must have been inside
 the radius before it is in the net. Defaulting to zero recovers the pre-latency behaviour
-exactly, and - the reason it matters for study design - lets a sweep turn either effect on
+exactly, and – the reason it matters for study design – lets a sweep turn either effect on
 **alone**, without the other confounding it. The consequence worth noting is that a battery not
 yet in the net falls back to nearest-first and commits its channel: a link that arrives late
 cannot retrospectively undo the duplicated engagements already made.
@@ -1998,7 +1998,7 @@ cannot retrospectively undo the duplicated engagements already made.
 ### 11.2 The air-defence payoff
 
 `max_batteries_per_air_target`, default 2, is the only overkill cap left in the model. The ground
-side has none - §11.4 says why.
+side has none: §11.4 says why.
 
 An airframe is different from a ground unit, and that is why the dial survives here. It is a
 **single object**, so a second battery is insurance against the first missing rather than extra
@@ -2017,7 +2017,7 @@ $$
 **The deadline is the release point, not the envelope edge.** A drone that leaves the envelope
 having already dropped its munition has won, so the window is the time to reach `release_range_m`
 of its aim point, and the battery best placed to stop the airframe *closest to doing damage* wins
-it - not the one that happens to be nearest. An airframe with nothing left to drop has no such
+it, not the one that happens to be nearest. An airframe with nothing left to drop has no such
 deadline and is scored over the time to cross the envelope instead: still worth shooting, just
 not urgently.
 
@@ -2033,13 +2033,13 @@ One consequence reads as counter-intuitive and is worth stating plainly rather t
 bomber seconds from release has a *short* window and therefore a *low*
 $P(\text{kill before release})$, so it scores below a recce drone the battery can
 comfortably catch. That is the
-formulation being self-consistent, not a bug - maximising expected value destroyed says shoot
+formulation being self-consistent, not a bug: maximising expected value destroyed says shoot
 what you can still stop, and a bomber past the point of interception is a lost cause. Whether it
 is the *right* objective is a separate question; making `value` reflect imminent harm, rather
 than only what an airframe carries, is the natural way to change the answer.
 
 $P(\text{kill} \mid \text{window})$ is `air_defence::p_kill_in_window`, the same §9.4 pair of laws
-V48 and V49 gate - exponential for a gun, geometric for a missile - evaluated forward over a
+V48 and V49 gate – exponential for a gun, geometric for a missile – evaluated forward over a
 window rather than sampled, so the two cannot drift apart. $\text{value}(\text{air})$ is the
 optional `value` dial on `AirType`, or a derivation from remaining munitions and whether the
 airframe carries a sensor, so an unscored stat block still ranks a loaded bomber above a spent
@@ -2052,8 +2052,8 @@ under and no single `max_batteries_per_air_target` budget to spend. V59 fields a
 two-sided engagement and requires each side to make the same choice it would make with the
 enemy's post removed.
 
-**Measured: coordination is about ammunition, not kills.** On `scenarios/ad_c2.toml` - three SAM
-batteries against a tight packet of ten drones - over 500 paired seeds:
+**Measured: coordination is about ammunition, not kills.** On `scenarios/ad_c2.toml` – three SAM
+batteries against a tight packet of ten drones – over 500 paired seeds:
 
 | | Downed (of 10) | Rounds left (of 24) | Leakers |
 |---|---|---|---|
@@ -2063,19 +2063,19 @@ batteries against a tight packet of ten drones - over 500 paired seeds:
 
 The kill count barely moves. What moves is the **magazine**: the coordinated defence ends with
 four and a half times the reserve, having achieved slightly more. Uncoordinated, it very nearly
-shot itself dry against a raid it was otherwise winning - and a defence out of rounds is a defence
+shot itself dry against a raid it was otherwise winning, and a defence out of rounds is a defence
 that loses the next raid.
 
 **Why this scenario uses missiles, and why that is the whole point.** A gun is a Poisson process,
 so two batteries on one target simply add their kill rates, $\lambda + \lambda$, and nothing is
-lost - **stacking guns is not wasteful**. A missile launch is a discrete round out of a finite
+lost: **stacking guns is not wasteful**. A missile launch is a discrete round out of a finite
 magazine, so three interceptors at a drone one would have killed is two rounds that will not be
 there for the next one. **Coordination pays exactly where the shot is a countable resource**,
 which is a sharper statement than "coordination is good", and it falls out of the two engagement
 models rather than being asserted.
 
 **Measured: the cap itself is not earning its keep.** The reasoning for
-`max_batteries_per_air_target` above was still a claim, so it was swept - 1,000 paired trials on
+`max_batteries_per_air_target` above was still a claim, so it was swept: 1,000 paired trials on
 `ad_c2`, against a cap of 1:
 
 | Cap | Drones downed | Rounds left |
@@ -2085,15 +2085,15 @@ models rather than being asserted.
 
 On this scenario the second battery buys **nothing measurable** and costs about a quarter of a
 round; the third buys nothing and costs more than half a round. Neither is a disaster and neither
-is an argument for the default - it is defensible but unearned here. Whether a cap above 1 earns
+is an argument for the default: it is defensible but unearned here. Whether a cap above 1 earns
 its keep when batteries are scarce relative to the raid is the open question, and it is one this
 scenario cannot answer, because it has three batteries and ten drones.
 
 ### 11.3 Ground fires and the net
 
 §10.2 let a side coordinate its ground fires for free while §11.1 made air defence pay for a post.
-That asymmetry was reasoned rather than arbitrary - a battlegroup does share one fire-control net,
-where point-defence batteries genuinely are independent sites - but it was an *argument*, and an
+That asymmetry was reasoned rather than arbitrary – a battlegroup does share one fire-control net,
+where point-defence batteries genuinely are independent sites – but it was an *argument*, and an
 argument is not something you can measure.
 
 `[sim] fires_need_c2` makes it a modelled thing. With it on, `Sim::allocate_side` splits a side in
@@ -2110,7 +2110,7 @@ allowed to *avoid* a target because a netted one took it. Solving them together 
 that information.
 
 Being outside the net costs coordination, not the ability to fight: a loose gun still engages, on
-its own judgement. What it loses is shown by V63's three-gun case - it opens on a target one of
+its own judgement. What it loses is shown by V63's three-gun case: it opens on a target one of
 the netted guns has already destroyed, and its whole volley leaves no trace in the log. That
 wasted volley is what the net buys back.
 
@@ -2126,7 +2126,7 @@ how many shooters may be assigned to it.
 There was a cap, `max_shooters_per_target`, and it is worth recording why it went, because the
 lesson is transferable. A multi-element ground unit genuinely absorbs several shooters, and a hard
 cap *idles* the surplus: a target offering $\min(\text{elements}, \text{cap})$ slots leaves
-shooters beyond that assigned nothing and firing nothing - which is a worse error than overkill
+shooters beyond that assigned nothing and firing nothing, which is a worse error than overkill
 whenever there is nothing else to shoot. §10.2 already prices piling on; truncating that as well
 said "rather than overkill, do nothing".
 
@@ -2135,8 +2135,8 @@ Worse, the cap was applied **per fire-control problem rather than per side**, so
 one. **A dial whose meaning depends on the scope it is applied over will invert when that scope
 changes.**
 
-Removing it improved the coordinated baseline on `fires_c2` from 103.40 s to **66.80 s** - that
-gap is the fire the cap was throwing away - and coordination is now worth about −2.2 s
+Removing it improved the coordinated baseline on `fires_c2` from 103.40 s to **66.80 s** – that
+gap is the fire the cap was throwing away – and coordination is now worth about −2.2 s
 ($t = -2.1$), in the direction it should be. V68 holds the replacement.
 
 Air defence keeps its cap (§11.2) because an airframe is a single object and a missile is a
@@ -2179,7 +2179,7 @@ both.
 
 **Any ground asset can be named as a target.** `TargetSpec::Named(id)` resolves against units,
 then air-defence batteries, then C2 posts. Ids are unique within a scenario, so one namespace
-covers all three and SEAD needs no new syntax - `target = { unit = "sam-1" }` simply works, with
+covers all three and SEAD needs no new syntax: `target = { unit = "sam-1" }` simply works, with
 `asset` as the clearer alias.
 
 **Area damage sweeps them.** The §2.3 Carleton kernel applies to batteries and posts exactly as to
@@ -2200,8 +2200,8 @@ corpse.
 
 **The radar consequence is what makes SEAD worth more than the launchers it removes**, and it
 falls out of existing structure rather than needing a special case: an organic radar is an
-ordinary entry in the sensor list, and `Sim::sensor_active` - which already knew a carried sensor
-dies with its airframe (§9.6) - now also knows a radar dies with its battery. Coverage and belief
+ordinary entry in the sensor list, and `Sim::sensor_active` – which already knew a carried sensor
+dies with its airframe (§9.6) – now also knows a radar dies with its battery. Coverage and belief
 rasters drop it automatically, because they were already asking that question.
 
 ### 12.3 Anti-radiation homing: the radar buys its own accuracy
@@ -2220,14 +2220,14 @@ silent_cep_m   = 400.0   # against a silent one
 ```
 
 `WeaponType::cep_against(emitting)` is the single place that decides, and for anything without the
-flag it returns `cep_m` whatever the emitter is doing - a dumb shell's accuracy does not depend on
+flag it returns `cep_m` whatever the emitter is doing: a dumb shell's accuracy does not depend on
 what its target is transmitting. So every existing munition is an exact identity (§7.4), and an
 ARM (Anti-Radiation Missile) with no `silent_cep_m` stated falls back to `cep_m`, meaning
 declaring the flag alone changes nothing until the degradation is given a number.
 
 **A dispersion, not a veto.** The munition still arrives; with nothing to home on it flies to
 where the emitter was last known to be. "An ARM cannot engage a silent radar at all" is this with
-the value set very large - reachable as a scenario's choice, rather than baked in as the model's
+the value set very large: reachable as a scenario's choice, rather than baked in as the model's
 opinion. The veto version would also flatter the counter, since switching a radar off would become
 a free and total defence.
 
@@ -2237,8 +2237,8 @@ sent at one is flying blind by definition rather than by omission.
 
 **The trade this poses, and why it is a real one.** `emitting = false` is the counter, and it is
 not free: the radar is **off**, so the battery detects nothing through it, cues nothing with it
-and contributes no coverage. It can still be handed a track by some *other* sensor over the net -
-that is what `self_cue` governs, and the two are separate flags for exactly this reason - but a
+and contributes no coverage. It can still be handed a track by some *other* sensor over the net –
+that is what `self_cue` governs, and the two are separate flags for exactly this reason – but a
 battery whose radar was its only sensor is simply blind. So the defender chooses: **survive the
 missile, or see the raid coming.** Not both.
 
@@ -2257,7 +2257,7 @@ scenario, because it looks like evidence.
 Air-delivered SEAD was the only kind, because ground fires iterated the unit list. Every asset
 class already had elements and already took §2.3 area damage identically, so the only thing
 missing was *which lists are searched*. `FireTarget` now names the list, and `TargetState` gathers
-the four facts a shell depends on - where, how big, how many left, is it locatable - so
+the four facts a shell depends on – where, how big, how many left, is it locatable – so
 counter-battery arrived by widening a list rather than by writing a second fires model.
 
 Units come first in `engageable_targets`, with batteries and posts appended, so a scenario with no
@@ -2267,7 +2267,7 @@ enemy emplacements produces exactly the list it always did (§7.4).
 the §3.2 glimpse loop, so neither has a track, and indirect fire needs one. Inventing a stochastic
 acquisition here would have inserted draws into every scenario fielding air defence and shifted
 the stream under V50, V51, V59 and V60 for no modelling gain. So `Sim::emplacement_is_located`
-asks the question counter-battery acquisition actually asks - **has it given itself away?**
+asks the question counter-battery acquisition actually asks: **has it given itself away?**
 
 | Asset | Located when |
 |---|---|
@@ -2275,11 +2275,11 @@ asks the question counter-battery acquisition actually asks - **has it given its
 | Post | it is coordinating at least one live battery |
 
 Those are the two real ways a site is fixed: electronic support measures on its emissions, or a
-counter-battery track back along its rounds. A command post is found because it is *talking* - the
+counter-battery track back along its rounds. A command post is found because it is *talking*: the
 same argument in a different band. All three are deterministic and draw no randomness.
 
 This joins the two halves of §12.3. Switching a radar off already made an ARM miss; it now also
-hides the battery from artillery. **One decision, three consequences** - and the cost stays what
+hides the battery from artillery. **One decision, three consequences**, and the cost stays what
 §12.3 said it was.
 
 **Direct fire is unchanged:** line of sight and range, no track. So going silent hides a battery
@@ -2291,7 +2291,7 @@ $\text{rof} \times \text{lethality} \times \text{reach}$. A battery's danger is 
 a post has no firepower at all, so neither has an output measurable on that scale, and a
 conversion would be arithmetic dressed as doctrine. Both fall back to 1.0 per element, and a
 scenario that wants artillery to prefer the SAM over the tanks says so with `value`. That is what
-the dial is for - "kill the radar first" is a judgement, not a derivation.
+the dial is for: "kill the radar first" is a judgement, not a derivation.
 
 ### 12.5 Emission and cueing are two decisions
 
@@ -2304,11 +2304,11 @@ the dial is for - "kill the radar first" is a judgement, not a derivation.
 
 They are independent because a battery may act on its own radar while under emission control, or
 wait for a track over the net while transmitting. Collapsing them into one flag lets a battery
-take the missile protection of going dark **while still detecting everything** - survivability
+take the missile protection of going dark **while still detecting everything**: survivability
 without the blindness that is supposed to pay for it.
 
 Re-measured with the flags separate, 500 paired seeds on `sead_arm`: a battery under EMCON
-survives the missile - 0.10 against 0.980 killed, a paired difference of **−0.884 ± 0.015** - and
+survives the missile – 0.10 against 0.980 killed, a paired difference of **−0.884 ± 0.015** – and
 in exchange its detections fall from 0.996 to **0.000**, taking its shots and its kills with them.
 That is the trade this section claims, and the model delivers it.
 
@@ -2328,7 +2328,7 @@ That is the trade this section claims, and the model delivers it.
   result that leans on long-lived counter-battery knowledge should say so.
 - **"Has fired" records a resolution, not a trigger pull.** For a missile battery those coincide.
   For a gun, `resolve_due` logs only a tick that *killed*, so a gun that has been firing steadily
-  and hitting nothing has not "fired" for this purpose - which is not quite what §12.4 claims.
+  and hitting nothing has not "fired" for this purpose, which is not quite what §12.4 claims.
 
 ### 12.7 Validation gates (V60, V64, V65, V69)
 
@@ -2347,8 +2347,8 @@ That is the trade this section claims, and the model delivers it.
 exactly the right thing to compute.
 
 It is not how a force fights. A gun crew does not hold a kill-probability table. It holds
-**orders** - engage air defence before manoeuvre, shoot the command post first, counter-battery
-takes precedence - and it follows them whether or not the shot in front of it is a good one.
+**orders** – engage air defence before manoeuvre, shoot the command post first, counter-battery
+takes precedence – and it follows them whether or not the shot in front of it is a good one.
 
 So a declared priority here is **strict by default**: a shooter that can reach anything in a
 higher tier takes it, even at a worse kill probability than a lower tier offers. That is not a
@@ -2358,7 +2358,7 @@ a more faithful one.
 **Which turns the mode switch into a measurement rather than a preference.** Running the same
 scenario under strict doctrine and under the payoff-optimal allocation puts a number on *what
 directive control costs against optimal control*. Compare with §10.2, which measured what *no*
-control costs against optimal - the three together bracket the question. Lives in `doctrine.rs`.
+control costs against optimal: the three together bracket the question. Lives in `doctrine.rs`.
 
 ### 13.1 What a priority entry may name
 
@@ -2373,14 +2373,14 @@ Four things, checked in this order, all equally valid:
 
 **There is no "no doctrine".** A side always has one; omitting the block gives
 `priority = ["all"]`, a single tier holding every target and ranked among itself by the ordinary
-payoff - which *is* the undirected behaviour. So the engine has **one** code path rather than
+payoff, which *is* the undirected behaviour. So the engine has **one** code path rather than
 two, and the identity with the pre-doctrine model holds by construction rather than by a
 separate branch that has to be kept honest. `"all"` is usable mid-list too, which makes the
 bottom tier explicit: `["c2", "air_defence", "all"]` reads as the fire plan it is.
 
 Roles are free-form strings on the stat block, so a scenario can invent whatever categories it
-needs; adding "engineer" takes no code change. **A role never masks its class** - a battery with
-`role = "sam"` matches both `"sam"` and `"air_defence"` - so a coarse doctrine keeps working when
+needs; adding "engineer" takes no code change. **A role never masks its class** – a battery with
+`role = "sam"` matches both `"sam"` and `"air_defence"` – so a coarse doctrine keeps working when
 a stat block later becomes more specific.
 
 The **first** matching entry decides the tier, which is what lets a list single one asset out and
@@ -2390,7 +2390,7 @@ ordinary payoff.
 
 **Every name is checked when the simulation is built.** A priority entry matching nothing is a
 load error listing what would have worked, not an empty tier. Same reasoning as the schema's
-`deny_unknown_fields` (§7.6): a tier that silently matches nothing fails invisibly - the run
+`deny_unknown_fields` (§7.6): a tier that silently matches nothing fails invisibly: the run
 succeeds and simply answers a different question from the one asked.
 
 ### 13.2 How a priority is applied
@@ -2404,7 +2404,7 @@ succeeds and simply answers a different question from the one asked.
 that can reach a tier takes something in it; only those left unassigned fall through to the next.
 That makes the ordering *exact*.
 
-The obvious alternative - add a large bonus to a higher tier's payoff - is a trap this codebase
+The obvious alternative – add a large bonus to a higher tier's payoff – is a trap this codebase
 has already met once. `allocation::INELIGIBLE` was originally $-10^{18}$, and at that magnitude
 `1e18 + 10.0 == 1e18` in `f64`, so every matching with the same forbidden-cell count scored
 identically (§10.2). A tier bonus large enough to dominate would swallow the payoff differences
@@ -2441,11 +2441,11 @@ shooter cannot engage is `INELIGIBLE` in the payoff and is never returned by any
 shooter whose whole top tier is masked by a ridge finds nothing there and **falls through to the
 next tier**. It is never left idle facing a hill while something it could engage goes unengaged.
 
-`Sim::can_engage` is the one test - alive, in range, in line of sight for direct fire, holding a
-live track for indirect - and doctrine, target locks and ordered engagements all ask it, so all
+`Sim::can_engage` is the one test – alive, in range, in line of sight for direct fire, holding a
+live track for indirect – and doctrine, target locks and ordered engagements all ask it, so all
 three agree about what "reachable" means. That includes `[[orders]]`: an order stands while the
 pairing is reachable and lapses while it is not, resuming the moment the target reappears. Making
-orders the exception - "an order is an order, the crew tries anyway" - is defensible in isolation
+orders the exception – "an order is an order, the crew tries anyway" – is defensible in isolation
 but contradicts the rule everything else follows, and it would let one bad order silence a gun
 indefinitely.
 
@@ -2458,7 +2458,7 @@ the target is dead or can no longer be engaged. Air defence has always worked th
 `AirDefenceState::engagements` and `drop_engagements`; this is the ground half of the same idea.
 
 Without it a gun re-decides from scratch every epoch and flip-flops between two near-identical
-targets as tiny payoff differences wobble - wasted fire for a reason no crew would recognise.
+targets as tiny payoff differences wobble: wasted fire for a reason no crew would recognise.
 Switching targets is itself a decision with a cost, so it should take something changing on the
 ground, not a rounding difference. The one thing that *does* break a lock is a new order, which is
 the point of an order. §10.5's `repath_margin` is the same idea applied to movement.
@@ -2471,7 +2471,7 @@ three locked guns would look as attractive to a fourth as an untouched one.
 armour elements destroyed and 0 posts; c2-first gives 0.00 and 0.60 ($t = -21.7$ and $+27.2$).
 
 And an unobvious result worth keeping: **batteries killed comes out lower under the
-air-defence-first plan.** A tank must be *found* - first detection around 3.5 s - while an
+air-defence-first plan.** A tank must be *found* – first detection around 3.5 s – while an
 emitting battery is locatable from tick one (§12.4), so even the armour-first plan opens on the
 battery because nothing else is visible yet. **Doctrine ranks what you can see; it cannot rank
 what you have not found.**
@@ -2500,7 +2500,7 @@ what you have not found.**
 ## 14. The measurement machinery
 
 A model that is never measured is a model that merely used to be right. This section specifies the
-statistics the study harness rests on - what makes a comparison valid, and what the estimators are
+statistics the study harness rests on: what makes a comparison valid, and what the estimators are
 checked against. The *operation* of the tools is in [`docs/GUIDE.md`](GUIDE.md); this is the
 argument for why they are built as they are. Lives in `crates/experiments/src/`.
 
@@ -2515,7 +2515,7 @@ calls `Sim::reset_to_scenario` between trials. So the map is held fixed and the 
 happens on *this* map, on average". Averaging over maps is a fair question, just a different one,
 and it is asked by sweeping `default_seed` itself.
 
-This arrived as a performance change - terrain generation is seconds and a trial is microseconds -
+This arrived as a performance change – terrain generation is seconds and a trial is microseconds –
 and turned out to be a correctness change. That is worth noticing as a pattern: a study that is
 too slow to run enough seeds tends to be a study measuring the wrong variance.
 
@@ -2546,7 +2546,7 @@ sharper form of the same rule and it is easy to get wrong, because a table of ar
 baseline invites reading the difference between two rows. Their separate errors do not combine the
 way a paired difference does. On the allocation comparison, greedy and optimal differ by
 0.405 ± 0.051 measured directly, but read off their shared `independent` baseline the gap looks
-like 0.4 against standard errors of about 0.23 - five times noisier, and enough to hide a real
+like 0.4 against standard errors of about 0.23: five times noisier, and enough to hide a real
 effect entirely.
 
 **The tie count is the most informative field in the report and the one most often skipped.** A
@@ -2590,7 +2590,7 @@ interactions, and a sweep will mislead.
 A slightly **negative** $S_1$ means "indistinguishable from zero". The Saltelli estimator is
 unbiased rather than non-negative, and clamping it would hide how noisy a near-zero index is.
 
-**A worked result**, from `studies/sensing.toml` - what decides whether a drone raid gets through,
+**A worked result**, from `studies/sensing.toml`: what decides whether a drone raid gets through,
 over 32,720 trials and four dials:
 
 | Dial | $S_1$ | $S_T$ | $S_T - S_1$ |
@@ -2600,7 +2600,7 @@ over 32,720 trials and four dials:
 | `sensors.mast_optical.lambda0_per_s` | −0.001 | 0.057 | 0.058 |
 | `sim.track_hold_s` | 0.000 | 0.000 | 0.000 |
 
-**Raid speed dominates** - how fast the attacker crosses the envelope explains more than the
+**Raid speed dominates**: how fast the attacker crosses the envelope explains more than the
 defender's cue latency does, which is not what §9.5's emphasis on the cueing timeline would lead
 you to guess. **The sensor barely matters**, which retrospectively explains why sweeping its
 glimpse rate over a twentyfold range moved leakage by only 0.176: it is not the binding constraint
@@ -2611,8 +2611,8 @@ additive on this scenario, which is a licence for every one-at-a-time sweep run 
 ### 14.4 Interactions
 
 A factorial design reports **main effects** first, each averaged over every level of the other
-factors - so a factor is described by what it does across the design rather than at one corner of
-it - and **interactions** second, as the classic difference of differences, formed per seed:
+factors – so a factor is described by what it does across the design rather than at one corner of
+it – and **interactions** second, as the classic difference of differences, formed per seed:
 
 $$
 (y_{11} - y_{01}) - (y_{10} - y_{00})
@@ -2633,8 +2633,8 @@ A measured finding is a claim about a model at a moment. The model then changes,
 something re-runs the claim, a number that was right when written goes on being quoted after it
 stopped being true.
 
-`findings.toml` pins each documented claim to the paired comparison that produced it - scenario,
-dial, two arms, metric, seeds, the expected difference and a tolerance - and the `findings` binary
+`findings.toml` pins each documented claim to the paired comparison that produced it – scenario,
+dial, two arms, metric, seeds, the expected difference and a tolerance – and the `findings` binary
 re-runs them all.
 
 **The tolerance is not a confidence interval.** The run computes its own standard error. The
@@ -2648,7 +2648,7 @@ mostly a matter of finding all the places it was copied to.
 
 Results come back in seed order regardless of how the work was split, and each trial is a fresh
 `reset_to_scenario` whose RNG stream depends only on its seed. A parallel study therefore returns
-byte-identical numbers to a serial one, and a test pins that - because "the study was parallelised
+byte-identical numbers to a serial one, and a test pins that, because "the study was parallelised
 and the answer changed" is otherwise found out months later, by a confusing result.
 
 The seed list is cut into exactly one chunk per worker thread, and each worker builds one
@@ -2662,11 +2662,11 @@ number of times.
   interaction is in the per-cell CSV but not in the report. With more than two levels the reported
   interaction is the corner-to-corner contrast rather than the whole surface.
 - **Sensitivity dials are continuous only.** A range is a pair of numbers, so a categorical dial
-  like `sim.allocation` has no place in a study file - those belong in a factorial design.
+  like `sim.allocation` has no place in a study file: those belong in a factorial design.
 - **A sensitivity study may not vary terrain.** Terrain is built once for the whole design, so a
   terrain dial would ask for a map it does not get.
 - **`--seeds N` always means seeds $0..N$**, so two studies at different $N$ share a prefix rather
-  than being independent. That is deliberate - it is what makes arms pairable - but it means "run
+  than being independent. That is deliberate – it is what makes arms pairable – but it means "run
   1,000 more seeds" is `--seeds 2000`, not a second run.
 - **No confidence intervals on quantiles**, only on means.
 
@@ -2718,7 +2718,7 @@ two part company. The map, for reading the source's history:
 | 17 | Movement decisions in the loop | §10.5 |
 
 **Sensing was deliberately ordered before fires.** Sensing is the centrepiece of the tool and the
-visual heart of it, so landing it earlier meant the interactive loop existed sooner - and it
+visual heart of it, so landing it earlier meant the interactive loop existed sooner, and it
 hardened the line-of-sight interface while changing that interface was still cheap.
 
 ---

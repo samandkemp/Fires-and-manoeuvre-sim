@@ -1,7 +1,7 @@
 # Reference
 
 Every field, dial, metric and flag, with its type, default and the theory section that
-specifies it. This is a lookup table - keep it open while editing a scenario. For the prose
+specifies it. This is a lookup table: keep it open while editing a scenario. For the prose
 walkthrough of *how* to use any of it, see [`docs/GUIDE.md`](GUIDE.md); for what a model does
 with a dial, follow the § reference into [`docs/THEORY.md`](THEORY.md).
 
@@ -10,7 +10,7 @@ with a dial, follow the § reference into [`docs/THEORY.md`](THEORY.md).
 
 **Schema source of truth.** When this page and the code disagree, the code is right:
 [`crates/sim_core/src/scenario/mod.rs`](../crates/sim_core/src/scenario/mod.rs) holds the
-scenario schema, and each library type sits beside its model - `sensing.rs`, `weapon_effects.rs`,
+scenario schema, and each library type sits beside its model: `sensing.rs`, `weapon_effects.rs`,
 `airframes.rs`, `air_defence.rs`, `c2.rs`, `terrain.rs`.
 
 **Every schema sets `deny_unknown_fields`.** A misspelt key is a load error naming the key, not
@@ -45,7 +45,7 @@ a silent default.
 | `[sim]` | table | all defaults | Model dials |
 | `[blue]`, `[red]` | table | empty | The two forces |
 
-A file is recognised as a scenario by parsing as one - it needs `name` and `[terrain]`, which no
+A file is recognised as a scenario by parsing as one: it needs `name` and `[terrain]`, which no
 library has. There is no hard-coded list of scenario names.
 
 ## `[sim]` dials
@@ -76,7 +76,7 @@ Every dial has a default, so a scenario states only what it changes.
 `allocation = "independent"`, a long `track_hold_s`, `sensor_tasking = false` and
 `fires_need_c2 = false`.
 
-**Three cannot be changed while the app is running** - `dt_s`, `epoch_s` and `belief_cells` -
+**Three cannot be changed while the app is running** – `dt_s`, `epoch_s` and `belief_cells` –
 because doing so would make the two halves of a trial answer different questions, or require
 rasters to be rebuilt and re-keyed. The panel shows them read-only rather than hiding them.
 
@@ -151,7 +151,7 @@ unique across the whole scenario, a `type` from the matching library, and a `pos
 | `objective` | `[x, y]` | none | Plan its own way here, re-solved each epoch |
 | `risk_weight` | float | `[sim] risk_weight` | This unit's caution |
 
-**`route` and `objective` are mutually exclusive** - declaring both is a load error naming the
+**`route` and `objective` are mutually exclusive**: declaring both is a load error naming the
 unit (V72). The same exclusivity holds when they are set from the app.
 
 ### `[[side.sensors]]`
@@ -172,7 +172,7 @@ unit (V72). The same exclusivity holds when they are set from the app.
 | `radius_m` | float ≥ 0 | Effective radius |
 
 A jammer has no id and cannot be targeted. It degrades the **enemy's** detection of its own side
-(§8.1) and shrinks the **enemy's** C2 (Command and Control) coordination radius (§11.1) - the same
+(§8.1) and shrinks the **enemy's** C2 (Command and Control) coordination radius (§11.1): the same
 asset, both signs.
 
 ### `[[side.air]]`
@@ -192,7 +192,7 @@ asset, both signs.
 
 `terminal = { orbit = { radius_m = 800.0, clockwise = true } }` orbits the final waypoint.
 
-**`target = { unit = "..." }` resolves across units, air-defence batteries and C2 posts** - one
+**`target = { unit = "..." }` resolves across units, air-defence batteries and C2 posts**: one
 namespace, so aiming at a SAM (Surface-to-Air Missile) needs no new syntax. `asset` is a clearer
 alias for the same key.
 
@@ -368,7 +368,7 @@ One table per post type. Model: §11.1.
 | `value` | float, optional | What killing it is worth |
 | `role` | string, optional | Free-form label |
 
-A post has no weapon and no sensor. Killing it costs **no firepower at all** - only the
+A post has no weapon and no sensor. Killing it costs **no firepower at all**: only the
 coordination.
 
 ## Library: `terrain_types.toml`
@@ -410,12 +410,12 @@ dial (§7.6, V67).
 | `sensors.*.range_half_m` ≤ 0 | Reaches a **divisor** in the §3.2 falloff: a zero gives `NaN`, and `NaN` loses every comparison, so sensing goes silently *inert* |
 | An indirect weapon's `lethal_radius_m` ≤ 0 | Reaches a divisor in the §2.3 Carleton kernel, same failure |
 
-**The list is deliberately short.** Most zeros are legitimate statements - a stationary drone, a
+**The list is deliberately short.** Most zeros are legitimate statements: a stationary drone, a
 battery that engages nothing, a direct weapon's unused lethal radius. Refusing those would be
 enforcing taste rather than tractability.
 
-The contract runs at load **and** again inside `Sim::new`, so a library patched in memory - which
-is what `sweep` does - is held to the same standard as one read from disk.
+The contract runs at load **and** again inside `Sim::new`, so a library patched in memory – which
+is what `sweep` does – is held to the same standard as one read from disk.
 
 ## Metrics
 
@@ -444,7 +444,7 @@ logs and final state.
 | `red_cleared_s` | When Red lost its last ground element |
 | `epochs` | Decision epochs resolved |
 
-**`*_cleared_s` reports the run length when a side was never cleared** - so `600` means "not by
+**`*_cleared_s` reports the run length when a side was never cleared**, so `600` means "not by
 600 s", not "at 600 s". Read it with the kill counts beside it.
 
 ## Command-line tools
@@ -453,7 +453,7 @@ All run as `cargo run -p experiments --release --bin <name> -- <args>`. **Always
 a debug Monte Carlo study is about twenty times slower.
 
 **A flag given a missing or unparseable value exits with status 2**, naming the flag, rather
-than falling back to its default - otherwise `--seeds abc` would quietly run 200 trials and
+than falling back to its default; otherwise `--seeds abc` would quietly run 200 trials and
 `--until 60O` would quietly run 600 s, succeeding while answering a different question. The
 value-level twin of the scenario schema's `deny_unknown_fields`.
 
@@ -560,7 +560,7 @@ findings [--only ID] [--quick]
 ```
 
 Re-runs every claim in `findings.toml`. Exits non-zero on drift. `--quick` cuts seeds to a
-tenth - enough to catch a *broken* finding, far too few to judge drift.
+tenth: enough to catch a *broken* finding, far too few to judge drift.
 
 ### Probes and benchmarks
 
@@ -607,7 +607,7 @@ cargo build -p app --release                              # remove dynamic_linki
 | `sead_arm.toml` | Anti-radiation homing and the go-silent counter | `emitting`, `silent_cep_m` |
 
 Libraries: `units.toml`, `weapons.toml`, `sensors.toml`, `terrain_types.toml`, `air.toml`,
-`air_defence.toml`, `c2.toml`. **The last three are optional** - a scenario directory without
+`air_defence.toml`, `c2.toml`. **The last three are optional**: a scenario directory without
 them loads with those libraries empty, so an older scenario set still works.
 
 ---

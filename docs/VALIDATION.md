@@ -6,7 +6,7 @@ whole thing.
 
 This page is the catalogue and the method. The models themselves are specified in
 [`docs/THEORY.md`](THEORY.md), where each section states its own gates alongside the equations
-they hold - so if you are reading about a model, its gates are on the same page. Come here for
+they hold, so if you are reading about a model, its gates are on the same page. Come here for
 the complete list, for what a gate is *for*, and for how to add one.
 
 - [Why a gate is not a regression test](#why-a-gate-is-not-a-regression-test)
@@ -25,8 +25,8 @@ A regression test records what the code did yesterday and complains when that ch
 useful, and it is not what is wanted here. It cannot say the answer was wrong yesterday, and it
 turns every deliberate improvement into a failure that has to be blessed.
 
-A gate names an **external reference** - an analytical result, a limiting case, an identity the
-model must satisfy - and checks against that. So:
+A gate names an **external reference** – an analytical result, a limiting case, an identity the
+model must satisfy – and checks against that. So:
 
 - a regression test says *the answer changed*;
 - a gate says *the answer is wrong*.
@@ -56,7 +56,7 @@ catalogue.
 **The identity discipline is the one to understand**, because it is what has made nine phases of
 additions safe. Every phase since the third is *appended* to the loop and draws **zero** random
 numbers when its inputs are empty. So a scenario with no aircraft produces the same event log, byte
-for byte, that it did before the air model existed - not approximately, exactly. Adding a subsystem
+for byte, that it did before the air model existed: not approximately, but exactly. Adding a subsystem
 cannot silently perturb an existing result, and if it did, a gate fails immediately rather than a
 finding quietly rotting.
 
@@ -89,7 +89,7 @@ Grouped by the [`docs/THEORY.md`](THEORY.md) section each gate constrains.
 
 **This table is generated.** It is emitted from `validation::gates::GATES` by
 `validation_report --markdown`, and `crates/validation/tests/catalogue.rs` asserts the
-correspondence between that catalogue and the suite **in both directions** - every gate names a
+correspondence between that catalogue and the suite **in both directions**: every gate names a
 test that exists, and every `vNN_*` test appears in the catalogue. So the published table cannot
 claim a gate the tests do not enforce, and cannot omit one they do. Edit
 [`crates/validation/src/gates.rs`](../crates/validation/src/gates.rs), never this table.
@@ -253,14 +253,14 @@ probability is what makes the answer independent of the integrator. A per-tick p
 make the physics a function of `dt_s`, which is a very hard bug to see and a very easy one to ship.
 
 **V30, Lanchester's square law** (§4). The strongest single check in the suite, because the square
-law is an *emergent* property of the whole loop - element counts, rate of fire, hit probability,
-removal - and not of any one function. Nothing was written to produce it.
+law is an *emergent* property of the whole loop – element counts, rate of fire, hit probability,
+removal – and not of any one function. Nothing was written to produce it.
 
 **V67, the input contract** (§7.6). The value-level twin of the schema's `deny_unknown_fields`. A
 misspelt *key* takes its default and answers a different question; a *value* outside its domain
 does the same thing. The failure mode that motivated it is reachable from an ordinary
 `sweep --param sim.epoch_s --from 0`, whose first arm hangs with no diagnostic at all. The list of
-refusals is deliberately short - see §7.6 for why refusing every zero would be enforcing taste
+refusals is deliberately short: see §7.6 for why refusing every zero would be enforcing taste
 rather than tractability.
 
 ## Where they live, and why there
@@ -274,10 +274,10 @@ The gates are a **separate crate**, `crates/validation`, not tests inside `sim_c
    models, and well over a hundred test functions interleaved with it would bury that.
 
 There is exactly one exception. **V52's zero-draw half** asserts a property of the RNG stream -
-that empty air phases consume no random numbers - which is genuinely internal, so it stays a unit
+that empty air phases consume no random numbers, which is genuinely internal, so it stays a unit
 test inside `sim_core`.
 
-Suites are grouped by design area - `tests/sead/arm.rs`, `tests/c2/link.rs` - with one
+Suites are grouped by design area – `tests/sead/arm.rs`, `tests/c2/link.rs` – with one
 `tests/<group>.rs` per group declaring them by `#[path]`. Cargo builds every `tests/*.rs` as its
 own binary linking `sim_core` afresh, so the grouping keeps a new suite from adding another link
 unit.
@@ -286,7 +286,7 @@ unit.
 
 1. **Write the model, and with it the reference**: the closed form, the independent
    implementation, the invariant, or the identity it must satisfy. If none can be named, that is
-   worth pausing over - it usually means the model is not yet specified.
+   worth pausing over: it usually means the model is not yet specified.
 2. **State the gate in its `docs/THEORY.md` section**, in that section's validation table.
 3. **Add the test** to `crates/validation/tests/`, named `vNN_what_it_checks`. Put a new suite in
    the group its section belongs to; a genuinely new area gets its own.
