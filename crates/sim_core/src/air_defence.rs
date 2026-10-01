@@ -420,8 +420,8 @@ impl AirDefenceState {
 /// Slant range at which this battery can engage `target`, or `None` if it is outside the
 /// envelope (§9.4).
 ///
-/// Returns the range, not a bool: every caller asking "can I engage?" next needs "at what
-/// range?" for the missile flight time. Checks run cheapest-first - altitude band, slant
+/// Returns the range, not a bool: every caller asking whether it can engage next needs the
+/// range as well, for the missile flight time. Checks run cheapest-first - altitude band, slant
 /// range, then the sightline if `requires_los`.
 #[must_use]
 pub fn engagement_range(

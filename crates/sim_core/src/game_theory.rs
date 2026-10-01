@@ -30,7 +30,7 @@ pub fn solve_zero_sum(payoff: &Array2<f32>, iterations: usize) -> GameSolution {
     let (m, n) = payoff.dim();
     assert!(m > 0 && n > 0, "payoff matrix must be non-empty");
 
-    // Cumulative payoff of each of our actions against the opponent's play so far.
+    // Cumulative payoff of each action against the opponent's play so far.
     let mut row_util = vec![0.0f64; m]; // row's payoff for each row vs col history
     let mut col_util = vec![0.0f64; n]; // col's payoff for each col vs row history
     let mut row_counts = vec![0.0f64; m];

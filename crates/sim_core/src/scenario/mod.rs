@@ -18,7 +18,7 @@ pub enum ScenarioError {
     /// The file could not be read.
     #[error("could not read {path}")]
     Io {
-        /// The path we tried to read.
+        /// The path that could not be read.
         path: PathBuf,
         /// The underlying I/O error.
         #[source]
@@ -505,8 +505,8 @@ impl Scenario {
     /// Load and validate a scenario from a TOML file.
     ///
     /// # Errors
-    /// [`ScenarioError::Io`] if the file can't be read, [`ScenarioError::Parse`] if it
-    /// isn't valid TOML / schema, [`ScenarioError::Invalid`] if it fails validation.
+    /// [`ScenarioError::Io`] if the file cannot be read, [`ScenarioError::Parse`] if it
+    /// is not valid TOML / schema, [`ScenarioError::Invalid`] if it fails validation.
     pub fn load(path: &Path) -> Result<Self, ScenarioError> {
         Self::from_toml_str(&read_to_string(path)?)
     }

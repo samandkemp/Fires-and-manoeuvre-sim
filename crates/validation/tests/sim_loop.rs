@@ -1099,7 +1099,7 @@ fn v54_removal_tombstones_keep_logged_indices_valid() {
 
     let units_before = sim.units().len();
     let air_before = sim.air().len();
-    // Record what every logged index resolved to, so we can prove it still does.
+    // Record what every logged index resolved to, so the test can prove it still does.
     let detections: Vec<(usize, String)> = sim
         .events()
         .iter()

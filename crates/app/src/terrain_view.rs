@@ -24,7 +24,7 @@ pub struct LoadedData {
 }
 
 /// The workspace `scenarios/` directory, resolved from this crate's manifest dir so the
-/// working directory doesn't matter.
+/// working directory does not matter.
 #[must_use]
 pub fn scenarios_dir() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../../scenarios")
@@ -162,7 +162,7 @@ fn hypsometric(t: f32) -> [f32; 3] {
 }
 
 /// Lambertian hillshade from the local elevation gradient, lit from the north-west and
-/// above. Returns a brightness in `[0.35, 1.0]` (floored so shadows aren't pure black).
+/// above. Returns a brightness in `[0.35, 1.0]` (floored so shadows are not pure black).
 fn hillshade(elev: &Array2<f32>, ix: usize, iy: usize, w: usize, h: usize, s: f32) -> f32 {
     let xm = ix.saturating_sub(1);
     let xp = (ix + 1).min(w - 1);

@@ -172,7 +172,8 @@ unit (V72). The same exclusivity holds when they are set from the app.
 | `radius_m` | float ≥ 0 | Effective radius |
 
 A jammer has no id and cannot be targeted. It degrades the **enemy's** detection of its own side
-(§8.1) and shrinks the **enemy's** C2 coordination radius (§11.1) - the same asset, both signs.
+(§8.1) and shrinks the **enemy's** C2 (Command and Control) coordination radius (§11.1) - the same
+asset, both signs.
 
 ### `[[side.air]]`
 
@@ -192,7 +193,8 @@ A jammer has no id and cannot be targeted. It degrades the **enemy's** detection
 `terminal = { orbit = { radius_m = 800.0, clockwise = true } }` orbits the final waypoint.
 
 **`target = { unit = "..." }` resolves across units, air-defence batteries and C2 posts** - one
-namespace, so aiming at a SAM needs no new syntax. `asset` is a clearer alias for the same key.
+namespace, so aiming at a SAM (Surface-to-Air Missile) needs no new syntax. `asset` is a clearer
+alias for the same key.
 
 ### `[[side.air_defence]]`
 
@@ -610,4 +612,5 @@ them loads with those libraries empty, so an older scenario set still works.
 
 ---
 
-*Back to [README](../README.md) · [Guide](GUIDE.md) · [Model](MODEL.md) · [Theory](THEORY.md) · [Validation](VALIDATION.md)*
+*Back to [README](../README.md) · [Guide](GUIDE.md) · [Model](MODEL.md) · [Theory](THEORY.md) ·
+[Validation](VALIDATION.md)*

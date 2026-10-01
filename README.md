@@ -56,7 +56,7 @@ Each does a job the others cannot.
 |---|---|---|
 | **Optimal control** | Turn-rate-limited flight; phase-integrated orbits | `airframes.rs` |
 | **Dynamic programming** | Least-risk pathing - Dijkstra as label-setting value iteration | `movement.rs` |
-| **Stochastic processes** | Detection rates, CEP dispersion, the suppression chain, time-to-kill | `sensing.rs`, `weapon_effects.rs`, `suppression.rs`, `air_defence.rs` |
+| **Stochastic processes** | Detection rates, CEP (Circular Error Probable) dispersion, the suppression chain, time-to-kill | `sensing.rs`, `weapon_effects.rs`, `suppression.rs`, `air_defence.rs` |
 | **Game theory** | Sensing against counter-sensing, by fictitious play | `game_theory.rs` |
 | **Partial observability** | Belief over enemy position, and the value of *not* seeing | `ew.rs`, `pomdp.rs` |
 | **Combinatorial optimisation** | Side-wide weapon-target assignment (Kuhn-Munkres) | `allocation.rs` |
@@ -91,6 +91,23 @@ The prose leans on both, so they are worth thirty seconds up front:
 
 Neither is a hierarchy to be learned. They are stable names, so a claim made in one place can be
 checked in another.
+
+### Abbreviations
+
+The documentation expands each of these on first use, but they are gathered here so that a reader
+arriving part-way through has somewhere to look.
+
+| | | | |
+|---|---|---|---|
+| **AD** | Air Defence | **EMCON** | Emission Control |
+| **AGL** | Above Ground Level | **EW** | Electronic Warfare |
+| **AMSL** | Above Mean Sea Level | **LOS** | Line of Sight |
+| **ARM** | Anti-Radiation Missile | **OR** | Operational Research |
+| **C2** | Command and Control | **POMDP** | Partially Observable Markov Decision Process |
+| **CEP** | Circular Error Probable | **SAM** | Surface-to-Air Missile |
+| **CIWS** | Close-In Weapon System | **SEAD** | Suppression of Enemy Air Defences |
+| **DEM** | Digital Elevation Model | **TTK** | Time to Kill |
+| **DP** | Dynamic Programming | **UAS** | Uncrewed Aerial System |
 
 ## Layout
 
@@ -150,10 +167,12 @@ See [docs/GUIDE.md](docs/GUIDE.md) for everything else.
 The model covers terrain and line of sight, sensing and detection, direct and indirect fires,
 suppression and attrition, movement as dynamic programming, a game-theoretic layer, electronic
 warfare with partial observability, air and counter-air, a decision layer closing sensing to
-action, command and control as a placed asset, SEAD, directed targeting, and movement decisions
-taken inside the loop. Alongside it sits a study harness for batch runs, sweeps, factorial designs
-and global sensitivity analysis. All 77 validation gates hold.
+action, command and control as a placed asset, SEAD (Suppression of Enemy Air Defences), directed
+targeting, and movement decisions taken inside the loop. Alongside it sits a study harness for
+batch runs, sweeps, factorial designs and global sensitivity analysis. All 77 validation gates
+hold.
 
 Each theory section states the limitations its model accepts. The largest open one is that the
 fire-allocation objective scores a single epoch, which is measurably what costs the optimal solver
-against a greedy rule ([§10.6](docs/THEORY.md#106-the-planning-horizon-and-what-the-optimal-versus-greedy-gap-is-made-of)).
+against a greedy rule
+([§10.6](docs/THEORY.md#106-the-planning-horizon-and-what-the-optimal-versus-greedy-gap-is-made-of)).

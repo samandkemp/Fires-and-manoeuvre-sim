@@ -120,7 +120,7 @@ fn main() {
     report("ground-air    (h=400 m)", 400.0, 20_000, &mut rnd);
 
     // The simulation tick: what every batch run and every app frame pays, and what the
-    // rasters above don't cover.
+    // rasters above do not cover.
     //
     // Treat the tick figure as a sanity check, not an optimisation target - it is
     // sub-millisecond and swings 2-3x run to run on a busy machine. `build` is the number

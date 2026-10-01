@@ -24,7 +24,8 @@ one first - it is the map the other three hang off.
 - [13. Belief, and the value of not seeing](#13-belief-and-the-value-of-not-seeing)
 - [14. Movement as a decision](#14-movement-as-a-decision)
 - [15. The identity discipline](#15-the-identity-discipline)
-- [16. Performance, and why it cannot change results](#16-performance-and-why-it-cannot-change-results)
+- [16. Performance, and why it cannot change
+  results](#16-performance-and-why-it-cannot-change-results)
 - [17. Where to change things](#17-where-to-change-things)
 
 ---
@@ -70,8 +71,8 @@ Inside `sim_core`, each module owns one idea:
 | `scenario/` | Loading TOML into structs, and refusing what the model cannot run on |
 | `sim/` | **The engine that drives all of the above** |
 
-Notice the split. `sensing.rs` and `weapon_effects.rs` are *pure functions* - give them numbers, they
-return a probability, with no memory and no randomness. `sim/` is the part that holds state,
+Notice the split. `sensing.rs` and `weapon_effects.rs` are *pure functions* - give them numbers,
+they return a probability, with no memory and no randomness. `sim/` is the part that holds state,
 owns the dice, and calls them in the right order. **That separation is why the models can be
 validated in isolation**, and it is the reason the file layout looks the way it does.
 
@@ -133,11 +134,12 @@ computed from the enemy's sensors - which puts you back at terrain.
 The dotted arrows are the modifiers, and they are where most of the interesting behaviour
 lives:
 
-- **EW scales the detection rate**, and nothing else. It moves nothing and hides nothing
-  geometrically. Because tracks are held by rate, that is enough to *break* a track and not
-  merely prevent one.
-- **EW also shrinks the C2 net**, using the same jammer with the sign reversed - a jammer
-  protecting Red both hides Red units from Blue *and* cuts Blue's own coordination.
+- **EW (Electronic Warfare) scales the detection rate**, and nothing else. It moves nothing and
+  hides nothing geometrically. Because tracks are held by rate, that is enough to *break* a track
+  and not merely prevent one.
+- **EW also shrinks the C2 (Command and Control) net**, using the same jammer with the sign
+  reversed - a jammer protecting Red both hides Red units from Blue *and* cuts Blue's own
+  coordination.
 - **C2 decides who is in whose assignment problem**, so killing a post costs no firepower at
   all and still costs the defence dearly.
 - **Suppression gates both fire and movement**, which is what lets artillery shape manoeuvre
@@ -371,7 +373,8 @@ At each epoch, `maintain_tracks` asks whether a sensor would expect to glimpse t
 again during the next epoch:
 
 $$
-\text{refresh if } 1 - e^{-\lambda_{\text{eff}} \cdot \text{epoch\_s}} \ge \text{track\_maintain\_p}
+\text{refresh if } 1 - e^{-\lambda_{\text{eff}} \cdot \text{epoch\_s}} \ge
+\text{track\_maintain\_p}
 $$
 
 Two design points that are easy to miss.
@@ -471,11 +474,13 @@ vertical aiming errors are independent, hitting it is a product of two one-dimen
 integrals:
 
 $$
-P_{\text{hit}} = \mathrm{erf}\!\left(\frac{W}{2\sigma\sqrt2}\right) \cdot \mathrm{erf}\!\left(\frac{H}{2\sigma\sqrt2}\right)
+P_{\text{hit}} = \mathrm{erf}\!\left(\frac{W}{2\sigma\sqrt2}\right) \cdot
+\mathrm{erf}\!\left(\frac{H}{2\sigma\sqrt2}\right)
 $$
 
 $$
-P_{\text{kill}} = P_{\text{hit}} \times p_{\text{kill|hit}} \times (1 - \text{cover}) \times \text{suppression factor}
+P_{\text{kill}} = P_{\text{hit}} \times p_{\text{kill|hit}} \times (1 - \text{cover}) \times
+\text{suppression factor}
 $$
 
 For an `afv_cannon` (0.5 mrad, `p_kill_given_hit` 0.7) against an `afv` (3.2 m by 2.8 m):
@@ -497,8 +502,8 @@ $$
 \text{burst} = \text{aim} + N(0, \sigma^2 I), \qquad \sigma = \frac{\text{CEP}}{1.1774}
 $$
 
-CEP is the radius containing half the rounds; the constant is $\sqrt{2\ln 2}$, the
-circular-Gaussian identity relating the two.
+CEP (Circular Error Probable) is the radius containing half the rounds; the constant is
+$\sqrt{2\ln 2}$, the circular-Gaussian identity relating the two.
 
 Second, what does a burst do to something $\rho$ metres away? The **Carleton** damage kernel,
 $D(\rho) = \exp(-\rho^2 / 2R_L^2)$, where $R_L$ is the lethal radius. Each surviving element
@@ -509,7 +514,8 @@ The expected damage, averaged over where the round actually lands, has a **close
 Gaussian convolved with a Gaussian:
 
 $$
-\mathbb{E}[D](d) = \frac{R_L^2}{\sigma^2 + R_L^2}\exp\!\left(\frac{-d^2}{2(\sigma^2 + R_L^2)}\right)
+\mathbb{E}[D](d) = \frac{R_L^2}{\sigma^2 + R_L^2}\exp\!\left(\frac{-d^2}{2(\sigma^2 +
+R_L^2)}\right)
 $$
 
 **That closed form is why this kernel was chosen.** A simpler cookie-cutter lethality disc would
@@ -569,18 +575,19 @@ high-dispersion or very long-range direct weapon.
 
 ## 11. Air, and the sensor-to-shooter timeline
 
-Drones are a third asset class alongside units and sensors. Each has a per-instance altitude
-with a reference frame, and the choice of frame is the whole point: **AGL** hugs the terrain and
-is never masked by the hill it overflies, **AMSL** cruises level and *is* masked by higher
-ground. A drone may carry a strike payload, a sensor, or both - a carried sensor is an ordinary
-entry in the sensor list that reports its airframe's position, so a recce drone is simply a
-mobile elevated observer with no special case anywhere.
+Drones are a third asset class alongside units and sensors. Each has a per-instance altitude with
+a reference frame, and the choice of frame is the whole point: **AGL** (Above Ground Level) hugs
+the terrain and is never masked by the hill it overflies, **AMSL** (Above Mean Sea Level) cruises
+level and *is* masked by higher ground. A drone may carry a strike payload, a sensor, or both - a
+carried sensor is an ordinary entry in the sensor list that reports its airframe's position, so a
+recce drone is simply a mobile elevated observer with no special case anywhere.
 
 Air defence answers them with two engagement models, because **time-to-kill is distributed
 differently** in each:
 
-- **Gun or CIWS** is a Poisson kill process. $\text{TTK} \sim \text{Exp}(\lambda_k)$ -
-  structurally the same as the glimpse model, so it inherits its tick-size invariance.
+- **Gun or CIWS** (Close-In Weapon System) is a Poisson kill process. $\text{TTK} \sim
+  \text{Exp}(\lambda_k)$ - structurally the same as the glimpse model, so it inherits its
+  tick-size invariance.
 - **Missile** is discrete shoot-look-shoot. Shots-to-kill is Geometric($p$), with flight time
   $t_f$ and reload $t_r$.
 
@@ -661,17 +668,18 @@ sitting on top of the post keeps talking. Same effect on the defence as killing 
 ordnance spent, and nothing on the map to show it happened. `link_latency_s` is the other half:
 a battery must have been inside the radius that long before it counts as netted.
 
-**SEAD follows from all this.** Batteries and posts have `element_count` and take the same area
-damage as units, and a strike drone can be assigned one by name - `target = { unit = "sam-1" }`,
-since ids are unique across all three asset lists. Destroying a battery also takes **its radar**
-off the network, because an organic radar is just an ordinary entry in the sensor list.
-Destroying a post takes only the coordination.
+**SEAD (Suppression of Enemy Air Defences) follows from all this.** Batteries and posts have
+`element_count` and take the same area damage as units, and a strike drone can be assigned one by
+name - `target = { unit = "sam-1" }`, since ids are unique across all three asset lists.
+Destroying a battery also takes **its radar** off the network, because an organic radar is just an
+ordinary entry in the sensor list. Destroying a post takes only the coordination.
 
-The counter is EMCON, and it is not free. A battery with `emitting = false` survives the
-anti-radiation missile - 0.10 against 0.980 killed on `sead_arm` - and in exchange its detections
-fall from 0.996 to **zero**, taking its shots and its kills with them. **Survive the missile, or see the
-raid coming. Not both.** Going silent also hides it from counter-battery artillery, because an
-emplacement is located by having given itself away: transmitting, or having fired.
+The counter is EMCON (Emission Control), and it is not free. A battery with `emitting = false`
+survives the anti-radiation missile - 0.10 against 0.980 killed on `sead_arm` - and in exchange
+its detections fall from 0.996 to **zero**, taking its shots and its kills with them. **Survive
+the missile, or see the raid coming. Not both.** Going silent also hides it from counter-battery
+artillery, because an emplacement is located by having given itself away: transmitting, or having
+fired.
 
 ## 13. Belief, and the value of not seeing
 
@@ -848,4 +856,5 @@ the only thing standing between a model and a plausible-looking number that is q
 
 ---
 
-*Back to [README](../README.md) · [Guide](GUIDE.md) · [Reference](REFERENCE.md) · [Theory](THEORY.md) · [Validation](VALIDATION.md)*
+*Back to [README](../README.md) · [Guide](GUIDE.md) · [Reference](REFERENCE.md) ·
+[Theory](THEORY.md) · [Validation](VALIDATION.md)*

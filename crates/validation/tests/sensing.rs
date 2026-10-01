@@ -81,7 +81,7 @@ fn v16_rate_structure() {
         }
     });
     let g2 = TerrainGrid::from_layers(10.0, Array2::zeros((64, 64)), tt, &params());
-    // Target *in* the woods cell (its own canopy doesn't block LOS - endpoint
+    // Target *in* the woods cell (its own canopy does not block LOS - endpoint
     // exclusion - but its concealment applies).
     let open_rate = detection_rate(&g, &s, sp, 0.0, &u, Vec2::new(605.0, 325.0));
     let hidden_rate = detection_rate(&g2, &s, sp, 0.0, &u, Vec2::new(605.0, 325.0));

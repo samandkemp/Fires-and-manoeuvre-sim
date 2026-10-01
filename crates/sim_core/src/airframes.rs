@@ -107,7 +107,7 @@ pub struct AirType {
     /// Default cruise speed, metres/second (an instance may override it).
     pub cruise_speed_m_s: f32,
     /// Maximum turn rate, degrees/second. Implies a minimum turn radius `v / ω`. The
-    /// large default makes turns near-instant, so a type that doesn't care about turn
+    /// large default makes turns near-instant, so a type that does not care about turn
     /// performance tracks its waypoints exactly.
     #[serde(default = "default_turn_rate")]
     pub max_turn_rate_deg_s: f32,
@@ -474,8 +474,8 @@ impl AirState {
             (last_leg, self.plan.terminal, self.plan.destination())
         {
             if radius_m > 0.0 {
-                // Phase from where we actually are, then snap exactly onto the circle;
-                // the correction is at most one capture radius.
+                // Phase is taken from the current position, then snapped exactly onto the
+                // circle; the correction is at most one capture radius.
                 let phase = bearing_rad(self.pos - centre);
                 self.orbit_phase = Some(phase);
                 self.pos = centre + Vec2::from_angle(phase) * radius_m;

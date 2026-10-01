@@ -262,7 +262,7 @@ fn v50_cue_latency_and_leakage() {
 
     // The missile form of the same law: shot opportunities fall to zero.
     assert_eq!(shot_opportunities(20.0, 4.0, 6.0), 2); // arrivals at 4 s and 14 s
-    assert_eq!(shot_opportunities(3.0, 4.0, 6.0), 0); // first shot can't arrive
+    assert_eq!(shot_opportunities(3.0, 4.0, 6.0), 0); // first shot cannot arrive
     assert!((p_leak_missile(0.5, 2) - 0.25).abs() < 1e-6);
 }
 

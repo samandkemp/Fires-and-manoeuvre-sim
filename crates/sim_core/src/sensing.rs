@@ -10,7 +10,7 @@ use std::collections::BTreeMap;
 
 /// The propagation channel a sensor works in. Each modality brings its own terms to
 /// the rate model - `Optical` uses LOS + canopy transmittance; future `Acoustic` /
-/// `EoIr` variants will add theirs (that's why this is data, not convention).
+/// `EoIr` variants will add theirs (which is why this is data, not convention).
 #[derive(Clone, Copy, PartialEq, Eq, Debug, serde::Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Modality {

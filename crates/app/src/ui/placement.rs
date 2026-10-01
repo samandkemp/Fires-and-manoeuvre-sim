@@ -57,8 +57,8 @@ impl Panel<'_, '_, '_> {
         }
     }
 
-    /// What is selected - after dropping anything that died or was cleared under us, so a
-    /// stale index can never be commanded.
+    /// What is selected - after dropping anything that died or was cleared in the
+    /// meantime, so a stale index can never be commanded.
     pub(super) fn selection_readout(&mut self, ui: &mut egui::Ui) {
         let sim_ref = &self.sim.sim;
         self.ui_state.selected.retain(|sel| match sel {

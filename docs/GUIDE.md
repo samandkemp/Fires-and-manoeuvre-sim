@@ -189,7 +189,7 @@ result in a header comment.
 | `hunter_uas.toml` | What a drone is allowed to decide for itself (`autonomous`) |
 | `ad_c2.toml` | Coordinated against decentralised air defence - delete the `[[blue.c2]]` block to compare |
 | `fires_c2.toml` | Ground fires and the net (`fires_need_c2`) |
-| `ew_c2.toml` | Jamming the command link - the soft kill on the asset SEAD hard-kills |
+| `ew_c2.toml` | Jamming the command link - the soft kill on the asset SEAD (Suppression of Enemy Air Defences) hard-kills |
 | `sead_arm.toml` | Anti-radiation homing, and the go-silent counter |
 
 ## 3. Driving the app
@@ -198,7 +198,7 @@ result in a header comment.
 
 | Input | Does |
 |---|---|
-| Left-click | Select - units, drones, air-defence batteries or C2 posts |
+| Left-click | Select - units, drones, air-defence batteries or C2 (Command and Control) posts |
 | Shift + left-click | Add to, or toggle in, the selection |
 | Left-drag | Box-select |
 | Right-click | Move the selection here, preserving formation |
@@ -248,7 +248,7 @@ tool, so it has to be something the map can express rather than only a scenario 
 |---|---|
 | **Sensor** | An observer of the chosen type |
 | **Unit** | A manoeuvre or artillery unit, with its weapon resolved from the stat block |
-| **Jammer (EW)** | An EW bubble degrading the *other* side's sensing nearby |
+| **Jammer (EW)** | An Electronic Warfare bubble degrading the *other* side's sensing nearby |
 | **Drone** | An air asset at the panel's altitude, heading and speed |
 | **Air defence** | A battery, with its organic radar |
 | **C2 post** | A post coordinating nearby friendly air defence |
@@ -530,10 +530,10 @@ optical = 0.35
   drone asked to fly a 90° corner cannot - it flies an arc of radius $v/\omega$, arriving late
   and displaced. That error is exactly what an air-defence engagement window is made of.
 - **`release_range_m` and the defending battery's `max_range_m` are a matched pair.** Set release
-  inside the gun's bubble and the drone must fly through it; set it outside and the long-range
-  SAM and its cueing chain are what matter. This is the single most consequential number in a
-  counter-air scenario, and getting it wrong is how you build a scenario that measures nothing -
-  see [Troubleshooting](#18-troubleshooting).
+  inside the gun's bubble and the drone must fly through it; set it outside and the long-range SAM
+  (Surface-to-Air Missile) and its cueing chain are what matter. This is the single most
+  consequential number in a counter-air scenario, and getting it wrong is how you build a scenario
+  that measures nothing - see [Troubleshooting](#18-troubleshooting).
 
 ### 5.5 An air-defence battery
 
@@ -686,8 +686,8 @@ another - and that is usually what you want when designing a study:
   *optimality* over greedy is worth slightly less than nothing.
 - **`track_hold_s`** set towards the run length recovers permanent detection - useful for studying
   fires without tracks lapsing underneath them.
-- **`sensor_tasking`** is off by default, so a `facing_deg` you write is taken as meant. Turn it on
-  to let sensors search, but note that it dissolves any scenario whose premise is a *committed*
+- **`sensor_tasking`** is off by default, so a `facing_deg` you write is taken as meant. Turn it
+  on to let sensors search, but note that it dissolves any scenario whose premise is a *committed*
   sensor posture.
 - **`fires_need_c2`** is off by default, so a side's guns coordinate for free. Turn it on and a
   shooter must be inside a live friendly post's radius to join the side-wide fire plan; one
@@ -800,20 +800,20 @@ Five of these carry more meaning than they look like they do.
 namespace - so sending a strike drone at a SAM needs no special syntax. The key stayed `unit` for
 compatibility; `asset` is the clearer alias and means the same thing.
 
-**A unit has a `route` or an `objective`, never both** - declaring both is a load error. A route is
-scripted and followed exactly; an objective is planned toward, re-solved each decision epoch
+**A unit has a `route` or an `objective`, never both** - declaring both is a load error. A route
+is scripted and followed exactly; an objective is planned toward, re-solved each decision epoch
 against what the unit's side knows about enemy sensors, so a sensor placed across the way changes
 where it goes. `risk_weight` is the exchange rate: at `0` the unit takes the short way regardless
 of who is watching. **Sweeping it on one unit while another follows a fixed route is how the trade
 between arriving quickly and arriving alive gets measured** - control and treatment on the same
 map and the same seed.
 
-**`self_cue` and `emitting` are two different decisions**, and they were once one flag.
-`self_cue = false` means the battery waits for a track over the net and pays `cue_latency_s` - its
-radar still runs, still detects, and can still be homed on by an anti-radiation missile.
-`emitting = false` is EMCON: the radar is off, so the battery detects nothing through it and an
-ARM has nothing to ride. Measured, going dark costs a battery its whole contribution - zero
-detections, zero shots - in exchange for surviving the missile.
+**`self_cue` and `emitting` are two different decisions**, and they were once one flag. `self_cue
+= false` means the battery waits for a track over the net and pays `cue_latency_s` - its radar
+still runs, still detects, and can still be homed on by an anti-radiation missile. `emitting =
+false` is EMCON (Emission Control): the radar is off, so the battery detects nothing through it
+and an ARM (Anti-Radiation Missile) has nothing to ride. Measured, going dark costs a battery its
+whole contribution - zero detections, zero shots - in exchange for surviving the missile.
 
 **`altitude_ref` decides whether terrain can mask a drone.** `agl` follows the ground and rides
 over ridges; `amsl` holds a constant height above sea level and is masked by anything taller. Same
@@ -827,8 +827,8 @@ explicit `target` always wins.
 ## 9. The kill chain
 
 A side **always** has a fire plan. Omitting the block gives `priority = ["all"]` - one tier
-holding everything, ranked by the ordinary payoff, which *is* the undirected behaviour. Declare one
-and it is **followed**:
+holding everything, ranked by the ordinary payoff, which *is* the undirected behaviour. Declare
+one and it is **followed**:
 
 ```toml
 [blue.doctrine]
@@ -1104,15 +1104,15 @@ review and re-run. See [`studies/README.md`](../studies/README.md) for the forma
 It reports **Morris** first, because it is cheap: `mu*` ranks dials by how much they move the
 answer, `sigma` flags one whose effect depends on where the others are. Its job is to say what can
 be ignored before the expensive pass runs. Then **Sobol**, as a variance decomposition: `S1` is
-what a dial explains alone, `ST` what it is involved in altogether, and `ST − S1` the share running
-*through* interactions - which is exactly what a one-dial sweep cannot see.
+what a dial explains alone, `ST` what it is involved in altogether, and `ST − S1` the share
+running *through* interactions - which is exactly what a one-dial sweep cannot see.
 
 **The closing line adds the first-order indices up.** Near 1 means the dials are additive and
 one-at-a-time sweeps are sound. Well below 1 means most of the variance lives in interactions, and
 a sweep will mislead.
 
-A slightly **negative** `S1` means "indistinguishable from zero" - the estimator is unbiased rather
-than non-negative, and clamping it would hide how noisy a near-zero index is.
+A slightly **negative** `S1` means "indistinguishable from zero" - the estimator is unbiased
+rather than non-negative, and clamping it would hide how noisy a near-zero index is.
 
 **Cost** is `(morris points + sobol points) × seeds`, and `--seeds` is deliberately modest: a
 design point is an average over seeds, and the variance being decomposed is the one across the
@@ -1130,10 +1130,10 @@ cargo run -p experiments --release --bin meta -- air_raid --metric air_leakers
 `meta` enumerates **every** dial the loaded libraries expose and screens them all by Morris
 elementary effects, finishing with a line like "9 of 123 dials carry 90% of the total effect".
 
-**Screening, not decomposition.** Sobol costs `n(k+2)` design points; at 123 dials that is millions
-of trials. Morris costs `(k+1) × trajectories` and answers the question that comes first: *what can
-be ignored?* Take the survivors to `sensitivity` for the variance decomposition. That two-stage
-practice is standard, and it is what the tools are shaped for.
+**Screening, not decomposition.** Sobol costs `n(k+2)` design points; at 123 dials that is
+millions of trials. Morris costs `(k+1) × trajectories` and answers the question that comes first:
+*what can be ignored?* Take the survivors to `sensitivity` for the variance decomposition. That
+two-stage practice is standard, and it is what the tools are shaped for.
 
 `--emit FILE` writes the screened dial space as a `studies/*.toml`, each row carrying the dial's
 meaning, unit and theory section, so the second stage does not have to be retyped.
@@ -1163,9 +1163,9 @@ overnight, not on every edit.
 
 ### 12.7 The bespoke probes and the benchmarks
 
-Each answers one question its own way and prints a table. They are kept because each does something
-`sweep` and `factorial` cannot - search over *positions*, solve a game, or print a closed form
-beside the measurement.
+Each answers one question its own way and prints a table. They are kept because each does
+something `sweep` and `factorial` cannot - search over *positions*, solve a game, or print a
+closed form beside the measurement.
 
 ```
 cargo run -p experiments --bin duel_probe          # a direct-fire duel, pair by pair
@@ -1196,11 +1196,11 @@ sim.allocation = greedy      -12.835 +- 0.224 (t = -57.2, n = 2000, 311 tied) si
 - **`311 tied`** - seeds where the two arms gave *exactly* the same number.
 - **`significant` / `NOT significant`**.
 
-**The tie count is the part people skip, and it is the most informative field.** A small difference
-with a *high* tie count means the two arms are mostly making the same decision - a different
-conclusion from "the effect is real but hard to see". When every arm ties on every seed, the report
-says so explicitly, because "no significant effect" reads as evidence of no effect when it is
-usually evidence that **the dial does not reach the metric in this scenario at all**.
+**The tie count is the part people skip, and it is the most informative field.** A small
+difference with a *high* tie count means the two arms are mostly making the same decision - a
+different conclusion from "the effect is real but hard to see". When every arm ties on every seed,
+the report says so explicitly, because "no significant effect" reads as evidence of no effect when
+it is usually evidence that **the dial does not reach the metric in this scenario at all**.
 
 More seeds shrink the standard error as $1/\sqrt{n}$: to halve the error bar, quadruple the seeds.
 If an effect is not visible at 2,000 seeds it is small enough that the honest answer is usually
@@ -1209,8 +1209,8 @@ If an effect is not visible at 2,000 seeds it is small enough that the honest an
 ### 13.1 What the columns mean
 
 Every metric is read back from the simulation's own event logs and final state, never accumulated
-alongside it as it runs. So there is no second bookkeeping path to drift: if a metric is wrong, the
-log is wrong, and the app's event feed is showing the same wrong thing.
+alongside it as it runs. So there is no second bookkeeping path to drift: if a metric is wrong,
+the log is wrong, and the app's event feed is showing the same wrong thing.
 
 | Column | Meaning |
 |---|---|
@@ -1238,10 +1238,10 @@ that was never cleared reports the run length, so read it with the kill counts b
 means "not by 600 s", not "at 600 s". A side fielding no ground units also reports the run length;
 there was nothing to clear.
 
-**`ad_rounds_left` is where the C2 result lives.** Coordinating air defence barely changes how many
-drones die; it changes how much ammunition is left afterwards, because a missile is a discrete
-round and overkill is real. Coordination pays where the shot is a countable resource - and that is
-invisible without this column.
+**`ad_rounds_left` is where the C2 result lives.** Coordinating air defence barely changes how
+many drones die; it changes how much ammunition is left afterwards, because a missile is a
+discrete round and overkill is real. Coordination pays where the shot is a countable resource -
+and that is invisible without this column.
 
 ### 13.2 How fast, and why
 
@@ -1257,8 +1257,8 @@ A trial costs microseconds; **building the terrain costs seconds**. So the seed 
 exactly one chunk per worker thread, and each worker builds one simulation and resets it between
 trials. Every worker builds terrain from `default_seed`, so all workers get the **same** map.
 
-**Scheduling cannot change the answer.** Results come back in seed order regardless of how the work
-was split, and each trial's RNG stream depends only on its seed. A parallel study returns
+**Scheduling cannot change the answer.** Results come back in seed order regardless of how the
+work was split, and each trial's RNG stream depends only on its seed. A parallel study returns
 byte-identical numbers to a serial one, and a test pins that.
 
 The other lever is `--until`. Most scenarios have decided by 200-300 s and the rest of the run is
@@ -1269,9 +1269,9 @@ time is being spent on nothing happening.
 
 The question: **is the air-defence overkill cap earning its keep?**
 
-`max_batteries_per_air_target` caps how many batteries may be assigned to one airframe. It defaults
-to 2, on the reasoning that a second battery is insurance against the first missing and a third is
-nearly always waste. That is a claim, so measure it.
+`max_batteries_per_air_target` caps how many batteries may be assigned to one airframe. It
+defaults to 2, on the reasoning that a second battery is insurance against the first missing and a
+third is nearly always waste. That is a claim, so measure it.
 
 ```bash
 cargo run -p experiments --release --bin sweep -- ad_c2 \
@@ -1294,8 +1294,9 @@ Read it in three parts.
 confirming it is measuring what it claims to - and it is worth looking for that kind of sanity
 check in every study.
 
-**The second battery buys nothing and costs a quarter of a round.** −0.002 kills against a standard
-error of 0.007 is a null result at 2,500 paired seeds - not "too small to see", genuinely nothing.
+**The second battery buys nothing and costs a quarter of a round.** −0.002 kills against a
+standard error of 0.007 is a null result at 2,500 paired seeds - not "too small to see", genuinely
+nothing.
 
 **The third battery is actively worse**: it costs 0.64 rounds of reserve *and* kills 0.028 fewer
 drones. Stacking is not free even when ammunition is not the binding constraint, because a battery
@@ -1442,9 +1443,9 @@ println!("{}", paired(&column(&a, metric), &column(&b, metric)).report());
 Both arms ran seeds `0..1000`, so they are paired by construction. That is the point of
 `StudyConfig::seeds` being a count rather than a range.
 
-Every bespoke binary that predated the shared harness went stale without anyone noticing, and three
-were eventually deleted once the harness subsumed them. **A probe that does not use the harness is
-a probe that will quietly stop agreeing with everything else.**
+Every bespoke binary that predated the shared harness went stale without anyone noticing, and
+three were eventually deleted once the harness subsumed them. **A probe that does not use the
+harness is a probe that will quietly stop agreeing with everything else.**
 
 ### 17.3 Adding a validation gate
 
@@ -1456,8 +1457,8 @@ silent gap.
 
 ### 17.4 What the harness cannot do yet
 
-- **Two-way interactions only.** `factorial` reports every pair of factors; a three-way interaction
-  is in the per-cell CSV but not in the report.
+- **Two-way interactions only.** `factorial` reports every pair of factors; a three-way
+  interaction is in the per-cell CSV but not in the report.
 - **Sensitivity dials are continuous only.** A range is a pair of numbers, so a categorical dial
   like `sim.allocation` has no place in a study file - use `factorial` for those.
 - **A sensitivity study may not vary terrain.** Terrain is built once for the whole design, so a
@@ -1514,4 +1515,5 @@ evidence.**
 
 ---
 
-*Back to [README](../README.md) · [Model](MODEL.md) · [Reference](REFERENCE.md) · [Theory](THEORY.md) · [Validation](VALIDATION.md)*
+*Back to [README](../README.md) · [Model](MODEL.md) · [Reference](REFERENCE.md) ·
+[Theory](THEORY.md) · [Validation](VALIDATION.md)*

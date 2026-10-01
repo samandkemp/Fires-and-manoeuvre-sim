@@ -54,7 +54,7 @@ impl Sim {
                     {
                         continue;
                     }
-                    // One call answers both "can I engage?" and "at what range?".
+                    // One call answers both whether it can engage and at what range.
                     let Some(range) = air_defence::engagement_range(
                         &ad.stats,
                         &self.terrain,
@@ -72,8 +72,8 @@ impl Sim {
             resolutions.clear();
             {
                 // Borrow the two fields separately - `self.air_defence` and `self.rng`
-                // are disjoint, which the borrow checker accepts as long as we reach
-                // them as fields rather than through a `&mut self` method.
+                // are disjoint, which the borrow checker accepts as long as they are
+                // reached as fields rather than through a `&mut self` method.
                 let ad = &mut self.air_defence[ad_idx];
                 ad.drop_engagements(|t| engageable.get(t).copied().unwrap_or(false));
                 ad.resolve_due(now, dt, &mut self.rng, &mut resolutions);

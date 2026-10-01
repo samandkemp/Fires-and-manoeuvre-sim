@@ -239,7 +239,7 @@ pub fn hungarian(payoff: &[Vec<f64>]) -> Assignment {
                 break;
             }
         }
-        // Walk the alternating path back, flipping the matching as we go.
+        // Walk the alternating path back, flipping the matching along the way.
         while j0 != 0 {
             let j1 = path[j0];
             row_of[j0] = row_of[j1];

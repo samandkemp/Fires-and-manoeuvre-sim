@@ -57,7 +57,7 @@ fn loads_flat_fixture_scenario() {
 
 // Every scenario shipped in `scenarios/` must parse *and* resolve every instance
 // against the libraries - the gate that catches a typo'd type id or a schema drift in
-// air.toml / air_defence.toml, which otherwise only shows up when the app won't start.
+// air.toml / air_defence.toml, which otherwise only shows up when the app will not start.
 #[test]
 fn shipped_scenarios_load_and_resolve() {
     let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../scenarios");

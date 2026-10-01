@@ -53,7 +53,7 @@ pub struct WeaponType {
     #[serde(default)]
     pub lethal_radius_m: f32,
     /// Can this engage air targets (§9.6)? Unused: target selection only iterates the
-    /// unit list, so a ground weapon can't pick a drone anyway. Here for a future
+    /// unit list, so a ground weapon cannot pick a drone anyway. Here for a future
     /// dual-role autocannon.
     #[serde(default)]
     pub engages_air: bool,
